@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#0a0608"/>
+  <title>마왕 토벌 — 어둠의 용사</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json"/>
+
+  <!-- iOS 홈 화면 아이콘 (apple-touch-icon) -->
+  <link rel="apple-touch-icon" href="images/icon-192.png"/>
+  <!-- 파비콘 대체 (icon 없을 때 던전 이미지 사용) -->
+  <link rel="icon" type="image/png" href="images/Dungeon_Entrance.png"/>
+  <link rel="stylesheet" href="rpg-main.css"/>
+  <style>
+    /* ★ 전투화면이 던전 위를 완전히 덮도록 — 최우선 적용 */
+    #titleScreen, #townScreen, #dungeonScreen,
+    #battleScreen, #victoryScreen, #defeatScreen {
+      position: fixed !important;
+      inset: 0 !important;
+      flex-direction: column;
+    }
+    #dungeonScreen { z-index: 10 !important; background: #060304; }
+    #battleScreen  { z-index: 200 !important; background: #000 !important; display: none; flex-direction: column !important; }
+    #victoryScreen { z-index: 300 !important; }
+    #defeatScreen  { z-index: 300 !important; }
+  </style>
+</head>
+<body>
+
+<!-- ── 화면 레이어 ── -->
+<div id="titleScreen" style="display:flex;"></div>
+<div id="townScreen"></div>
+<div id="dungeonScreen"></div>
+<div id="battleScreen"></div>
+<div id="victoryScreen"></div>
+<div id="defeatScreen"></div>
+
+<!-- ── 공통 오버레이 ── -->
+<div id="narrativeBox"><div id="narrativeText"></div></div>
+<div id="flashWhite"></div>
+
+<!-- ── 스크립트 로딩 순서 ── -->
+<script src="models.js"></script>
+<script src="managers.js"></script>
+<script src="achievement-system.js"></script>
+<script src="battle-manager.js"></script>
+<script src="dungeon-scene.js"></script>
+<script src="battle-scene.js"></script>
+<script src="town-scene.js"></script>
+<script src="dialogue-scene.js"></script>
+<script src="game.js"></script>
+
+<!-- 컷신 이미지 경로 자동 보정 -->
+<script>
+window._cutinBase = "";
+const testImg = new Image();
+testImg.onload  = () => { window._cutinBase = "images/"; };
+testImg.onerror = () => { window._cutinBase = ""; };
+testImg.src = "images/healer_skill_cut.png";
+</script>
+
+<!-- 오디오 매니저 -->
+<script>
+class AudioManager {
+  constructor() {
+    this._bgm=null; this._bgmKey=null;
+    this._bgmMap = {
+      town:    "sounds/bgm_town.ogg",
+      dungeon: "sounds/bgm_dungeon.mp3",
+      boss:    "sounds/bgm_boss.wav",
+      shop:    "sounds/bgm_shop.wav"
+    };
+    this._sfxMap = {
+      sword:         "sounds/sfx_sword.mp3",
+      magic:         "sounds/sfx_magic.mp3",
+      arrow:         "sounds/sfx_arrow.mp3",
+      heal:          "sounds/sfx_heal.wav",
+      levelup:       "sounds/sfx_levelup.wav",
+      monster:       "sounds/sfx_monster.wav",
+      chest:         "sounds/sfx_chest.mp3",
+      victory:       "sounds/sfx_victory.mp3",
+      levelup_party: "sounds/sfx_levelup_party.mp3"
+    };
+    this._cache={};
+    // ★ localStorage에서 볼륨 복원
+    const saved = JSON.parse(localStorage.getItem("rpg_audio") || "{}");
+    this._bgmVol = saved.bgmVol ?? 0.35;
+    this._sfxVol = saved.sfxVol ?? 0.55;
+    this._muted  = saved.muted  ?? false;
+  }
+
+  _save() {
+    localStorage.setItem("rpg_audio", JSON.stringify({
+      bgmVol: this._bgmVol,
+      sfxVol: this._sfxVol,
+      muted:  this._muted,
+    }));
+  }
+
+  setBgmVol(v) {
+    this._bgmVol = Math.max(0, Math.min(1, v));
+    if (this._bgm && !this._muted) this._bgm.volume = this._bgmVol;
+    this._save();
+  }
+
+  setSfxVol(v) {
+    this._sfxVol = Math.max(0, Math.min(1, v));
+    this._save();
+  }
+
+  setMuted(m) {
+    this._muted = !!m;
+    if (this._bgm) this._bgm.volume = this._muted ? 0 : this._bgmVol;
+    this._save();
+    return this._muted;
+  }
+
+  playBgm(key){
+    if(this._muted||this._bgmKey===key) return;
+    const src=this._bgmMap[key]; if(!src) return;
+    const prev=this._bgm; this._bgmKey=key;
+    const a=new Audio(src); a.loop=true; a.volume=0; a.play().catch(()=>{});
+    this._bgm=a;
+    let v=0; const fi=setInterval(()=>{ v=Math.min(v+.02,this._bgmVol); a.volume=v; if(v>=this._bgmVol) clearInterval(fi); },60);
+    if(prev){ let pv=prev.volume; const fo=setInterval(()=>{ pv=Math.max(pv-.04,0); prev.volume=pv; if(pv<=0){prev.pause();clearInterval(fo);} },60); }
+  }
+  stopBgm(){ if(this._bgm){this._bgm.pause();this._bgm=null;this._bgmKey=null;} }
+  playSfx(key){
+    if(this._muted) return;
+    const src = this._sfxMap[key];
+    if(!src) return;
+    try {
+      const a = new Audio(src);
+      a.volume = this._sfxVol;
+      a.play().catch(()=>{});
+    } catch(e) {}
+  }
+  toggleMute(){ return this.setMuted(!this._muted); }
+}
+window.audioMgr = new AudioManager();
+</script>
+
+  <!-- Service Worker 등록 -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+          .then(reg => {
+            console.log("[PWA] SW 등록 완료:", reg.scope);
+
+            // 새 버전 감지 시 업데이트 토스트 표시
+            reg.addEventListener("updatefound", () => {
+              const newWorker = reg.installing;
+              newWorker?.addEventListener("statechange", () => {
+                if (newWorker.state === "installed"
+                    && navigator.serviceWorker.controller) {
+                  _showUpdateToast();
+                }
+              });
+            });
+          })
+          .catch(err => console.warn("[PWA] SW 등록 실패:", err));
+      });
+    }
+
+    function _showUpdateToast() {
+      const t = document.createElement("div");
+      t.style.cssText = `
+        position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+        z-index:99999;background:#1a1020;border:1px solid #8844cc;
+        border-radius:8px;padding:12px 20px;
+        font-family:'Noto Serif KR',serif;font-size:.8rem;color:#d8c8b0;
+        display:flex;align-items:center;gap:12px;white-space:nowrap;`;
+      t.innerHTML = `
+        <span>🔄 새 버전이 있습니다</span>
+        <button onclick="location.reload()"
+          style="background:#8844cc;border:none;color:#fff;
+          padding:4px 12px;cursor:pointer;border-radius:4px;
+          font-family:inherit;font-size:.78rem;">
+          업데이트
+        </button>
+        <button onclick="this.parentElement.remove()"
+          style="background:transparent;border:none;color:#786050;
+          cursor:pointer;font-size:1rem;padding:0 4px;">
+          ✕
+        </button>`;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 15000);
+    }
+  </script>
+</body>
+</html>

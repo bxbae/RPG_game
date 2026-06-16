@@ -1,0 +1,397 @@
+/* ═══════════════════════════════════════════════════
+   rpg-main.css  — 마왕 토벌 통합 스타일
+═══════════════════════════════════════════════════ */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap");
+
+:root {
+  --bg:      #0a0608; --bg2: #110d0f; --bg3: #1a1215;
+  --border:  #2e1e24; --border2: #4a2e38;
+  --gold:    #c8980e; --gold2: #e8b830;
+  --red:     #a82020; --red2:  #cc3333;
+  --green:   #1e7a3a; --green2:#28a04e;
+  --blue:    #1a5080; --blue2: #2878c0;
+  --text:    #d8c8b0; --text-dim: #786050;
+  --normal:  #b8a888; --rare: #4898d8; --legend: #d8a820;
+  --shadow:  rgba(0,0,0,0.85);
+}
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:"Noto Serif KR",Georgia,serif; }
+::-webkit-scrollbar { width:3px; } ::-webkit-scrollbar-thumb { background:var(--border2); }
+.normal{color:var(--normal);} .uncommon{color:#55cc55;} .rare{color:var(--rare);} .epic{color:#bb66ff;} .legend{color:var(--legend);} .mythic{color:#ff88ff;}
+.hidden{display:none!important;}
+button { font-family:inherit; }
+
+/* ── 공통 화면 컨테이너 ────────────────────────── */
+#titleScreen, #townScreen, #dungeonScreen, #battleScreen, #victoryScreen, #defeatScreen {
+  display:none; position:fixed; inset:0; flex-direction:column;
+}
+/* ★ 전투 화면이 던전 위를 완전히 덮도록 */
+#battleScreen  { background:#000; z-index:20; display:none; flex-direction:column !important; }
+#victoryScreen { z-index:30; }
+#defeatScreen  { z-index:30; }
+
+/* ═══════════════════════════════════════════════
+   타이틀
+═══════════════════════════════════════════════ */
+#titleScreen {
+  justify-content:center; align-items:center; text-align:center;
+  padding:40px 16px; overflow-y:auto; background:#060304;
+}
+.bg-overlay { position:absolute; inset:0; background:url("images/던전입구.png") center/cover no-repeat; opacity:.2; }
+.title-content { position:relative; z-index:1; }
+.game-title { font-size:clamp(2.4rem,6vw,4.2rem); color:var(--gold2); text-shadow:0 0 40px rgba(200,152,14,.6),0 2px 8px #000; letter-spacing:.08em; margin-bottom:.25em; }
+.game-subtitle { font-size:.95rem; color:var(--text-dim); margin-bottom:40px; letter-spacing:.2em; }
+.class-select h2 { color:var(--gold); font-size:1rem; margin-bottom:16px; letter-spacing:.12em; }
+.class-cards { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-bottom:30px; }
+.class-card { width:138px; padding:20px 12px; background:rgba(20,12,14,.92); border:1px solid var(--border2); cursor:pointer; transition:.2s; text-align:center; color:var(--text); }
+.class-card:hover { border-color:var(--gold); transform:translateY(-4px); box-shadow:0 8px 24px rgba(200,152,14,.2); }
+.class-icon { font-size:2.2rem; margin-bottom:8px; }
+.class-name { font-size:.95rem; font-weight:700; color:var(--gold2); }
+.class-desc { font-size:.62rem; color:var(--text-dim); margin-top:5px; line-height:1.4; }
+.btn-load { background:transparent; border:1px solid var(--border2); color:var(--text-dim); padding:10px 28px; cursor:pointer; font-size:.82rem; transition:.2s; }
+.btn-load:hover { border-color:var(--gold); color:var(--gold); }
+
+/* ═══════════════════════════════════════════════
+   마을
+═══════════════════════════════════════════════ */
+#townScreen { flex-direction:column; }
+.town-header { width:100%; background:var(--bg2); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.town-header h2 { color:var(--gold); font-size:.95rem; }
+#townGold { color:var(--gold2); font-size:.88rem; }
+.town-body { display:flex; flex:1; overflow:hidden; }
+.town-map { flex:1; position:relative; overflow:hidden; }
+.town-bg { width:100%; height:100%; object-fit:cover; filter:brightness(.55); }
+.town-locations { position:absolute; inset:0; display:flex; align-items:flex-end; padding:20px; gap:10px; justify-content:center; flex-wrap:wrap; }
+.location-btn { background:rgba(8,4,6,.88); border:1px solid var(--border2); color:var(--text); padding:10px 16px; cursor:pointer; font-size:.8rem; transition:.2s; text-align:center; min-width:88px; }
+.location-btn:hover { border-color:var(--gold); color:var(--gold2); }
+.town-sidebar { width:250px; background:var(--bg2); border-left:1px solid var(--border); padding:14px; overflow-y:auto; flex-shrink:0; }
+.sidebar-section { margin-bottom:18px; }
+.sidebar-section h3 { font-size:.7rem; color:var(--gold); letter-spacing:.1em; border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:8px; }
+.equip-slot { font-size:.7rem; color:var(--text-dim); margin-bottom:3px; }
+.equip-slot span { color:var(--text); }
+#tnShop { display:flex; flex-direction:column; gap:5px; }
+.shop-btn { display:flex; justify-content:space-between; background:rgba(16,9,11,.85); border:1px solid var(--border); color:var(--text); padding:7px 9px; cursor:pointer; font-size:.7rem; transition:.2s; width:100%; font-family:inherit; }
+.shop-btn:hover { border-color:var(--gold); }
+.item-cost { color:var(--gold2); font-size:.65rem; }
+#tnInventory { display:flex; flex-direction:column; gap:4px; }
+.inv-row { display:flex; align-items:center; gap:4px; padding:4px 6px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:2px; }
+.inv-name { flex:1; font-size:.65rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inv-btn { background:rgba(20,10,30,.8); border:1px solid var(--border2); color:var(--text-dim); padding:2px 6px; cursor:pointer; font-size:.6rem; border-radius:2px; transition:.15s; font-family:inherit; }
+.inv-btn:hover { border-color:var(--gold); color:var(--gold2); }
+.inv-btn.del { border-color:#4a2020; color:#cc6666; }
+.inv-btn.del:hover { background:rgba(60,20,20,.8); }
+
+/* ═══════════════════════════════════════════════
+   던전 탐험
+═══════════════════════════════════════════════ */
+#dungeonScreen { display:none; }
+.dungeon-layout { display:flex; width:100%; height:100%; overflow:hidden; }
+.dungeon-canvas-wrap {
+  flex:1; position:relative; overflow:hidden; background:#060304;
+  display:flex; align-items:center; justify-content:center;
+}
+.dungeon-canvas-wrap.bump { animation:wallBump .15s ease; }
+@keyframes wallBump { 0%,100%{transform:none;} 50%{transform:translate(4px,0);} }
+#dungeonCanvas { display:block; image-rendering:pixelated; max-width:100%; max-height:100%; border:2px solid var(--border); }
+.dungeon-right-panel {
+  width:220px; flex-shrink:0; background:var(--bg2);
+  border-left:1px solid var(--border); padding:12px; overflow-y:auto;
+  display:flex; flex-direction:column; gap:10px;
+}
+.dungeon-player-card, .dungeon-comp-card, .dungeon-quest-card {
+  background:rgba(255,255,255,.03); border:1px solid var(--border2); border-radius:4px; padding:10px 12px;
+}
+.dp-name  { font-size:.85rem; font-weight:700; color:var(--gold2); margin-bottom:4px; }
+.dp-class { font-size:.65rem; color:var(--text-dim); margin-bottom:6px; }
+.dp-label { font-size:.62rem; color:var(--gold); letter-spacing:.1em; margin-bottom:4px; }
+.dp-stat-row { display:flex; align-items:center; gap:5px; font-size:.65rem; color:var(--text-dim); margin-bottom:4px; }
+.dp-bar-track { flex:1; height:6px; background:#180a0c; border-radius:3px; overflow:hidden; }
+.dp-bar-fill.hp   { height:100%; background:linear-gradient(90deg,#005500,#33bb33); border-radius:3px; transition:width .4s; }
+.dp-bar-fill.comp { height:100%; background:linear-gradient(90deg,#001488,#2266ee); border-radius:3px; transition:width .4s; }
+
+/* ✅ 수정 1: 빈 규칙셋 제거 → margin-top 추가 */
+.dungeon-minimap-wrap { margin-top:4px; }
+#dungeonMinimap { display:block; width:100%; height:auto; }
+.dungeon-controls { font-size:.6rem; color:var(--text-dim); }
+.dungeon-dpad { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.dpad-btn { width:36px; height:36px; background:rgba(20,10,30,.9); border:1px solid var(--border2); color:var(--text); cursor:pointer; font-size:.9rem; border-radius:4px; transition:.15s; font-family:inherit; }
+.dpad-btn:hover { border-color:var(--gold); color:var(--gold2); }
+.dpad-btn:active { transform:scale(.9); }
+.quest-progress-bar { height:5px; background:#1a0e10; border-radius:3px; overflow:hidden; }
+.quest-progress-fill { height:100%; background:linear-gradient(90deg,#884400,#cc8800); border-radius:3px; transition:width .4s; }
+
+/* ═══════════════════════════════════════════════
+   전투 씬 (포켓몬 스타일)
+═══════════════════════════════════════════════ */
+.poke-field { flex:1; position:relative; overflow:hidden; min-height:200px; background:#000; }
+.battle-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.72; z-index:0; }
+.poke-enemy-hud { position:absolute; top:14px; left:14px; background:rgba(6,3,4,.94); border:2px solid #3a2428; border-radius:4px; padding:11px 16px 9px; min-width:200px; z-index:5; box-shadow:4px 4px 0 rgba(0,0,0,.7); }
+.poke-hud-name { font-size:.9rem; font-weight:700; color:var(--text); margin-bottom:5px; }
+.poke-hud-sub-name { font-size:.6rem; color:var(--text-dim); margin-bottom:5px; }
+.poke-hud-row { display:flex; align-items:center; gap:5px; margin-bottom:3px; }
+.poke-hp-bar-wrap { display:flex; align-items:center; gap:5px; flex:1; }
+.poke-hp-label { font-size:.62rem; font-weight:700; color:#dd4444; width:18px; flex-shrink:0; }
+.poke-hp-track { flex:1; height:8px; background:#180a0c; border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,.07); }
+.poke-hp-fill { height:100%; border-radius:4px; transition:width .5s ease; max-width:100%; }
+.enemy-hp     { background:linear-gradient(90deg,#880000,#ee3333); }
+.player-hp    { background:linear-gradient(90deg,#005500,#33bb33); }
+.companion-hp { background:linear-gradient(90deg,#001488,#2266ee); }
+.player-mp    { background:linear-gradient(90deg,#440088,#aa33ee); }
+.poke-hp-nums { font-size:.6rem; color:var(--text-dim); margin-top:3px; text-align:right; }
+.poke-hud-sub { display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
+.poke-atk-badge { font-size:.56rem; color:var(--red2); background:rgba(180,30,30,.2); border:1px solid rgba(180,30,30,.4); padding:1px 6px; border-radius:2px; }
+.poke-enemy-sprite-wrap { position:absolute; right:8%; top:4%; width:min(36%,280px); z-index:2; filter:drop-shadow(0 10px 28px rgba(0,0,0,.95)); }
+.poke-enemy-sprite { width:100%; height:auto; display:block; animation:poke-enemy-idle 2.8s ease-in-out infinite; transform-origin:bottom center; }
+@keyframes poke-enemy-idle { 0%,100%{transform:translateY(0) scale(1);} 50%{transform:translateY(-10px) scale(1.01);} }
+.poke-enemy-sprite-wrap.is-boss { width:min(50%,370px); right:5%; }
+.poke-enemy-sprite-wrap.is-final-boss { width:min(62%,450px); right:2%; top:0; }
+.poke-enemy-sprite-wrap.hit .poke-enemy-sprite { animation:poke-hit-flash .3s ease; }
+@keyframes poke-hit-flash { 0%{filter:brightness(1);opacity:1;} 35%{filter:brightness(5) saturate(0);opacity:.3;} 100%{filter:brightness(1);opacity:1;} }
+.poke-player-hud { position:absolute; bottom:14px; right:14px; display:flex; flex-direction:column; gap:7px; align-items:flex-end; z-index:5; }
+.poke-player-hud-inner { background:rgba(6,3,4,.94); border:2px solid #3a2428; border-radius:4px; padding:11px 16px 9px; min-width:195px; box-shadow:-4px 4px 0 rgba(0,0,0,.7); }
+.poke-companion-hud { background:rgba(4,3,10,.94); border:2px solid #281848; border-radius:4px; padding:11px 16px 9px; min-width:185px; box-shadow:-4px 4px 0 rgba(0,0,0,.7); }
+
+/* 플레이어 스프라이트 + 애니메이션 */
+.poke-player-sprite-wrap { position:absolute; left:6%; bottom:0; width:min(21%,200px); z-index:3; filter:drop-shadow(0 6px 18px rgba(0,0,0,.95)); animation:poke-player-idle 3.2s ease-in-out infinite; }
+.poke-player-sprite { width:100%; height:auto; display:block; object-fit:contain; }
+@keyframes poke-player-idle { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+/* ★ 공격/피격/패배 애니메이션 */
+.poke-player-sprite-wrap.attack  { animation:poke-player-attack  .5s ease forwards !important; }
+.poke-player-sprite-wrap.hit     { animation:poke-player-hit     .3s ease forwards !important; }
+.poke-player-sprite-wrap.defeat  { animation:poke-player-defeat  .8s ease forwards !important; }
+@keyframes poke-player-attack { 0%{transform:translate(0,0) scale(1);} 30%{transform:translate(50px,-25px) scale(1.1);} 65%{transform:translate(22px,-10px) scale(1.05);} 100%{transform:translate(0,0) scale(1);} }
+@keyframes poke-player-hit    { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-12px);} 60%{transform:translateX(12px);} }
+@keyframes poke-player-defeat { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(40px) rotate(-30deg);opacity:0;} }
+.poke-companion-sprite-wrap { position:absolute; left:calc(6% + min(21%,200px) + 6px); bottom:0; width:min(18%,170px); z-index:3; filter:drop-shadow(0 6px 18px rgba(0,0,0,.95)); animation:poke-companion-idle 3.6s ease-in-out infinite; }
+.poke-companion-sprite { width:100%; height:auto; display:block; object-fit:contain; }
+@keyframes poke-companion-idle { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+
+.player-level { position:absolute; left:30px; bottom:220px; color:#fff; font-weight:bold; font-size:15px; text-shadow:0 0 4px #000; z-index:5; }
+.player-exp   { position:absolute; left:30px; bottom:198px; color:#ffd966; font-size:12px; text-shadow:0 0 4px #000; z-index:5; }
+.player-skill { position:absolute; left:30px; bottom:178px; color:#66ff99; font-size:12px; text-shadow:0 0 4px #000; z-index:5; }
+.damage { position:absolute; font-weight:700; font-size:1.4rem; pointer-events:none; animation:float-up 1s forwards; z-index:10; text-shadow:0 2px 8px #000; }
+.monster-dmg { color:#ff5533; right:14%; top:26%; }
+.player-dmg  { color:#33ff88; left:12%; bottom:32%; }
+@keyframes float-up { 0%{opacity:1;transform:translateY(0);} 100%{opacity:0;transform:translateY(-55px);} }
+.boss-warning { position:absolute; top:12%; left:50%; transform:translateX(-50%); font-size:1.6rem; font-weight:700; color:#ff8844; text-shadow:0 0 22px #ff8844,0 2px 6px #000; animation:boss-warn-anim 1.4s forwards; pointer-events:none; z-index:10; white-space:nowrap; }
+@keyframes boss-warn-anim { 0%{opacity:0;transform:translateX(-50%) scale(.7);} 20%{opacity:1;transform:translateX(-50%) scale(1.12);} 80%{opacity:1;transform:translateX(-50%) scale(1);} 100%{opacity:0;transform:translateX(-50%) scale(1.3);} }
+.shake { animation:do-shake .35s; }
+@keyframes do-shake { 0%,100%{transform:none;} 20%{transform:translate(-7px,2px);} 60%{transform:translate(7px,-2px);} }
+.poke-bottom { height:156px; flex-shrink:0; display:flex; background:#0a0610; border-top:3px solid #221428; }
+.poke-textbox { flex:1; display:flex; align-items:center; padding:12px 18px; background:#0a0610; border-right:3px solid #221428; font-size:.8rem; color:var(--text); overflow:hidden; }
+
+/* ✅ 수정 2: line-clamp 표준 속성 추가 */
+.poke-textbox-inner {
+  line-height: 1.8;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.poke-commands { width:360px; flex-shrink:0; display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr; }
+.item-cmd { color:#ffa040; border-color:#3a2800; background:#180e00; }
+.item-cmd:hover:not(:disabled) { background:#2a1a00; border-color:#ffa040; color:#ffd080; }
+.poke-cmd { background:#0e0a18; border:1px solid #221428; color:var(--text); cursor:pointer; font-size:.72rem; font-weight:700; transition:.15s; text-align:left; padding:0 10px; letter-spacing:.02em; display:flex; align-items:center; gap:4px; font-family:inherit; }
+.poke-cmd:hover:not(:disabled) { background:#1e1030; color:var(--gold2); border-color:var(--gold); }
+.poke-cmd:disabled { opacity:.25; cursor:not-allowed; }
+.poke-cmd::before { content:"▶"; font-size:.55rem; color:var(--text-dim); flex-shrink:0; }
+.hero-ult-cmd { color:#88ddff; border-color:#003850!important; background:#000e18!important; font-size:.75rem!important; }
+.hero-ult-cmd:hover:not(:disabled) { background:#001c30!important; color:#ffdd00!important; border-color:#ffdd00!important; }
+.ult-cmd { color:var(--gold); border-color:#3a2800; background:#120e00; }
+.ult-cmd:hover:not(:disabled) { background:#221800; border-color:var(--gold2); }
+
+/* ═══════════════════════════════════════════════
+   오버레이 (victory/defeat)
+═══════════════════════════════════════════════ */
+#victoryScreen, #defeatScreen { position:fixed; inset:0; z-index:50; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px 20px; }
+.overlay-content { position:relative; z-index:1; max-width:480px; }
+.overlay-title { font-size:clamp(1.8rem,5vw,3rem); font-weight:700; margin-bottom:16px; text-shadow:0 0 30px currentColor; line-height:1.2; }
+.overlay-desc { font-size:.88rem; color:var(--text-dim); line-height:1.8; margin-bottom:28px; }
+.overlay-btn { background:rgba(14,8,10,.92); border:1px solid var(--border2); color:var(--text); padding:13px 34px; cursor:pointer; font-size:.95rem; transition:.2s; margin:5px; font-family:inherit; }
+.overlay-btn:hover { border-color:var(--gold); color:var(--gold2); }
+.overlay-btn.primary { border-color:var(--gold); color:var(--gold2); }
+
+/* ═══════════════════════════════════════════════
+   모달 (퀘스트/스킬)
+═══════════════════════════════════════════════ */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.75); display:flex; justify-content:center; align-items:center; z-index:9999; }
+.modal-content { background:#1a1215; border:2px solid #4a2e38; border-radius:12px; padding:24px; min-width:400px; max-width:600px; color:var(--text); max-height:80vh; overflow-y:auto; }
+.modal-content h2 { color:var(--gold2); margin-bottom:16px; }
+.modal-content button { margin-top:12px; background:transparent; border:1px solid var(--border2); color:var(--text-dim); padding:8px 24px; cursor:pointer; font-family:inherit; font-size:.82rem; border-radius:4px; transition:.15s; }
+.modal-content button:hover { border-color:var(--gold); color:var(--gold2); }
+.skill-modal { position:fixed; inset:0; z-index:8000; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.75); }
+.skill-box { background:#0e0a14; border:2px solid var(--gold); border-radius:8px; padding:28px 32px; min-width:min(340px,92vw); max-width:min(480px,96vw); width:90%; max-height:88vh; overflow-y:auto; }
+.skill-box h2 { color:var(--gold2); font-size:1.2rem; margin-bottom:10px; }
+.skill-box > button { margin-top:12px; background:transparent; border:1px solid var(--border2); color:var(--text-dim); padding:8px 24px; cursor:pointer; font-family:inherit; font-size:.82rem; border-radius:4px; width:100%; transition:.15s; }
+.skill-box > button:hover { border-color:var(--gold); color:var(--gold2); }
+.skill-row { display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,.04); border:1px solid var(--border2); border-radius:4px; padding:10px 14px; margin-bottom:8px; font-size:.82rem; color:var(--text); }
+.skill-row button { background:#1a1020; border:1px solid var(--gold); color:var(--gold2); padding:5px 14px; cursor:pointer; font-family:inherit; font-size:.75rem; border-radius:3px; transition:.15s; white-space:nowrap; }
+.skill-row button:hover { background:#2a1830; }
+.skill-tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--border2); padding-bottom:8px; }
+.skill-tab { background:transparent; border:1px solid var(--border2); color:var(--text-dim); padding:6px 18px; cursor:pointer; font-family:inherit; font-size:.8rem; border-radius:4px 4px 0 0; transition:.15s; }
+.skill-tab.active { background:var(--border2); color:var(--gold2); border-color:var(--gold); }
+.passive-skill-row { background:rgba(255,255,255,.03); border:1px solid var(--border2); border-radius:4px; padding:10px 14px; margin-bottom:8px; }
+.passive-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.passive-name { flex:1; font-size:.85rem; font-weight:700; color:var(--text); }
+.passive-level { font-size:.75rem; }
+.passive-desc { font-size:.72rem; color:var(--text-dim); line-height:1.6; margin-bottom:8px; }
+.passive-learn-btn { background:#1a1020; border:1px solid var(--gold); color:var(--gold2); padding:5px 14px; cursor:pointer; font-family:inherit; font-size:.75rem; border-radius:3px; transition:.15s; }
+.passive-learn-btn.disabled, .passive-learn-btn:disabled { border-color:var(--border2); color:var(--text-dim); cursor:not-allowed; opacity:.5; }
+.quest-card { background:rgba(255,255,255,.04); border:1px solid #3a2428; border-radius:6px; padding:14px 16px; margin-bottom:10px; }
+.quest-card.active-quest { border-color:var(--gold); background:rgba(200,152,14,.08); }
+.quest-badge { display:inline-block; background:var(--gold); color:#0e0a04; font-size:.65rem; font-weight:700; padding:2px 8px; border-radius:3px; margin-bottom:6px; }
+.quest-card h3 { font-size:.9rem; color:var(--text); margin:4px 0 8px; }
+.quest-card p { font-size:.75rem; color:var(--text-dim); margin:3px 0; }
+.quest-accept-btn { margin-top:10px; background:#1a1020; border:1px solid var(--gold); color:var(--gold2); padding:7px 20px; cursor:pointer; font-family:inherit; font-size:.8rem; border-radius:4px; transition:.15s; width:100%; }
+.quest-accept-btn:hover { background:#2a1830; }
+.status-icon { display:inline-flex; align-items:center; background:rgba(0,0,0,.7); border-radius:4px; padding:2px 5px; font-size:.75rem; gap:2px; border:1px solid rgba(255,255,255,.15); animation:status-pulse 1.5s ease-in-out infinite; }
+.status-icon sub { font-size:.6rem; color:#fff; line-height:1; }
+.status-icon.poison { border-color:#44cc44; }
+.status-icon.stun   { border-color:#aaaaff; }
+.status-icon.burn   { border-color:#ff8844; }
+@keyframes status-pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
+@keyframes popupIn  { 0%{opacity:0;transform:translate(-50%,-50%) scale(.8);} 100%{opacity:1;transform:translate(-50%,-50%) scale(1);} }
+@keyframes popupOut { 0%{opacity:1;transform:translate(-50%,-50%) scale(1);} 100%{opacity:0;transform:translate(-50%,-50%) scale(.8);} }
+@keyframes slideInRight { 0%{opacity:0;transform:translateX(60px);} 100%{opacity:1;transform:translateX(0);} }
+#narrativeBox { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; pointer-events:none; background:rgba(0,0,0,.6); }
+#narrativeText { background:rgba(8,4,6,.96); border:1px solid var(--border2); color:var(--gold); padding:20px 40px; font-size:1rem; text-align:center; line-height:1.9; white-space:pre-line; max-width:480px; animation:narrative-in .4s ease; }
+@keyframes narrative-in { from{opacity:0;transform:scale(.95);} to{opacity:1;transform:scale(1);} }
+@keyframes cutinFadeIn  { from{opacity:0;} to{opacity:1;} }
+@keyframes cutinFadeOut { from{opacity:1;} to{opacity:0;} }
+@keyframes cutinAppear  { 0%{opacity:0;transform:scale(.9);} 100%{opacity:1;transform:scale(1);} }
+#flashWhite { position:fixed; inset:0; background:white; opacity:0; pointer-events:none; z-index:99999; }
+#flashWhite.active { animation:flashWhite .5s; }
+@keyframes flashWhite { 0%{opacity:1;} 100%{opacity:0;} }
+
+/* 반응형 */
+/* ═══════════════════════════════════════════════
+   모바일 반응형 — 480px 이하
+   ═══════════════════════════════════════════════ */
+@media (max-width:480px) {
+
+  /* ── 공통 ── */
+  * { -webkit-tap-highlight-color: transparent; }
+  body { overflow:hidden; }
+
+  /* ── 타이틀 화면 ── */
+  .game-title    { font-size:clamp(1.8rem,8vw,2.8rem); }
+  .class-cards   { gap:8px; }
+  .class-card    { width:calc(50% - 8px); padding:14px 8px; }
+  .class-icon    { font-size:1.6rem; }
+  .class-name    { font-size:.82rem; }
+  .class-desc    { font-size:.58rem; }
+
+  /* ── 마을 ── */
+  .town-sidebar  { display:none; }          /* 사이드바 숨김 */
+  .town-locations {
+    padding:10px 8px;
+    gap:6px;
+    overflow-y:auto;
+    align-items:flex-start;
+    align-content:flex-start;
+    justify-content:flex-start;
+  }
+  .location-btn  {
+    padding:9px 10px;
+    font-size:.72rem;
+    min-width:76px;
+    flex:0 0 auto;
+  }
+
+  /* ── 전투 화면 ── */
+  .poke-enemy-hud {
+    top:6px; left:6px;
+    padding:7px 10px 6px;
+    min-width:150px;
+  }
+  .poke-hud-name  { font-size:.78rem; }
+  .poke-hp-label  { font-size:.55rem; }
+  .poke-hp-nums   { font-size:.55rem; }
+  .poke-atk-badge { font-size:.58rem; padding:1px 5px; }
+
+  .poke-player-hud { bottom:6px; right:6px; gap:5px; }
+  .poke-player-hud-inner { padding:7px 10px 6px; min-width:155px; }
+  .poke-companion-hud    { padding:6px 10px 5px; }
+
+  .poke-enemy-sprite-wrap  { width:min(42%,220px); right:4%; top:3%; }
+  .poke-player-sprite-wrap { width:min(24%,150px); left:4%; }
+  .poke-companion-sprite-wrap { width:min(18%,120px); }
+
+  .player-level { font-size:.68rem; left:4%; }
+  .player-exp   { font-size:.62rem; left:4%; }
+  .player-skill { font-size:.62rem; left:4%; }
+
+  /* ── 전투 커맨드 ── */
+  .poke-bottom   { height:auto; min-height:130px; flex-direction:column; }
+  .poke-textbox  { min-height:44px; max-height:56px; padding:8px 12px; font-size:.72rem; }
+  .poke-commands {
+    width:100%;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:1fr 1fr 1fr;
+    flex-shrink:0;
+    height:118px;
+  }
+  .poke-cmd      { font-size:.62rem; padding:0 6px; gap:2px; }
+  .poke-cmd::before { font-size:.45rem; }
+
+  /* ── 던전 ── */
+  .dungeon-right-panel { width:140px; padding:8px; }
+  .dungeon-minimap-wrap canvas { max-width:128px; }
+  .dungeon-dpad { display:flex; }
+
+  /* ── 오버레이(승리/패배) ── */
+  .overlay-content { padding:20px 16px; max-width:100%; }
+  .overlay-title   { font-size:1.4rem; }
+  .overlay-desc    { font-size:.8rem; }
+  .overlay-btn     { padding:11px 20px; font-size:.82rem; }
+
+  /* ── 스킬 모달 ── */
+  .skill-modal-inner { width:94vw; max-height:88vh; padding:16px; }
+  .skill-tab-btn     { font-size:.7rem; padding:6px 10px; }
+
+  /* ── 퀘스트 모달 ── */
+  .quest-card  { padding:10px 12px; }
+  .quest-card h3 { font-size:.8rem; }
+
+  /* ── 던전 HUD ── */
+  #dungeonHud { font-size:.72rem; }
+}
+
+/* ── 480~600px (소형 태블릿 세로) ── */
+@media (min-width:481px) and (max-width:600px) {
+
+  .town-sidebar  { width:180px; font-size:.78rem; }
+  .poke-commands { width:280px; }
+  .poke-cmd      { font-size:.68rem; }
+  .dungeon-right-panel { width:170px; }
+}
+
+/* ── 601px 이상 — 데스크톱 ── */
+@media (min-width:601px) {
+  .dungeon-dpad { display:none; }
+}
+
+/* ── 터치 기기 공통 ── */
+@media (hover:none) and (pointer:coarse) {
+  /* 터치 피드백 강화 */
+  .poke-cmd:active:not(:disabled) {
+    background:#2a1a40;
+    transform:scale(.97);
+  }
+  .location-btn:active {
+    border-color:var(--gold);
+    background:rgba(200,152,14,.12);
+    transform:scale(.97);
+  }
+  /* 클릭 가능 요소 최소 크기 보장 */
+  button, .location-btn, .poke-cmd {
+    min-height:36px;
+  }
+  /* 텍스트 선택 방지 */
+  .poke-textbox, .poke-commands, .town-locations {
+    user-select:none;
+    -webkit-user-select:none;
+  }
+}
