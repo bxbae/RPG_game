@@ -9,10 +9,12 @@ const MAX_GOLD  = 9_999_999;  // 골드 상한 (9,999,999G)
 
 // ── 직업 정의 ──────────────────────────────────────
 const CLASSES = {
-  knight:   { name: "기사",   hp: 160, attack: 32, icon: "⚔",  portrait: "images/sd_knight.png"    },
-  mage:     { name: "마법사", hp: 100, attack: 22, icon: "🔮", portrait: "images/sd_magician.png"  },
-  magician: { name: "마법사", hp: 100, attack: 22, icon: "🔮", portrait: "images/sd_magician.png"  },
-  archer:   { name: "궁수",   hp: 120, attack: 28, icon: "🏹", portrait: "images/sd_archer.png"    },
+  knight:   { name: "기사",   hp: 160, attack: 32, defense: 8,  icon: "⚔",  portrait: "images/sd_knight.png"   },
+  mage:     { name: "마법사", hp: 100, attack: 38, defense: 3,  icon: "🔮", portrait: "images/sd_magician.png" },
+  magician: { name: "마법사", hp: 100, attack: 38, defense: 3,  icon: "🔮", portrait: "images/sd_magician.png" },
+  archer:   { name: "궁수",   hp: 120, attack: 30, defense: 5,  icon: "🏹", portrait: "images/sd_archer.png"   },
+  tanker:   { name: "탱커",   hp: 200, attack: 22, defense: 15, icon: "🛡", portrait: "images/SD_Tanker.png"   },
+  healer:   { name: "힐러",   hp: 130, attack: 20, defense: 6,  icon: "✝",  portrait: "images/sd_healer.png"   },
 };
 
 // ── 동료 정의 ──────────────────────────────────────
@@ -58,7 +60,7 @@ const MONSTERS = [
   // ── 심연 던전 전용 ────────────────────────────────
   { id:"wyvern",      name:"와이번",       baseHp:260, baseAtk:25, img:"images/sd_wyvern.png",         expRate:165, goldRate:135 },
   { id:"chimera",     name:"키메라",       baseHp:295, baseAtk:27, img:"images/sd_chimera.png",             expRate:190, goldRate:158 },
-  { id:"lich",        name:"리치",         baseHp:350, baseAtk:26, img:"images/sd_mummy.png",          expRate:225, goldRate:185 },
+  { id:"lich",        name:"미라",         baseHp:350, baseAtk:26, img:"images/sd_mummy.png",          expRate:225, goldRate:185 },
   { id:"demon_knight",name:"악마 기사",    baseHp:325, baseAtk:29, img:"images/sd_demon_knight.png",   expRate:245, goldRate:205 },
   { id:"dragon",      name:"고대 드래곤",  baseHp:500, baseAtk:28, img:"images/sd_dragon.png",         expRate:290, goldRate:350, isBoss:true },
   // ── 보스 ─────────────────────────────────────────
@@ -164,6 +166,16 @@ class Player {
     // 진행
     this.killCount      = 0;
     this.abyssUnlocked  = false;
+    this.metVillageChief = false; // 이장 첫 만남 여부
+    this.guideDailyDate  = "";   // 일일 퀘스트 날짜
+    this.guideDailyInvest = 0;   // 오늘 투자액
+    this.guideDailyBattle = 0;   // 오늘 전투 승리 수
+    this.princessAffinity = 0;        // 공주 호감도 (0~100)
+    this.princessEvents   = { aff25:false, aff50:false, aff75:false, aff100:false };
+    this.princessTalkDate = "";       // 마지막으로 공주와 대화한 날 (일일 1회 제한)
+    this.introChainDone  = false;     // 첫 마을 입장 오프닝 스토리 체인 완료 여부
+    this.introPendingEquipPrompt = false; // 합류 대화 종료 후 장비 안내 대사 트리거용
+    this.introDepartureDone = false;      // 첫 "성 밖" 출발 전 대사 완료 여부
     this.guardianDefeated = false; // 일반 던전 보스 처치 → 심연 해금
     this.abyssKillCount = 0;
     this.pendingAbyssBoss = false;
@@ -351,12 +363,47 @@ function createRandomItem(isBossReward = false, minGrade = 0) {
 
 // ── 퀘스트 목록 ───────────────────────────────────
 const QUESTS = [
-  { id:"q_slime",    title:"슬라임 토벌",    target:"슬라임",    goal:5, rewardGold:100, rewardExp:60,  minLevel:1 },
-  { id:"q_goblin",   title:"고블린 소탕",    target:"고블린",    goal:4, rewardGold:150, rewardExp:90,  minLevel:1 },
-  { id:"q_skeleton", title:"해골 기사 격멸", target:"해골 기사", goal:3, rewardGold:280, rewardExp:160, minLevel:3 },
-  { id:"q_orc",      title:"오크 전사 토벌", target:"오크 전사", goal:3, rewardGold:220, rewardExp:130, minLevel:2 },
-  { id:"q_orc2",     title:"오크 도발꾼 처단",target:"오크 도발",goal:2, rewardGold:350, rewardExp:200, minLevel:4 },
-  { id:"q_guardian", title:"수호자 토벌",    target:"던전 수호자",goal:1,rewardGold:800, rewardExp:500, minLevel:6 },
+  { id:"q_slime",
+    title:"슬라임 토벌", target:"슬라임", goal:5,
+    rewardGold:100, rewardExp:60, minLevel:1,
+    giver:"상인 카를로", giverColor:"#44dd88",
+    giverPortrait:"images/sd_merchant.png",
+    giverNpc:"qaccept_q_slime", completeNpc:"qcomplete_q_slime" },
+
+  { id:"q_goblin",
+    title:"고블린 소탕", target:"고블린", goal:4,
+    rewardGold:150, rewardExp:90, minLevel:1,
+    giver:"마을 주민 마르타", giverColor:"#ddbb88",
+    giverPortrait:"images/sd_merchant.png",
+    giverNpc:"qaccept_q_goblin", completeNpc:"qcomplete_q_goblin" },
+
+  { id:"q_skeleton",
+    title:"해골 기사 격멸", target:"해골 기사", goal:3,
+    rewardGold:280, rewardExp:160, minLevel:3,
+    giver:"경비대장 가르", giverColor:"#aaaacc",
+    giverPortrait:"images/portrait_Knight.png",
+    giverNpc:"qaccept_q_skeleton", completeNpc:"qcomplete_q_skeleton" },
+
+  { id:"q_orc",
+    title:"오크 전사 토벌", target:"오크 전사", goal:3,
+    rewardGold:220, rewardExp:130, minLevel:2,
+    giver:"농부 티모", giverColor:"#99cc77",
+    giverPortrait:"images/sd_merchant.png",
+    giverNpc:"qaccept_q_orc", completeNpc:"qcomplete_q_orc" },
+
+  { id:"q_orc2",
+    title:"오크 도발꾼 처단", target:"오크 도발", goal:2,
+    rewardGold:350, rewardExp:200, minLevel:4,
+    giver:"공주 실비아", giverColor:"#ffaacc",
+    giverPortrait:"images/Silvia_front.png",
+    giverNpc:"qaccept_q_orc2", completeNpc:"qcomplete_q_orc2" },
+
+  { id:"q_guardian",
+    title:"수호자 토벌", target:"던전 수호자", goal:1,
+    rewardGold:800, rewardExp:500, minLevel:6,
+    giver:"왕 에드워드 3세", giverColor:"#FFD700",
+    giverPortrait:"images/King_Edward_III_SIDE.png",
+    giverNpc:"qaccept_q_guardian", completeNpc:"qcomplete_q_guardian" },
 ];
 
 // ── 상점 아이템 ───────────────────────────────────

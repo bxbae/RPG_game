@@ -171,9 +171,32 @@ function generateDungeonMap(width = 25, height = 18, floor = 1, isLastFloor = fa
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  DungeonScene 클래스
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ── 걷기 애니메이션 프레임 (PNG 3장 순환) ─────────────────────────
+const WALK_FRAMES = {
+  knight:   ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
+  night:    ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
+  warrior:  ["images/sd_tanker_walk_1.png",   "images/sd_tanker_walk_2.png",   "images/sd_tanker_walk_3.png"],
+  mage:     ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
+  magician: ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
+  archer:   ["images/sd_archer_walk_1.png",   "images/sd_archer_walk_2.png",   "images/sd_archer_walk_3.png"],
+  tanker:   ["images/sd_tanker_walk_1.png",   "images/sd_tanker_walk_2.png",   "images/sd_tanker_walk_3.png"],
+  healer:   ["images/sd_healer_walk_1.png",   "images/sd_healer_walk_2.png",   "images/sd_healer_walk_3.png"],
+};
+const COMP_WALK_FRAMES = {
+  healer:     ["images/sd_healer_walk_1.png",   "images/sd_healer_walk_2.png",   "images/sd_healer_walk_3.png"],
+  tanker:     ["images/sd_tanker_walk_1.png",   "images/sd_tanker_walk_2.png",   "images/sd_tanker_walk_3.png"],
+  mage_party: ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
+  archer:     ["images/sd_archer_walk_1.png",   "images/sd_archer_walk_2.png",   "images/sd_archer_walk_3.png"],
+  dealer:     ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
+};
+
 class DungeonScene {
   constructor(game) {
     this.game        = game;
+    this._walkFrame  = 0;   // 현재 걷기 프레임 인덱스
+    this._walkTimer  = null; // 걷기 애니메이션 타이머
+    this._compWalkFrame = 0;
     this.canvas      = null;
     this.ctx         = null;
     this.mapData     = null;
@@ -214,12 +237,52 @@ class DungeonScene {
     this._bindKeys();
     this._startLoop();
     this._renderMinimap();
+    this._startWalkAnim(); // 걷기 애니메이션 시작
+  }
+
+  // ── 걷기 애니메이션 타이머 ────────────────────────
+  _startWalkAnim() {
+    clearInterval(this._walkTimer);
+    this._walkFrame     = 0;
+    this._compWalkFrame = 0;
+    this._walkTimer = setInterval(() => {
+      // 던전 화면이 숨겨져 있으면 (전투 중) 업데이트 중단
+      const dungeonScreen = document.getElementById("dungeonScreen");
+      if (dungeonScreen && dungeonScreen.style.display === "none") return;
+
+      this._walkFrame++;
+      this._compWalkFrame++;
+      const p     = this.game.player;
+      const type  = p?.type || "knight";
+      const party = p?.party;
+
+      // 플레이어 스프라이트 프레임 교체
+      const spr    = document.getElementById("dungeonPlayerSprite");
+      const frames = WALK_FRAMES[type];
+      if (spr && frames) {
+        spr.src       = frames[this._walkFrame % frames.length];
+        spr.onerror   = null;
+      }
+
+      // 동료 스프라이트 프레임 교체
+      const cspr    = document.getElementById("dungeonCompSprite");
+      const cframes = party ? COMP_WALK_FRAMES[party] : null;
+      if (cspr && cframes) {
+        cspr.src     = cframes[this._compWalkFrame % cframes.length];
+        cspr.onerror = null;
+      }
+    }, 160); // 약 6FPS
   }
 
   destroy() {
+    clearInterval(this._walkTimer);
+    this._walkTimer = null;
     this._unbindKeys();
     if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
     if (this._stepTimer) { clearTimeout(this._stepTimer); this._stepTimer = null; }
+    // 스프라이트 제거
+    document.getElementById("dungeonPlayerSprite")?.remove();
+    document.getElementById("dungeonCompSprite")?.remove();
   }
 
   // ── 키 입력 ─────────────────────────────────────
@@ -340,6 +403,16 @@ class DungeonScene {
       isLast ? `👹 ${floorName} — 보스룸!` : `⬇ ${floorName} 도달!`,
       isLast ? "#ff6666" : "#88ddff"
     );
+
+    // ── 마왕 존재감: 심연 던전 층별 분위기 메시지 ──
+    if (this.dungeonType === "abyss") {
+      const ABYSS_FLOOR_MSG = {
+        2: { text: "마왕의 마력이 점점 짙어진다. 몬스터들이 더 흉포해졌다...", color: "#dd6644", delay: 1200 },
+        3: { text: "...바로 앞에서 압도적인 기운이 느껴진다. 마왕이 가까이 있다.", color: "#ff3333", delay: 1200 },
+      };
+      const msg = ABYSS_FLOOR_MSG[this.floor];
+      if (msg) setTimeout(() => this.game.dungeonHud?.flashMsg(msg.text, msg.color), msg.delay);
+    }
   }
 
   _openChest(x, y) {
@@ -500,25 +573,79 @@ class DungeonScene {
     }
   }
 
-  // ── 플레이어 렌더 ──
+  // ── 플레이어 렌더 (PNG 프레임 순환 스프라이트 오버레이) ──
   const ppx = this.playerX * ts - this.cameraX + ts / 2;
   const ppy = this.playerY * ts - this.cameraY + ts / 2;
-  const r   = ts * 0.38;
 
-  ctx.shadowColor = "rgba(200,152,14,0.6)";
-  ctx.shadowBlur  = 16;
-  ctx.fillStyle   = "#c8980e";
-  ctx.beginPath();
-  ctx.arc(ppx, ppy, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  const p    = this.game.player;
+  const type = p?.type || "knight";
 
-  ctx.font         = `${Math.floor(ts * 0.55)}px serif`;
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "middle";
-  const playerIcons = { night:"⚔", warrior:"⚔", mage:"🔮", archer:"🏹" };
-  ctx.fillText(playerIcons[this.game.player?.type] || "⚔", ppx, ppy);
+  // 캔버스 부모 relative 설정
+  const canvasParent = this.canvas.parentElement;
+  if (canvasParent && canvasParent.style.position !== "relative") {
+    canvasParent.style.position = "relative";
+  }
+
+  // 플레이어 스프라이트 img 생성/재사용
+  let spr = document.getElementById("dungeonPlayerSprite");
+  if (!spr) {
+    spr = document.createElement("img");
+    spr.id = "dungeonPlayerSprite";
+    spr.style.cssText = [
+      "position:absolute",
+      "pointer-events:none",
+      "z-index:15",
+      "transform:translate(-50%,-62%)",
+      "image-rendering:auto",
+      "transition:left .1s linear,top .1s linear",
+    ].join(";");
+    // 초기 이미지 설정 (타이머가 프레임을 교체)
+    const frames = WALK_FRAMES[type];
+    if (frames) spr.src = frames[0];
+    canvasParent?.appendChild(spr);
+  }
+
+  // 캔버스 좌표 → CSS 픽셀 변환
+  const scaleX = (this.canvas.offsetWidth  || this.canvas.width)  / this.canvas.width;
+  const scaleY = (this.canvas.offsetHeight || this.canvas.height) / this.canvas.height;
+  const sprSize = ts * 2.4 * scaleX;
+  spr.style.width  = `${sprSize}px`;
+  spr.style.height = `${sprSize}px`;
+  spr.style.left   = `${this.canvas.offsetLeft + ppx * scaleX}px`;
+  spr.style.top    = `${this.canvas.offsetTop  + ppy * scaleY}px`;
+
+  // 동료 스프라이트
+  let cspr = document.getElementById("dungeonCompSprite");
+  if (p?.party && COMP_WALK_FRAMES[p.party]) {
+    if (!cspr) {
+      cspr = document.createElement("img");
+      cspr.id = "dungeonCompSprite";
+      cspr.style.cssText = [
+        "position:absolute",
+        "pointer-events:none",
+        "z-index:14",
+        "transform:translate(-50%,-62%)",
+        "image-rendering:auto",
+        "opacity:0.88",
+        "transition:left .1s linear,top .1s linear",
+      ].join(";");
+      const cf = COMP_WALK_FRAMES[p.party];
+      if (cf) cspr.src = cf[0];
+      canvasParent?.appendChild(cspr);
+    }
+    const cSize = sprSize;              // 플레이어와 동일 크기
+    cspr.style.width   = `${cSize}px`;
+    cspr.style.height  = `${cSize}px`;
+    cspr.style.left    = `${this.canvas.offsetLeft + (ppx + ts * 1.5) * scaleX}px`; // 옆으로, 간격 넓힘
+    cspr.style.top     = `${this.canvas.offsetTop  + ppy * scaleY}px`;             // 세로 위치는 플레이어와 동일 (일렬)
+    cspr.style.display = "block";
+  } else if (cspr) {
+    cspr.style.display = "none";
+  }
 }
+
+
+
 
   // ── 미니맵 ──────────────────────────────────────
   _renderMinimap() {

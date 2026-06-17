@@ -354,6 +354,13 @@ class QuestManager {
       }
       p.quest         = null;
       p.questProgress = 0;
+      // 완료 대화 예약 (마을 귀환 시 표시)
+      if (completed.completeNpc) game._pendingQuestCompleteDlg = completed.completeNpc;
+      // 공주가 의뢰인인 퀘스트 완료 시 호감도 보너스
+      if (completed.giver === "공주 실비아") {
+        p.princessAffinity = Math.min(100, (p.princessAffinity||0) + 10);
+        game.log(`👸 공주 호감도 +10 (현재 ${p.princessAffinity})`);
+      }
       return { cleared: true, quest: completed };
     }
     return { cleared: false };

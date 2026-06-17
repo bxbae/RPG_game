@@ -12,6 +12,8 @@ const BACK_IMAGES = {
   mage:     "images/sd_magician.png",
   magician: "images/sd_magician.png",
   archer:   "images/sd_archer.png",
+  tanker:   "images/SD_Tanker.png",
+  healer:   "images/sd_healer.png",
 };
 // ─── 동료 배경 이미지 ────────────────────────────────
 const COMPANION_BACK = {
@@ -21,6 +23,15 @@ const COMPANION_BACK = {
   dealer:     "images/sd_knight.png",
   mage_party: "images/sd_magician.png",
   archer:     "images/sd_archer.png",
+};
+// ── 동료 공격 프레임 ──────────────────────────────────
+const COMPANION_ATTACK = {
+  healer:     ["images/SD_healer_attack_1.png",   "images/SD_healer_attack_1.png"],
+  tanker:     ["images/SD_Tanker_attack_1.png",   "images/SD_Tanker_attack_2.png"],
+  warrior:    ["images/SD_Tanker_attack_1.png",   "images/SD_Tanker_attack_2.png"],
+  mage_party: ["images/sd_magician_attack_1.png", "images/sd_magician_attack_2.png"],
+  archer:     ["images/sd_archer_attack_1.png",   "images/sd_archer_attack_2.png"],
+  dealer:     ["images/sd_knight_attack_1.png",   "images/sd_knight_attack_2.png"],
 };
 
 // ─── 주인공 컷인 이미지 ──────────────────────────────
@@ -32,13 +43,27 @@ const CUTIN_HERO = {
   magician: "images/sd_magician_attack_1.png",
   archer:   "images/sd_archer_attack_1.png",
 };
+
+// ── 공격 버튼 2프레임 시퀀스 (attack_1 → attack_2 → idle) ──
+const ATTACK_FRAMES = {
+  knight:   ["images/sd_knight_attack_1.png",   "images/sd_knight_attack_2.png"],
+  night:    ["images/sd_knight_attack_1.png",   "images/sd_knight_attack_2.png"],
+  warrior:  ["images/sd_knight_attack_1.png",   "images/sd_knight_attack_2.png"],
+  mage:     ["images/sd_magician_attack_1.png", "images/sd_magician_attack_2.png"],
+  magician: ["images/sd_magician_attack_1.png", "images/sd_magician_attack_2.png"],
+  archer:   ["images/sd_archer_attack_1.png",   "images/sd_archer_attack_2.png"],
+  tanker:   ["images/SD_Tanker_attack_1.png",   "images/SD_Tanker_attack_2.png"],
+  healer:   ["images/SD_healer_attack_1.png",   "images/SD_healer_attack_1.png"],
+};
 const CUTIN_HERO_TITLE = {
   knight:   "⚔ 폭풍검술!",
-  night:    "⚔ 폭풍검술!",   // 구버전 호환
-  warrior:  "⚔ 폭풍검술!",   // 구버전 호환
+  night:    "⚔ 폭풍검술!",
+  warrior:  "⚔ 폭풍검술!",
   mage:     "🔮 대마법진!",
   magician: "🔮 대마법진!",
   archer:   "🏹 천격사격!",
+  tanker:   "🛡 철벽 강타!",
+  healer:   "✝ 신성 폭발!",
 };
 // ─── 동료 컷인 이미지 ────────────────────────────────
 const CUTIN_PARTY = {
@@ -58,31 +83,54 @@ const CUTIN_PARTY_TITLE = {
   dealer:     "⚔ 그림자 참격",
 };
 
+// ─── 궁극기 영상 (videos/ 폴더 MP4) ─────────────────
+const ULTIMATE_VIDEOS = {
+  knight:   "videos/knight_ultimate.mp4",
+  night:    "videos/knight_ultimate.mp4",
+  warrior:  "videos/tanker_ultimate.mp4",
+  mage:     "videos/magician_ultimate.mp4",
+  magician: "videos/magician_ultimate.mp4",
+  archer:   "videos/archer_ultimate.mp4",
+  tanker:   "videos/tanker_ultimate.mp4",
+  healer:   "videos/healer_ultimate.mp4",
+};
+const ULTIMATE_PARTY_VIDEOS = {
+  healer:     "videos/healer_ultimate.mp4",
+  tanker:     "videos/tanker_ultimate.mp4",
+  warrior:    "videos/tanker_ultimate.mp4",  // 하위호환
+  mage_party: "videos/magician_ultimate.mp4",
+  archer:     "videos/archer_ultimate.mp4",
+  dealer:     "videos/knight_ultimate.mp4",
+};
+
 // ─── 궁극기 2단계: 풀화면 드라마틱 컷신 ─────────────
 // Phase1: CUTIN_HERO / CUTIN_PARTY (치비 액션샷, 0.7s)
 // Phase2: 아래 이미지 (풀화면 일러스트, 2.2s)
 const CUTIN_HERO_FULLSCREEN = {
-  knight:   "images/Knight_skill_cut.png",
-  night:    "images/Knight_skill_cut.png",   // 구버전 호환
-  warrior:  "images/Knight_skill_cut.png",   // 구버전 호환
-  mage:     "images/sd_magician_attack_1.png",
-  magician: "images/sd_magician_attack_1.png",
+  knight:   "images/Night_skill_cut.png",
+  night:    "images/Night_skill_cut.png",
+  warrior:  "images/Night_skill_cut.png",
+  mage:     "images/magician_skill_cut.png",
+  magician: "images/magician_skill_cut.png",
   archer:   "images/Elf_Archer_skill_cut.png",
+  tanker:   "images/tanker_skill_cut.png",
+  healer:   "images/healer_skill_cut.png",
 };
 const CUTIN_PARTY_FULLSCREEN = {
   healer:     "images/healer_skill_cut.png",
   tanker:     "images/tanker_skill_cut.png",
-  warrior:    "images/tanker_skill_cut.png",   // 하위호환
-  mage_party: "images/sd_magician_attack_1.png",
+  warrior:    "images/tanker_skill_cut.png",          // 하위호환
+  mage_party: "images/magician_skill_cut.png",
   archer:     "images/Elf_Archer_skill_cut.png",
-  dealer:     "images/Knight_skill_cut.png",
+  dealer:     "images/Night_skill_cut.png",
 };
 
 class BattleScene {
   constructor(game) {
     this.game = game;
     this._logLines = [];
-    this._attackFlashTimer = null; // 공격 이미지 복원 타이머
+    this._attackFlashTimer  = null;
+    this._attackFrame2Timer = null;
   }
 
   mount(container) {
@@ -155,6 +203,11 @@ class BattleScene {
   <div class="player-skill">SP <span id="bSP">0</span></div>
   <div class="poke-player-sprite-wrap" id="bPlayerWrap">
     <img id="bPlayerImg" class="poke-player-sprite" src="" alt="플레이어"/>
+    <!-- 공격 모션 오버레이 -->
+    <img id="bAttackOverlay" src="" alt=""
+      style="position:absolute;inset:0;width:100%;height:100%;
+      object-fit:contain;opacity:0;pointer-events:none;
+      transition:opacity 0.08s ease;z-index:5;"/>
   </div>
   <div class="poke-companion-sprite-wrap" id="bCompWrap" style="display:none;">
     <img id="bCompImg" class="poke-companion-sprite" src="" alt="동료"/>
@@ -190,6 +243,7 @@ class BattleScene {
       playerMpBar: q("bPlayerMpBar"), playerMpVal: q("bPlayerMpVal"),
       level: q("bLevel"), exp: q("bExp"), nextExp: q("bNextExp"), sp: q("bSP"),
       playerWrap: q("bPlayerWrap"), playerImg: q("bPlayerImg"),
+      attackOverlay: q("bAttackOverlay"),
       companionHud: q("bCompanionHud"), compName: q("bCompName"),
       compClass: q("bCompClass"), compHpBar: q("bCompHpBar"),
       compHpVal: q("bCompHpVal"), compAffinity: q("bCompAffinity"),
@@ -204,7 +258,12 @@ class BattleScene {
 
   _bindButtons() {
     const g = this.game;
-    this.el.btnAttack  ?.addEventListener("click", () => g.battleManager.attack(g));
+
+    // ⚔ 공격 버튼 — 클릭 즉시 공격 애니메이션 실행 후 battle-manager 호출
+    this.el.btnAttack?.addEventListener("click", () => {
+      this.showAttackFlash(g.player?.type);   // ← 즉시 이미지 교체
+      g.battleManager.attack(g);
+    });
     this.el.btnHeal    ?.addEventListener("click", () => g.battleManager.heal(g));
     this.el.btnJobSkill?.addEventListener("click", () => g.battleManager.jobSkill(g));
     this.el.btnHeroUlt ?.addEventListener("click", () => g.battleManager.heroUltimate(g));
@@ -258,12 +317,37 @@ class BattleScene {
 
   startBattle(monster) {
     this._logLines = [];
+    clearTimeout(this._attackFlashTimer);   // 이전 공격 타이머 취소
+    clearTimeout(this._attackFrame2Timer);
+    this._attackFlashTimer  = null;
+    this._attackFrame2Timer = null;
+
+    // attackOverlay 초기화 (이전 공격 이미지 제거)
+    if (this.el.attackOverlay) {
+      this.el.attackOverlay.style.transition = "none";
+      this.el.attackOverlay.style.opacity    = "0";
+      this.el.attackOverlay.src              = "";
+    }
+    // idle 이미지 opacity 복원
+    if (this.el.playerImg) {
+      this.el.playerImg.style.transition = "none";
+      this.el.playerImg.style.opacity    = "1";
+    }
+
     if (this.el.textLatest) this.el.textLatest.innerHTML = "전투 시작!";
 
     if (monster.isFinal || monster.isBoss)
-      this.el.bg.src = "images/던전 내부 보스방 이미지.png";
-    else
-      this.el.bg.src = "images/던전내부이미지1.png";
+      this.el.bg.src = "images/Dungeon_BOSS_ROOM.png";
+    else {
+      const BATTLE_BG = {
+        outside: "images/town_prosperity.png",
+        forest:  "images/forest_exploration_night.png",
+        normal:  "images/dungeon_interior.png",
+        abyss:   "images/Abyss_Dungeon.png",
+      };
+      const dt = this.game?.dungeonType || "normal";
+      this.el.bg.src = BATTLE_BG[dt] || BATTLE_BG.normal;
+    }
 
     // ★ player.type (night/mage/archer) 으로 뒷모습 선택
     const p = this.game.player;
@@ -352,31 +436,48 @@ class BattleScene {
       }
     }
 
-    // 동료 궁극기 버튼
+    // 동료 궁극기 버튼 — 항상 표시, 상태만 변경
     if (this.el.btnPartyUlt) {
       const aff      = p.affinity?.[p.party] || 0;
       const cd       = p.cooldowns?.partyUltimate || 0;
       const hasParty = !!(p.party && p.partyHp > 0);
-      this.el.btnPartyUlt.disabled = !hasParty || aff < 30 || cd > 0;
+
+      this.el.btnPartyUlt.style.display = ""; // 항상 표시
 
       if (!p.party) {
-        this.el.btnPartyUlt.textContent       = "💫 동료 궁극기";
-        this.el.btnPartyUlt.style.color       = "";
+        this.el.btnPartyUlt.disabled      = true;
+        this.el.btnPartyUlt.textContent   = "💫 동료 궁극기";
+        this.el.btnPartyUlt.style.opacity = "0.4";
+        this.el.btnPartyUlt.style.color   = "";
         this.el.btnPartyUlt.style.borderColor = "";
+      } else if (!hasParty) {
+        this.el.btnPartyUlt.disabled      = true;
+        this.el.btnPartyUlt.textContent   = "💫 동료 전투불능";
+        this.el.btnPartyUlt.style.opacity = "0.4";
+        this.el.btnPartyUlt.style.color   = "#cc4444";
+        this.el.btnPartyUlt.style.borderColor = "#cc4444";
       } else if (aff < 30) {
-        this.el.btnPartyUlt.textContent       = `💫 동료 궁극기 (❤${aff}/30)`;
-        this.el.btnPartyUlt.style.color       = "#555";
+        this.el.btnPartyUlt.disabled      = true;
+        this.el.btnPartyUlt.textContent   = `💫 동료 궁극기 (❤${aff}/30)`;
+        this.el.btnPartyUlt.style.opacity = "0.5";
+        this.el.btnPartyUlt.style.color   = "#888";
         this.el.btnPartyUlt.style.borderColor = "";
       } else if (cd > 0) {
-        this.el.btnPartyUlt.textContent       = `💫 동료 궁극기 (${cd}턴)`;
-        this.el.btnPartyUlt.style.color       = "";
+        this.el.btnPartyUlt.disabled      = true;
+        this.el.btnPartyUlt.textContent   = `💫 동료 궁극기 (${cd}턴)`;
+        this.el.btnPartyUlt.style.opacity = "0.6";
+        this.el.btnPartyUlt.style.color   = "";
         this.el.btnPartyUlt.style.borderColor = "";
       } else if (aff >= 100) {
-        this.el.btnPartyUlt.textContent       = "🌟 EX 궁극기 READY!";
+        this.el.btnPartyUlt.disabled      = false;
+        this.el.btnPartyUlt.textContent   = "🌟 EX 궁극기 READY!";
+        this.el.btnPartyUlt.style.opacity = "1";
         this.el.btnPartyUlt.style.color       = "#ffd700";
         this.el.btnPartyUlt.style.borderColor = "#ffd700";
       } else {
-        this.el.btnPartyUlt.textContent       = `💫 동료 궁극기 READY (❤${aff})`;
+        this.el.btnPartyUlt.disabled      = false;
+        this.el.btnPartyUlt.textContent   = `💫 동료 궁극기 READY (❤${aff})`;
+        this.el.btnPartyUlt.style.opacity = "1";
         this.el.btnPartyUlt.style.color       = "#88ddff";
         this.el.btnPartyUlt.style.borderColor = "#88ddff";
       }
@@ -487,30 +588,142 @@ class BattleScene {
     }, 2200);
   }
 
-  // ── 컷신 ─────────────────────────────────────────
+  // ── 궁극기: 영상 재생 ─────────────────────────────
   showHeroUltimate(playerType) {
-    // 공격 이미지 타이머 취소 후 idle 복원
     clearTimeout(this._attackFlashTimer);
-    this._attackFlashTimer = null;
-    if (this.el?.playerImg) {
-      this.el.playerImg.src = BACK_IMAGES[playerType] || BACK_IMAGES.knight;
-    }
-    // Phase1: 치비 액션샷(CUTIN_HERO)  →  Phase2: 풀화면 컷신(CUTIN_HERO_FULLSCREEN)
-    const action = CUTIN_HERO[playerType]           || "";
-    const full   = CUTIN_HERO_FULLSCREEN[playerType] || action;
-    const title  = CUTIN_HERO_TITLE[playerType]     || "✨ 궁극기!";
-    this._showCutinSequence(action, full, title);
+    clearTimeout(this._attackFrame2Timer);
+    this._attackFlashTimer  = null;
+    this._attackFrame2Timer = null;
+    if (this.el?.attackOverlay) this.el.attackOverlay.style.opacity = "0";
+    if (this.el?.playerImg)     this.el.playerImg.style.opacity     = "1";
+
+    const cutImg = CUTIN_HERO_FULLSCREEN[playerType] || "";
+    const vidSrc = ULTIMATE_VIDEOS[playerType]       || "";
+    const title  = CUTIN_HERO_TITLE[playerType]      || "✨ 궁극기!";
+    this._playUltimateCutThenVideo(cutImg, vidSrc, title);
   }
 
   showEXCutin() {
     const party = this.game.player?.party;
     if (!party) return;
-    // Phase1: 치비 액션샷(CUTIN_PARTY)  →  Phase2: 풀화면 컷신(CUTIN_PARTY_FULLSCREEN)
-    const action = CUTIN_PARTY[party]           || "";
-    const full   = CUTIN_PARTY_FULLSCREEN[party] || action;
-    const title  = CUTIN_PARTY_TITLE[party]     || "✨ 궁극기";
-    this._showCutinSequence(action, full, title);
+    if (this.el?.attackOverlay) this.el.attackOverlay.style.opacity = "0";
+    if (this.el?.playerImg)     this.el.playerImg.style.opacity     = "1";
+
+    const cutImg = CUTIN_PARTY_FULLSCREEN[party] || "";
+    const vidSrc = ULTIMATE_PARTY_VIDEOS[party]  || "";
+    const title  = CUTIN_PARTY_TITLE[party]      || "✨ 궁극기";
+    this._playUltimateCutThenVideo(cutImg, vidSrc, title);
   }
+
+  // ── 궁극기: ① 컷신 이미지(2.5초) → ② MP4 영상 ──────
+  _playUltimateCutThenVideo(cutImgSrc, vidSrc, title) {
+    document.getElementById("ultimateScreen")?.remove();
+
+    const screen = document.createElement("div");
+    screen.id = "ultimateScreen";
+    screen.style.cssText =
+      "position:fixed;inset:0;z-index:999999;background:#000;" +
+      "display:flex;align-items:center;justify-content:center;";
+
+    const label = document.createElement("div");
+    label.style.cssText =
+      "position:absolute;bottom:10%;left:50%;transform:translateX(-50%);" +
+      "color:#FFD700;font-size:2.6rem;font-weight:700;letter-spacing:.18em;" +
+      "text-shadow:0 0 30px #FFD700,0 0 60px #FFD70088;" +
+      "font-family:\'Noto Serif KR\',serif;text-align:center;z-index:10;" +
+      "pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .4s;";
+    label.textContent = title;
+    screen.appendChild(label);
+
+    const cutEl = document.createElement("img");
+    cutEl.style.cssText =
+      "position:absolute;inset:0;width:100%;height:100%;" +
+      "object-fit:contain;opacity:0;transition:opacity .35s ease;z-index:5;";
+    screen.appendChild(cutEl);
+
+    const video = document.createElement("video");
+    video.style.cssText =
+      "position:absolute;inset:0;width:100%;height:100%;" +
+      "object-fit:cover;opacity:0;transition:opacity .3s ease;z-index:6;";
+    video.playsInline = true;
+    video.controls    = false;
+    video.preload     = "auto";
+    screen.appendChild(video);
+    document.body.appendChild(screen);
+
+    let phase = 1;
+    let phase1Timer = null;
+    let fallbackTimer = null;
+
+    const closeAll = () => {
+      clearTimeout(phase1Timer);
+      clearTimeout(fallbackTimer);
+      video.pause();
+      screen.style.transition = "opacity .3s ease";
+      screen.style.opacity    = "0";
+      setTimeout(() => screen.remove(), 320);
+      document.removeEventListener("keydown", onKey);
+    };
+
+    const startPhase2 = () => {
+      clearTimeout(phase1Timer);
+      phase = 2;
+      cutEl.style.opacity = "0";
+      label.style.opacity = "0";
+      if (!vidSrc) { closeAll(); return; }
+
+      video.src = vidSrc;
+      video.style.opacity = "1";
+
+      let played = false;
+      const tryPlay = () => {
+        if (played) return;
+        played = true;
+        const p = video.play();
+        if (p) p.catch(() => setTimeout(() => video.play().catch(closeAll), 300));
+      };
+      video.addEventListener("canplay", tryPlay, { once: true });
+      setTimeout(tryPlay, 400); // file:// 환경 대응 강제 재생
+
+      video.addEventListener("ended", closeAll, { once: true });
+      video.addEventListener("error", closeAll, { once: true });
+      fallbackTimer = setTimeout(closeAll, 15000);
+      video.addEventListener("ended", () => clearTimeout(fallbackTimer), { once: true });
+      video.load();
+    };
+
+    // 클릭: Phase 1 → Phase 2 스킵 / Phase 2 → 닫기
+    screen.addEventListener("click", () => {
+      if (phase === 1) startPhase2();
+      else closeAll();
+    });
+
+    const onKey = e => {
+      if (e.key === "Escape") closeAll();
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (phase === 1) startPhase2(); else closeAll(); }
+    };
+    document.addEventListener("keydown", onKey);
+
+    if (!cutImgSrc) {
+      startPhase2();
+    } else {
+      cutEl.src = cutImgSrc;
+      const showCut = () => {
+        cutEl.style.opacity = "1";
+        label.style.opacity = "1";
+        phase1Timer = setTimeout(() => {
+          cutEl.style.opacity = "0";
+          label.style.opacity = "0";
+          setTimeout(startPhase2, 350);
+        }, 2500);
+      };
+      cutEl.onload  = () => requestAnimationFrame(showCut);
+      cutEl.onerror = () => startPhase2();
+    }
+  }
+
+  // 하위호환
+  _playUltimateVideo(src, title) { this._playUltimateCutThenVideo("", src, title); }
 
   // ─────────────────────────────────────────────────────
   //  2단계 컷신 시퀀스
@@ -623,30 +836,89 @@ class BattleScene {
 
   // ─────────────────────────────────────────────────────
   //  공격 애니메이션
-  //  playerImg를 idle → attack_1 으로 교체, 2초 후 idle 복원
-  //  (전체화면 오버레이 없이 전투 화면 내 캐릭터 이미지만 바뀜)
+  //  attack_1(즉시) → attack_2(500ms후) → idle(500ms후)
+  //  playerImg.src 를 직접 교체 — 오버레이 미사용
   // ─────────────────────────────────────────────────────
   showAttackFlash(playerType) {
-    if (!this.el?.playerImg) return;
-
-    const idleSrc   = BACK_IMAGES[playerType] || BACK_IMAGES.knight || "";
-    const attackSrc = CUTIN_HERO[playerType]  || ""; // sd_*_attack_1.png
-
-    if (!attackSrc) return;
-
-    // 진행 중인 복원 타이머 취소
+    // ── 이전 타이머 모두 취소 ──
     clearTimeout(this._attackFlashTimer);
+    clearTimeout(this._attackFrame2Timer);
+    this._attackFlashTimer  = null;
+    this._attackFrame2Timer = null;
 
-    // 공격 이미지로 교체
-    this.el.playerImg.src = attackSrc;
+    // ── img 요소 직접 조회 (el 캐시 + fallback) ──
+    const img = this.el?.playerImg
+             || document.getElementById("bPlayerImg");
+    if (!img) return;
 
-    // 2초 후 idle 이미지로 복원
-    this._attackFlashTimer = setTimeout(() => {
-      this._attackFlashTimer = null;
-      if (this.el?.playerImg && idleSrc) {
-        this.el.playerImg.src = idleSrc;
-      }
-    }, 2000);
+    // ── 직업별 이미지 경로 ──
+    const type = playerType || this.game?.player?.type || "knight";
+
+    const idle = {
+      knight:   "images/sd_knight.png",
+      night:    "images/sd_knight.png",
+      warrior:  "images/sd_knight.png",
+      mage:     "images/sd_magician.png",
+      magician: "images/sd_magician.png",
+      archer:   "images/sd_archer.png",
+      tanker:   "images/SD_Tanker.png",
+      healer:   "images/sd_healer.png",
+    }[type] || "images/sd_knight.png";
+
+    const atk1 = {
+      knight:   "images/sd_knight_attack_1.png",
+      night:    "images/sd_knight_attack_1.png",
+      warrior:  "images/sd_knight_attack_1.png",
+      mage:     "images/sd_magician_attack_1.png",
+      magician: "images/sd_magician_attack_1.png",
+      archer:   "images/sd_archer_attack_1.png",
+      tanker:   "images/SD_Tanker_attack_1.png",
+      healer:   "images/SD_healer_attack_1.png",
+    }[type] || "images/sd_knight_attack_1.png";
+
+    const atk2 = {
+      knight:   "images/sd_knight_attack_2.png",
+      night:    "images/sd_knight_attack_2.png",
+      warrior:  "images/sd_knight_attack_2.png",
+      mage:     "images/sd_magician_attack_2.png",
+      magician: "images/sd_magician_attack_2.png",
+      archer:   "images/sd_archer_attack_2.png",
+      tanker:   "images/SD_Tanker_attack_2.png",
+      healer:   "images/SD_healer_attack_1.png",  // healer attack_2 없으면 attack_1 재사용
+    }[type] || atk1;
+
+    // ① attack_1 즉시 표시
+    img.src             = atk1;
+    img.style.opacity   = "1";
+    img.style.transition = "none";
+
+    // ── 동료 공격 애니메이션 ──────────────────────────
+    const party     = this.game?.player?.party;
+    const compImg   = this.el?.compImg || document.getElementById("bCompImg");
+    const compFrames = party ? (COMPANION_ATTACK[party] || []) : [];
+    const compIdle   = party ? (COMPANION_BACK[party] || "") : "";
+    const cAtk1 = compFrames[0] || "";
+    const cAtk2 = compFrames[1] || cAtk1;
+
+    if (compImg && cAtk1) {
+      compImg.src = cAtk1;
+      compImg.style.transition = "none";
+      compImg.style.opacity    = "1";
+    }
+
+    // ② 500ms 후 attack_2
+    this._attackFrame2Timer = setTimeout(() => {
+      img.src = atk2;
+      if (compImg && cAtk2) compImg.src = cAtk2;
+
+      // ③ 500ms 후 idle 복귀
+      this._attackFlashTimer = setTimeout(() => {
+        img.src = idle;
+        if (compImg && compIdle) compImg.src = compIdle;
+        this._attackFlashTimer  = null;
+        this._attackFrame2Timer = null;
+      }, 500);
+    }, 500);
   }
 
   _showCutinImage(src, title, duration) {

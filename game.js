@@ -23,6 +23,12 @@ class Game {
     this._tutorialShown   = false; // 성 밖 사냥터 튜토리얼 안내
     this._attendanceChecked = false; // 출석 체크 (세션당 1회)
 
+    // 컨티뉴 시스템 — 광고 시청 후 부활 (최대 3회/런)
+    this._continueMax    = 3;
+    this._continueUsed   = 0;
+    this._continueActive = false; // 컨티뉴 화면 활성 중 중복 호출 방지
+    this._gameOverTimer  = null;  // isGameOver() 중복 예약 방지
+
     // 씬
     this.townScene    = null;
     this.dungeonScene = null;
@@ -71,9 +77,11 @@ class Game {
         <div class="class-select">
           <h2>직업을 선택하세요</h2>
           <div class="class-cards">
-            <button class="class-card" data-start="night"><div class="class-icon">⚔</div><div class="class-name">기사</div><div class="class-desc">강인한 체력과 방어력</div></button>
+            <button class="class-card" data-start="knight"> <div class="class-icon">⚔</div> <div class="class-name">기사</div>  <div class="class-desc">강인한 체력과 방어력</div></button>
             <button class="class-card" data-start="mage">   <div class="class-icon">🔮</div><div class="class-name">마법사</div><div class="class-desc">강력한 마법 공격</div></button>
-            <button class="class-card" data-start="archer"> <div class="class-icon">🏹</div><div class="class-name">궁수</div><div class="class-desc">원거리·회피의 달인</div></button>
+            <button class="class-card" data-start="archer">  <div class="class-icon">🏹</div><div class="class-name">궁수</div>  <div class="class-desc">원거리·회피의 달인</div></button>
+            <button class="class-card" data-start="tanker">  <div class="class-icon">🛡</div> <div class="class-name">탱커</div>  <div class="class-desc">철벽 방어·도발의 수호자</div></button>
+            <button class="class-card" data-start="healer">  <div class="class-icon">✝</div>  <div class="class-name">힐러</div>  <div class="class-desc">아군 회복·신성 마법</div></button>
           </div>
         </div>
         <button class="btn-load" id="mainLoadBtn">💾 저장 데이터 불러오기</button>
@@ -141,6 +149,18 @@ class Game {
     p.storyPhase       = "town";
     this.currentMonster = null;
 
+    // 전투 후 귀환 여부 기록 (TownScene에서 NPC 대화 분기에 사용)
+    this._returnedFromBattle = !!(this._hadBattle);
+    this._returnedFromFlee   = !!(this._hadFlee);
+    this._hadBattle = false;
+    this._hadFlee   = false;
+
+    // 레벨업 동료 반응 대사 예약 처리
+    const pendingDlg     = this._pendingLevelUpDialogue;
+    const pendingQuestDlg = this._pendingQuestCompleteDlg;
+    this._pendingLevelUpDialogue   = null;
+    this._pendingQuestCompleteDlg  = null;
+
     // [BALANCE 04] 동료 전투 불능 상태 → 마을 귀환 시 HP 30% 회복
     if (p._partyKnockedOut) {
       p.partyHp = Math.floor(p.partyMaxHp * 0.3);
@@ -167,8 +187,33 @@ class Game {
 
     this._showScreen("town");
     const c = this.containers.town;
-    this.townScene = new TownScene(this);
-    this.townScene.mount(c);
+
+    if (typeof TownScene !== "undefined") {
+      this.townScene = new TownScene(this);
+      this.townScene.mount(c);
+    } else {
+      // TownScene 미로드 시 긴급 인터페이스 — 4개 던전 버튼 최소 제공
+      console.warn("[RPG] town-scene.js 미로드 — 긴급 마을 UI 사용");
+      c.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+          height:100%;gap:14px;padding:40px;font-family:'Noto Serif KR',serif;">
+          <div style="font-size:1.4rem;color:var(--gold2);margin-bottom:8px;">🏘 평화의 마을</div>
+          <div style="color:var(--text-dim);font-size:.75rem;margin-bottom:12px;">
+            ⚠ town-scene.js 파일을 index.html에 추가하세요
+          </div>
+          ${[
+            ["outside","🌿 성 밖 사냥터","#446633"],
+            ["forest", "🌲 숲 던전",     "#334433"],
+            ["normal", "🗡 일반 던전",   "#443322"],
+            ["abyss",  "⚫ 심연 던전",   "#332244"],
+          ].map(([t,label,bg]) => `
+            <button onclick="window.game.goToDungeon('${t}')"
+              style="background:${bg};border:1px solid var(--gold);color:var(--gold2);
+              padding:12px 32px;font-size:1rem;font-family:inherit;cursor:pointer;
+              border-radius:6px;width:220px;font-weight:700;">${label}</button>
+          `).join("")}
+        </div>`;
+    }
 
     // [ARCH 05] 마을 귀환 시 자동저장 (수동 저장과 별도 슬롯 rpg_autosave)
     this.saveManager.autoSave(this);
@@ -334,6 +379,33 @@ class Game {
       this._tutorialShown = true;
       setTimeout(() => this._showTutorialOverlay(), 600);
     }
+
+    // ── 마왕 존재감 강화: 던전 진입 시 분위기 메시지 ──
+    if (startFloor === 1) {
+      const ATMOSPHERE_MSG = {
+        forest: { text: "어딘가에서 불길한 기운이 느껴진다...", color: "#aa88cc" },
+        normal: { text: "공기가 무겁다. 마왕의 그림자가 가까워지고 있다...", color: "#cc8866" },
+        abyss:  { text: "심연 깊은 곳에서 거대한 마력이 맥동하고 있다...", color: "#dd4444" },
+      };
+      const msg = ATMOSPHERE_MSG[type];
+      if (msg) setTimeout(() => this.dungeonHud?.flashMsg(msg.text, msg.color), 900);
+
+      // 심연 던전 첫 진입 시 마왕의 짧은 위협 대사
+      if (type === "abyss" && !this.player.abyssFirstEntryDone) {
+        this.player.abyssFirstEntryDone = true;
+        setTimeout(() => this._showDemonKingVoice(), 1800);
+      }
+    }
+  }
+
+  // ── 마왕의 목소리 (심연 던전 진입 시 1회) ──
+  _showDemonKingVoice() {
+    const lines = [
+      "...이곳까지 왔는가, 인간.",
+      "수많은 용사가 이 심연에서 사라졌다. 그대도 다르지 않을 것이다.",
+      "원한다면 더 깊이 들어와 보아라... 내가 직접 끝을 내려줄 것이니.",
+    ];
+    this.showNarrative(`😈 ???\n\n${lines.join("\n\n")}`, 5000);
   }
 
   // ─────────────────────────────────────────────────
@@ -605,7 +677,20 @@ class Game {
       if (this.sceneManager?.el?.screen) return;
     }
 
-    // 전투 화면 구성
+    // 전투 시작 플래그 (마을 귀환 시 NPC 대화 분기용)
+    this._hadBattle = true;
+
+    // 전투 화면 구성 (던전 스프라이트 먼저 정리)
+    if (this.dungeonScene) {
+      // 걷기 타이머 중지 + 스프라이트 제거
+      if (this.dungeonScene._walkTimer) {
+        clearInterval(this.dungeonScene._walkTimer);
+        this.dungeonScene._walkTimer = null;
+      }
+      document.getElementById("dungeonPlayerSprite")?.remove();
+      document.getElementById("dungeonCompSprite")?.remove();
+    }
+
     const c = this.containers.battle;
     this.battleScene = new BattleScene(this);
     this.battleScene.mount(c);
@@ -625,6 +710,36 @@ class Game {
     const ret = this._returnAfterBattle;
     this._returnAfterBattle = null;
 
+    // 전투 승리 시 예금 이자 적립
+    if (this.player?.bank?.deposit > 0) {
+      const interest = Math.floor(this.player.bank.deposit * 0.05);
+      if (interest > 0) {
+        this.player.bank.interest = (this.player.bank.interest || 0) + interest;
+        this.log(`💹 예금 이자 +${interest}G 적립! (잔고: ${this.player.bank.deposit}G의 5%)`);
+      }
+    }
+
+    // 일일 전투 카운트 증가
+    const today = new Date().toLocaleDateString("ko-KR");
+    if (this.player.guideDailyDate === today) {
+      this.player.guideDailyBattle = (this.player.guideDailyBattle || 0) + 1;
+    }
+
+    // ── dungeonScene이 살아있으면 같은 맵 그대로 재개 ──
+    if (ret && this.dungeonScene) {
+      this._showScreen("dungeon");
+      // 걷기 애니메이션 재시작 (전투 중 중지됐음)
+      if (this.dungeonScene._startWalkAnim) {
+        this.dungeonScene._startWalkAnim();
+      }
+      this.dungeonScene.render?.();
+      this.log("✅ 전투 승리! 탐험을 계속합니다.");
+      // 자동저장
+      this.saveManager.autoSave?.(this);
+      return;
+    }
+
+    // dungeonScene이 없으면 해당 층 새로 시작
     if (ret) {
       this.goToDungeon(ret.type || this.dungeonType || "normal", ret.floor ?? 1);
     } else if (this.dungeonType && this.player?.storyPhase === "dungeon") {
@@ -637,14 +752,20 @@ class Game {
   onFlee() {
     if (!this.player) return;
     const p = this.player;
-    // 도망 패널티: HP 10% 감소
     const penalty = Math.floor((p.maxHp + p.bonusHp) * 0.1);
     p.hp = Math.max(1, p.hp - penalty);
     this.log(`🏃 도망쳤다! HP -${penalty}`);
     this.currentMonster = null;
+    this._hadFlee = true; // 도망 플래그
 
     setTimeout(() => {
-      if (this._returnAfterBattle) {
+      // 도망도 같은 맵 재개
+      if (this.dungeonScene && this._returnAfterBattle) {
+        this._returnAfterBattle = null;
+        this._showScreen("dungeon");
+        this.dungeonScene._startWalkAnim?.();
+        this.dungeonScene.render?.();
+      } else if (this._returnAfterBattle) {
         const { type, floor } = this._returnAfterBattle;
         this._returnAfterBattle = null;
         this.goToDungeon(type, floor ?? 1);
@@ -681,6 +802,22 @@ class Game {
   }
 
   onPlayerDefeated() {
+    if (this._continueActive) return;          // 컨티뉴 화면 활성 중 중복 차단
+    if (!this.player || this.player.hp > 0) return; // 이미 부활한 경우 무시
+
+    const remaining = this._continueMax - this._continueUsed;
+    if (remaining > 0 && this.currentMonster?.hp > 0) {
+      // 기회 남아 있으면 컨티뉴 화면 표시
+      this._continueActive = true;
+      this._showContinueScreen(remaining);
+    } else {
+      this._doDefeat();
+    }
+  }
+
+  // 실제 패배 화면 (컨티뉴 없을 때 또는 N 선택 시)
+  _doDefeat() {
+    this._continueActive = false;
     const c = this.containers.defeat;
     c.innerHTML = `
       <div class="overlay-bg" style="background:url('images/던전 패배 이미지.png') center/cover no-repeat;opacity:.35;position:absolute;inset:0;"></div>
@@ -691,11 +828,10 @@ class Game {
       </div>`;
 
     document.getElementById("defeatRetry")?.addEventListener("click", () => {
-      // HP 회복 후 마을로
       this.player.hp = Math.floor((this.player.maxHp + this.player.bonusHp) * 0.5);
       if (this.player.party) {
         this.player.partyHp = this.player.partyMaxHp;
-        this.player._partyKnockedOut = false; // [BALANCE 04] 패배 재도전 시 동료 회복
+        this.player._partyKnockedOut = false;
       }
       this.player.status = { poison:0, stun:0, burn:0 };
       this._toTown();
@@ -705,12 +841,225 @@ class Game {
     if (window.audioMgr) audioMgr.stopBgm();
   }
 
+  // ─────────────────────────────────────────────────
+  //  컨티뉴 화면 (아케이드 스타일 카운트다운)
+  // ─────────────────────────────────────────────────
+  _showContinueScreen(remaining) {
+    document.getElementById("continueOverlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "continueOverlay";
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,.93);display:flex;" +
+      "flex-direction:column;align-items:center;justify-content:center;z-index:9999;";
+
+    overlay.innerHTML = `
+      <div style="font-size:11px;color:#504030;letter-spacing:4px;margin-bottom:6px">GAME OVER</div>
+      <div style="font-size:34px;font-weight:bold;color:#e8c060;letter-spacing:8px;margin-bottom:8px;font-family:monospace">CONTINUE?</div>
+      <div style="font-size:14px;color:#a09080;margin-bottom:28px">계속하시겠습니까?</div>
+
+      <div id="cntNum"
+        style="font-size:96px;font-weight:bold;color:#ffffff;min-width:120px;
+               text-align:center;line-height:1;margin-bottom:20px;font-family:monospace;
+               transition:color .3s">9</div>
+
+      <div style="font-size:13px;color:#706050;margin-bottom:32px">
+        남은 기회 <span style="color:#e8a060;font-weight:bold;font-size:16px">${remaining}</span>회
+      </div>
+
+      <div style="display:flex;gap:24px;margin-bottom:20px">
+        <button id="cntY"
+          style="background:#0a2a0a;color:#60e060;border:2px solid #4a9a4a;
+                 padding:14px 40px;font-size:20px;font-family:monospace;
+                 letter-spacing:6px;cursor:pointer;border-radius:6px;
+                 transition:background .15s">
+          Y
+        </button>
+        <button id="cntN"
+          style="background:#2a0a0a;color:#e06060;border:2px solid #9a4a4a;
+                 padding:14px 40px;font-size:20px;font-family:monospace;
+                 letter-spacing:6px;cursor:pointer;border-radius:6px;
+                 transition:background .15s">
+          N
+        </button>
+      </div>
+
+      <div style="font-size:11px;color:#504030">
+        <kbd style="background:#222;border:1px solid #444;padding:1px 5px;border-radius:3px">Y</kbd>
+        광고 시청 후 부활 &nbsp;·&nbsp;
+        <kbd style="background:#222;border:1px solid #444;padding:1px 5px;border-radius:3px">N</kbd>
+        마을로 귀환
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    // 카운트다운 색상표 (9→0 순서)
+    const COLORS = ["#ff0000","#ff1100","#ff4400","#ff8800","#ffcc00","#ffff00","#ccff00","#ffffff","#ffffff","#ffffff"];
+    const numEl  = document.getElementById("cntNum");
+    let count    = 9;
+    let done     = false;
+
+    const timer = setInterval(() => {
+      count--;
+      if (count < 0) {
+        clearInterval(timer);
+        if (!done) {
+          done = true;
+          overlay.remove();
+          document.removeEventListener("keydown", keyHandler); // 리스너 누수 방지
+          this._continueActive = false;
+          this._doDefeat();
+        }
+        return;
+      }
+      numEl.textContent = count;
+      numEl.style.color = COLORS[count] ?? "#ffffff";
+    }, 1000);
+
+    const choose = (yes) => {
+      if (done) return;
+      done = true;
+      clearInterval(timer);
+      overlay.remove();
+      document.removeEventListener("keydown", keyHandler);
+      if (yes) {
+        this._continueUsed++;
+        this._showAdScreen(() => this._reviveAndContinue());
+      } else {
+        this._continueActive = false;
+        this._doDefeat();
+      }
+    };
+
+    document.getElementById("cntY")?.addEventListener("click",  () => choose(true));
+    document.getElementById("cntN")?.addEventListener("click",  () => choose(false));
+
+    const keyHandler = (e) => {
+      if (e.key === "y" || e.key === "Y") choose(true);
+      if (e.key === "n" || e.key === "N") choose(false);
+    };
+    document.addEventListener("keydown", keyHandler);
+  }
+
+  // ─────────────────────────────────────────────────
+  //  모의 광고 화면 (5초 시청 → 건너뛰기 3초 후 활성)
+  // ─────────────────────────────────────────────────
+  _showAdScreen(onComplete) {
+    const overlay = document.createElement("div");
+    overlay.id = "adOverlay";
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:#000;display:flex;" +
+      "flex-direction:column;align-items:center;justify-content:center;z-index:9999;";
+
+    overlay.innerHTML = `
+      <div style="font-size:10px;color:#555;letter-spacing:3px;margin-bottom:18px">AD · 광고</div>
+
+      <div style="background:#111;border:1px solid #2a2a2a;width:300px;border-radius:10px;overflow:hidden;margin-bottom:18px">
+        <div style="background:#14141e;padding:22px;text-align:center">
+          <div style="font-size:52px;margin-bottom:8px">⚔</div>
+          <div style="color:#e8c060;font-size:17px;font-weight:bold">마왕 토벌 RPG</div>
+          <div style="color:#e8c060;font-size:11px;margin-top:2px;opacity:.6">4개 던전 · 동료 5명 · 무료 플레이</div>
+        </div>
+        <div style="padding:12px 16px;background:#0e0e0e">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="color:#f5a623;font-size:12px">★★★★☆</span>
+            <span style="color:#555;font-size:11px">4.2 · 무료</span>
+          </div>
+          <div style="background:#222;border-radius:3px;height:3px;overflow:hidden">
+            <div id="adBar" style="background:#e8c060;height:100%;width:0%;transition:width .08s"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="color:#666;font-size:13px;margin-bottom:14px">
+        광고 시청 중... <span id="adSec" style="color:#aaa;font-weight:bold">5</span>초
+      </div>
+      <button id="adSkip"
+        style="display:none;background:#1a1a1a;color:#888;border:1px solid #333;
+               padding:7px 18px;font-size:12px;border-radius:4px;cursor:pointer">
+        건너뛰기 ▶ (<span id="skipSec">3</span>)
+      </button>`;
+
+    document.body.appendChild(overlay);
+
+    const barEl   = document.getElementById("adBar");
+    const secEl   = document.getElementById("adSec");
+    const skipBtn = document.getElementById("adSkip");
+    let total = 5, skipCountdown = 3, skipShown = false, done = false;
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearInterval(adTimer);
+      overlay.innerHTML = `
+        <div style="color:#e8c060;font-size:20px;margin-bottom:8px">광고 시청 완료!</div>
+        <div style="color:#a0a080;font-size:13px">잠시 후 부활합니다...</div>`;
+      setTimeout(() => { overlay.remove(); onComplete(); }, 1000);
+    };
+
+    const adTimer = setInterval(() => {
+      total--;
+      skipCountdown--;
+      if (barEl) barEl.style.width = ((5 - Math.max(0, total)) / 5 * 100) + "%";
+      if (secEl) secEl.textContent = Math.max(0, total);
+      // 건너뛰기 버튼: skipShown 플래그로 단 한 번만 처리 (parentElement null 크래시 방지)
+      if (!skipShown && skipCountdown <= 0 && skipBtn) {
+        skipShown = true;
+        skipBtn.style.display = "block";
+        skipBtn.textContent   = "건너뛰기 ▶";
+      }
+      if (total <= 0) { clearInterval(adTimer); finish(); }
+    }, 1000);
+
+    skipBtn?.addEventListener("click", finish);
+  }
+
+  // ─────────────────────────────────────────────────
+  //  부활 처리 (HP 30% 회복 · 상태이상 초기화)
+  // ─────────────────────────────────────────────────
+  _reviveAndContinue() {
+    const p = this.player;
+    if (!p) return;
+
+    // 플레이어 부활
+    p.hp        = Math.max(1, Math.floor((p.maxHp + p.bonusHp) * 0.30));
+    p.status    = { poison:0, stun:0, burn:0 };
+    p.guardBuff = 0;
+
+    // 전투 불능 동료 부활 (HP 20%)
+    if (p._partyKnockedOut && p.partyMaxHp > 0) {
+      p.partyHp = Math.max(1, Math.floor(p.partyMaxHp * 0.20));
+      p._partyKnockedOut = false;
+    }
+    if (p._party2KnockedOut && p.party2MaxHp > 0) {
+      p.party2Hp = Math.max(1, Math.floor(p.party2MaxHp * 0.20));
+      p._party2KnockedOut = false;
+    }
+    if (p._party3KnockedOut && p.party3MaxHp > 0) {
+      p.party3Hp = Math.max(1, Math.floor(p.party3MaxHp * 0.20));
+      p._party3KnockedOut = false;
+    }
+
+    this._continueActive = false;
+    clearTimeout(this._gameOverTimer); // 적체된 onPlayerDefeated 예약 취소
+    this._gameOverTimer  = null;
+
+    const left = this._continueMax - this._continueUsed;
+    this.log(`\uD83D\uDCAB 부활! HP ${p.hp} 회복 · 남은 기회 ${left}회`);
+    this.battleScene?.render?.();
+    if (window.audioMgr) audioMgr.playBgm?.("dungeon");
+  }
+
   restart() {
     if (this.dungeonScene) { this.dungeonScene.destroy(); this.dungeonScene = null; }
+    clearTimeout(this._gameOverTimer); // 적체된 onPlayerDefeated 예약 취소
+    this._gameOverTimer  = null;
     this.player         = null;
     this.currentMonster = null;
     this.battleScene    = null;
     this.townScene      = null;
+    this._continueUsed  = 0;
+    this._continueActive= false;
     this._showScreen("title");
     this._buildTitleScreen();
   }
@@ -720,9 +1069,12 @@ class Game {
   // ─────────────────────────────────────────────────
   isGameOver() {
     if (!this.player || this.player.hp <= 0) {
-      // 게임오버 체크
-      if (this.currentScene === "battle") {
-        setTimeout(() => this.onPlayerDefeated(), 800);
+      // 단 하나의 onPlayerDefeated 예약만 허용 (버튼 연타 중복 방지)
+      if (this.currentScene === "battle" && !this._gameOverTimer && !this._continueActive) {
+        this._gameOverTimer = setTimeout(() => {
+          this._gameOverTimer = null;
+          this.onPlayerDefeated();
+        }, 800);
       }
       return true;
     }
@@ -778,7 +1130,25 @@ class Game {
     this.player.partyHp    = mem.hp;
     this.player.partyMaxHp = mem.hp;
     this.log(`🤝 ${mem.name} 합류!`);
-    this.showNarrative(`${mem.name}이(가) 파티에 합류했다!`, 2500);
+
+    // 합류 대화 표시 (TownScene NPC 대화 시스템 사용) — 즉시 표시
+    const npcId = `join_${key}`;
+    if (this.townScene?.showNpcDialogue) {
+      this.townScene.showNpcDialogue(npcId); // 지연 없이 즉시 호출 → 동료 모습도 즉시 표시
+
+      // 오프닝 스토리 체인 도중이면, 합류 대화 종료 후 장비 안내로 이어감
+      if (this.player.introPendingEquipPrompt) {
+        this.player.introPendingEquipPrompt = false;
+        const waitJoin = setInterval(() => {
+          if (!document.getElementById("npcDialogueBox")) {
+            clearInterval(waitJoin);
+            setTimeout(() => this.townScene._playEquipPromptChain?.(), 400);
+          }
+        }, 300);
+      }
+    } else {
+      this.showNarrative(`${mem.name}이(가) 파티에 합류했다!`, 2500);
+    }
   }
 
   // ─────────────────────────────────────────────────
@@ -803,7 +1173,7 @@ class Game {
     const has = p.activeSkills.whirlwind || p.activeSkills.magicBall || p.activeSkills.rapidShot;
     if (has) { this.log("⚠ 이미 습득"); return; }
     p.skillPoints -= 3;
-    if (p.type === "night") p.activeSkills.whirlwind = true;
+    if (p.type === "knight") p.activeSkills.whirlwind = true;
     if (p.type === "mage")    p.activeSkills.magicBall  = true;
     if (p.type === "archer")  p.activeSkills.rapidShot  = true;
     this.log("✨ 직업 스킬 습득!");
@@ -832,11 +1202,17 @@ class Game {
     const p = this.player;
     if (!p?.party) { this.showNarrative("동료가 없습니다.", 2000); return; }
     if (!p.partyStoryUnlocked) { this.showNarrative("호감도 75 이상 시 해금됩니다.", 2000); return; }
-    const mem = PARTY_MEMBERS[p.party];
-    this.showNarrative(
-      `${mem.name}과의 이야기\n\n"함께 여기까지 오다니, 정말 대단해요."\n"당신과 함께라면 어디든 갈 수 있어요."\n\n❤ 호감도 ${p.affinity[p.party]}`,
-      5000
-    );
+
+    // NPC 대화창으로 동료 대화 표시
+    if (this.townScene?.showNpcDialogue) {
+      this.townScene.showNpcDialogue(p.party);
+    } else {
+      const mem = PARTY_MEMBERS[p.party];
+      this.showNarrative(
+        `${mem.name}과의 이야기\n\n"함께 여기까지 오다니, 정말 대단해요."\n"당신과 함께라면 어디든 갈 수 있어요."\n\n❤ 호감도 ${p.affinity[p.party]}`,
+        5000
+      );
+    }
     p.baseAttack += 5;
     this.log("📖 유대 이벤트! 공격력 +5");
   }
@@ -879,7 +1255,7 @@ class DungeonHud {
     };
 
     s("dhName",  p.name);
-    s("dhClass", { night:"기사", mage:"마법사", archer:"궁수" }[p.type] || "");
+    s("dhClass", { knight:"기사", night:"기사", mage:"마법사", archer:"궁수" }[p.type] || "");
     // 골드 상한 및 레벨 MAX 표시
     s("dhGold",  typeof formatGold === "function" ? formatGold(p.money) : `${p.money}G`);
     s("dhLevel", p.level >= MAX_LEVEL ? `${p.level} ✦MAX` : p.level);
@@ -939,6 +1315,9 @@ class DungeonHud {
         if (bar3) bar3.style.background = p._party3KnockedOut ? "#2a3a4a" : "#4080a0";
       }
     }
+
+    // 퀘스트 카드 — 선언 후 사용
+    const questCard = document.getElementById("dhQuestCard");
     if (questCard) questCard.style.display = p.quest ? "block" : "none";
     if (p.quest) {
       s("dhQuestTitle", p.quest.title);
