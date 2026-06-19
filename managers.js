@@ -6,39 +6,45 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  SaveManager
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 저장에서 제외할 "휘발성" 필드 ────────────────────────
+// 핵심 설계: 저장할 필드를 일일이 나열하지 않고, "저장하면 안 되는 것"만 여기 모은다.
+// Player에 새 속성을 추가해도 자동으로 저장되므로, 목록 누락으로 인한
+// "불러오면 그 값만 초기화되는" 버그가 원천적으로 생기지 않는다.
+//
+// 여기 넣을 것: 화면 좌표·렌더용 임시값, 다음 세션에서 새로 계산되는 전투 임시 상태,
+//             게임 인스턴스가 런타임에 붙이는 내부 플래그 등.
+// 여기 넣지 말 것: 스토리 진행·호감도·일일 퀘스트·소지품 등 "이어서 해야 하는" 모든 것.
+const TRANSIENT_PLAYER_FIELDS = new Set([
+  // 렌더 전용 좌표 (던전 진입 시 mapX/mapY로부터 다시 계산됨)
+  "pixelX", "pixelY",
+  // 전투 임시 상태 (다음 전투 시작 시 새로 세팅됨)
+  "guardBuff",
+  // 마을 대화 체인이 런타임에 붙이는 진행 플래그
+  "_introChainActive",
+  // 게임 흐름 제어용 휘발성 플래그 (불러오기·전투 귀환 감지용, 세션 한정)
+  "_returnedFromLoad", "_returnedFromBattle", "_returnedFromFlee",
+  "_hadLoad", "_hadBattle", "_hadFlee", "_destroyed",
+]);
+
 class SaveManager {
   constructor(key = "rpgSaveV3") { this.key = key; }
 
   // 플레이어 직렬화 — save / autoSave 공통 사용
+  // 화이트리스트(나열) 대신 블랙리스트(제외) 방식:
+  //   객체의 모든 자체 열거 가능 필드를 저장하되, TRANSIENT_PLAYER_FIELDS 와
+  //   함수만 건너뛴다. getter(money 등)는 Object.keys 에 잡히지 않으므로,
+  //   클램프된 값이 필요한 money 는 아래에서 명시적으로 저장한다.
   _serializePlayer(p) {
-    return {
-      type: p.type, name: p.name, hp: p.hp, maxHp: p.maxHp,
-      baseAttack: p.baseAttack, bonusAttack: p.bonusAttack,
-      money: p.money, level: p.level, exp: p.exp, nextExp: p.nextExp,
-      skillPoints: p.skillPoints,
-      skills: p.skills, activeSkills: p.activeSkills, passiveSkills: p.passiveSkills,
-      equipment: p.equipment, partyEquipment: p.partyEquipment,
-      inventory: p.inventory,
-      party: p.party, partyHp: p.partyHp, partyMaxHp: p.partyMaxHp,
-      _partyKnockedOut: p._partyKnockedOut || false,
-      party2: p.party2, party2Hp: p.party2Hp, party2MaxHp: p.party2MaxHp,
-      _party2KnockedOut: p._party2KnockedOut || false,
-      party3: p.party3, party3Hp: p.party3Hp, party3MaxHp: p.party3MaxHp,
-      _party3KnockedOut: p._party3KnockedOut || false,
-      affinity: p.affinity, partyEvents: p.partyEvents,
-      partyUltimateUnlocked: p.partyUltimateUnlocked,
-      partyUltimateEX: p.partyUltimateEX, partyExAwakened: p.partyExAwakened,
-      partyStoryUnlocked: p.partyStoryUnlocked, partyBondMax: p.partyBondMax,
-      storyRewardClaimed: p.storyRewardClaimed, partyCutinLevel: p.partyCutinLevel,
-      quest: p.quest, questProgress: p.questProgress,
-      killCount: p.killCount, abyssUnlocked: p.abyssUnlocked,
-      guardianDefeated: p.guardianDefeated || false,
-      storyPhase: p.storyPhase,
-      bank: p.bank || { deposit:0, interest:0, totalInvested:0, milestones:[] },
-      achievements: p.achievements || {},
-      ultimateGauge: p.ultimateGauge, guardBuff: p.guardBuff,
-      cooldowns: p.cooldowns, status: p.status,
-    };
+    const out = {};
+    for (const key of Object.keys(p)) {
+      if (TRANSIENT_PLAYER_FIELDS.has(key)) continue;
+      if (typeof p[key] === "function") continue;
+      out[key] = p[key];
+    }
+    // money 는 getter/setter 로 동작(_money 에 클램프되어 저장됨) →
+    // 불러올 때 setter 가 다시 클램프하도록 money 키를 명시적으로 기록
+    out.money = p.money;
+    return out;
   }
 
   // ══════════════════════════════════════════════════
@@ -126,9 +132,13 @@ class SaveManager {
     // 구버전 세이브 자동 변환: warrior·night → knight
     const type = (rawType === "warrior" || rawType === "night") ? "knight" : rawType;
     const p = new Player(type);
+
+    // 1) 저장값을 통째로 복사 — 단순 필드(플래그·숫자·문자열)는 이 한 줄로 끝.
+    //    생성자가 이미 기본값을 세팅해뒀으므로, 저장에 없는 신규 필드는
+    //    자동으로 기본값이 유지된다 (Object.assign 은 raw 에 있는 키만 덮어씀).
     Object.assign(p, raw);
 
-    // Object.assign이 raw.type 등으로 덮어쓰므로 재설정
+    // 2) 직업 마이그레이션 시 Object.assign 이 옛 type 으로 덮어쓰므로 재설정
     if (rawType !== type) {
       const base = CLASSES[type] || CLASSES.knight;
       p.type      = type;
@@ -136,6 +146,8 @@ class SaveManager {
       p.icon      = base.icon;
       p.portrait  = base.portrait || "";
     }
+
+    // 3) 아이템은 단순 복사가 아니라 normalizeItem 으로 변환 필요(itemId/enhance 보정)
     p.inventory      = (raw.inventory || []).map(normalizeItem).filter(Boolean);
     p.equipment      = {
       weapon:  raw.equipment?.weapon  ? normalizeItem(raw.equipment.weapon)  : null,
@@ -147,29 +159,33 @@ class SaveManager {
       helmet:  raw.partyEquipment?.helmet  ? normalizeItem(raw.partyEquipment.helmet)  : null,
       armor:   raw.partyEquipment?.armor   ? normalizeItem(raw.partyEquipment.armor)   : null,
     };
-    // partyEvents: 기본 구조와 저장값 병합 — 신규 필드(affinity25 등)가 구 세이브에 없어도 안전
+    p.party2Equipment = {
+      weapon:  raw.party2Equipment?.weapon  ? normalizeItem(raw.party2Equipment.weapon)  : null,
+      helmet:  raw.party2Equipment?.helmet  ? normalizeItem(raw.party2Equipment.helmet)  : null,
+      armor:   raw.party2Equipment?.armor   ? normalizeItem(raw.party2Equipment.armor)   : null,
+    };
+
+    // 4) "구조가 있는" 객체는 기본 틀 + 저장값 병합 — 구 세이브에 하위 필드가
+    //    없어도 안전하도록 백필. (단순 복사로는 새 하위 키가 undefined 가 됨)
     p.partyEvents = {
       affinity25: false, affinity50: false, affinity75: false, affinity100: false,
       ...(raw.partyEvents || {}),
     };
-    p.storyRewardClaimed= raw.storyRewardClaimed || {};
-    p.passiveSkills     = raw.passiveSkills      || {};
-    p.cooldowns         = raw.cooldowns          || { jobSkill:0, partyUltimate:0, heal:0 };
-    p.status            = raw.status             || { poison:0, stun:0, burn:0 };
-    p.affinity          = raw.affinity           || { archer:0, healer:0, tanker:0, dealer:0, mage_party:0 };
-    p._partyKnockedOut  = raw._partyKnockedOut   || false;
-    p.party2            = raw.party2             || null;
-    p.party2Hp          = raw.party2Hp           || 0;
-    p.party2MaxHp       = raw.party2MaxHp        || 0;
-    p._party2KnockedOut = raw._party2KnockedOut  || false;
-    p.party3            = raw.party3             || null;
-    p.party3Hp          = raw.party3Hp           || 0;
-    p.party3MaxHp       = raw.party3MaxHp        || 0;
-    p._party3KnockedOut = raw._party3KnockedOut  || false;
-    p.guardianDefeated  = raw.guardianDefeated   || false;
-    p.storyPhase        = "town";
-    p.bank = raw.bank || { deposit:0, interest:0, totalInvested:0, milestones:[] };
-    p.achievements = raw.achievements || {};
+    p.cooldowns = { jobSkill:0, partyUltimate:0, party2Ultimate:0, heal:0, ...(raw.cooldowns || {}) };
+    p.status    = { poison:0, stun:0, burn:0,          ...(raw.status    || {}) };
+    p.affinity  = { archer:0, healer:0, tanker:0, dealer:0, mage_party:0, ...(raw.affinity || {}) };
+    p.bank      = { deposit:0, interest:0, totalInvested:0, milestones:[], ...(raw.bank || {}) };
+
+    // 5) storyPhase 는 항상 마을에서 다시 시작 (저장값 무시)
+    p.storyPhase = "town";
+
+    // 6) 이 수정 이전에 저장된 구버전 세이브 보정 — metVillageChief 는 인트로 체인
+    //    안에서만 true 가 되므로, 그게 true 인데 introChainDone 이 false 라면
+    //    (예전엔 저장이 안 됐을 뿐) 인트로는 이미 끝난 것으로 간주해 재생을 막는다
+    if (p.metVillageChief && !p.introChainDone) {
+      p.introChainDone = true;
+      p.introDepartureDone = true;
+    }
     return p;
   }
 }
@@ -185,7 +201,7 @@ class ItemManager {
     if (p.inventory.length >= ItemManager.MAX_INVENTORY) {
       // [BALANCE 06] 장착 중인 아이템 ID를 먼저 수집해 매각 후보에서 제외
       const equippedIds = new Set(
-        [...Object.values(p.equipment), ...Object.values(p.partyEquipment)]
+        [...Object.values(p.equipment), ...Object.values(p.partyEquipment), ...Object.values(p.party2Equipment||{})]
           .filter(Boolean).map(e => e.itemId)
       );
       const gradeOrder = ["normal","uncommon","rare","epic","legend"];
@@ -205,39 +221,51 @@ class ItemManager {
     p.inventory.push(normalizeItem(item));
   }
 
-  equip(game, index, forParty = false) {
+  // target: false/"player" → 주인공, true/"party" → 1번 동료, "party2" → 2번 동료
+  equip(game, index, target = false) {
     const p    = game.player;
     const item = p.inventory[index];
     if (!item || item.type === "potion") return;
 
-    const target = forParty ? p.partyEquipment : p.equipment;
+    // 하위호환: boolean → 문자열 정규화
+    const who = target === true ? "party" : (target === false ? "player" : target);
+    const slotMap = {
+      player: { eq: p.equipment,       member: p.type,   isParty: false },
+      party:  { eq: p.partyEquipment,  member: p.party,  isParty: true  },
+      party2: { eq: p.party2Equipment, member: p.party2, isParty: true  },
+    };
+    const dest = slotMap[who] || slotMap.player;
+    const eqTarget = dest.eq;
 
     // 직업 무기 제한
-    if (item.weaponClass && !forParty) {
+    if (item.weaponClass && who === "player") {
       const allowed = { knight:"sword", night:"sword", mage:"staff", archer:"bow" }[p.type];
       if (allowed && item.weaponClass !== allowed) {
         game.log(`❌ ${CLASSES[p.type].name}은(는) ${allowed}만 사용 가능`);
         return;
       }
     }
-    if (item.weaponClass && forParty && p.party) {
-      const allowed = { healer:"staff", mage_party:"staff", archer:"bow", tanker:"sword", dealer:"sword" }[p.party];
+    if (item.weaponClass && dest.isParty && dest.member) {
+      const allowed = { healer:"staff", mage_party:"staff", archer:"bow", tanker:"sword", dealer:"sword" }[dest.member];
       if (allowed && item.weaponClass !== allowed) {
         game.log(`❌ 동료는 ${allowed}만 사용 가능`);
         return;
       }
     }
 
-    const old = target[item.type];
+    const old = eqTarget[item.type];
     if (old) p.inventory.push(old);
-    target[item.type] = item;
+    eqTarget[item.type] = item;
     p.inventory.splice(index, 1);
     game.log(`⚔ ${item.name} 장착`);
   }
 
-  unequip(game, slot, forParty = false) {
+  unequip(game, slot, target = false) {
     const p  = game.player;
-    const eq = forParty ? p.partyEquipment : p.equipment;
+    const who = target === true ? "party" : (target === false ? "player" : target);
+    const eq = who === "party"  ? p.partyEquipment
+             : who === "party2" ? p.party2Equipment
+             : p.equipment;
     const it = eq[slot];
     if (!it) return;
     p.inventory.push(it);
@@ -251,7 +279,7 @@ class ItemManager {
     if (!item) return;
 
     // 장착 중인 아이템인지 확인
-    const allEq = [...Object.values(p.equipment), ...Object.values(p.partyEquipment)];
+    const allEq = [...Object.values(p.equipment), ...Object.values(p.partyEquipment), ...Object.values(p.party2Equipment||{})];
     if (allEq.some(e => sameItem(e, item))) {
       game.log("⚠ 장착 해제 후 삭제하세요");
       return;
@@ -266,13 +294,22 @@ class ItemManager {
     if (p.money < item.cost) { game.log("💰 골드 부족"); return false; }
 
     p.money -= item.cost;
-    if (item.type === "potion") {
-      p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + (item.heal || 50));
-      game.log(`💊 ${item.name} 사용! HP 회복`);
-    } else {
-      this.add(game, { ...item, itemId: createItemId() });
-      game.log(`🛒 ${item.name} 구매`);
-    }
+    this.add(game, { ...item, itemId: createItemId() });
+    game.log(`🛒 ${item.name} 구매`);
+    return true;
+  }
+
+  // 인벤토리에 보관 중인 물약을 실제로 사용(HP 회복 후 소모)
+  usePotion(game, index) {
+    const p    = game.player;
+    const item = p.inventory[index];
+    if (!item || item.type !== "potion") return false;
+
+    const before = p.hp;
+    p.hp = Math.min(p.maxHp + (p.bonusHp||0), p.hp + (item.heal || 50));
+    const healed = p.hp - before;
+    p.inventory.splice(index, 1);
+    game.log(`💊 ${item.name} 사용! HP +${healed}`);
     return true;
   }
 
@@ -306,7 +343,7 @@ class ItemManager {
     if (index < 0 || index >= p.inventory.length) return;
     const item = p.inventory[index];
     // 장착 중이면 판매 불가
-    const allEq = [...Object.values(p.equipment), ...Object.values(p.partyEquipment)];
+    const allEq = [...Object.values(p.equipment), ...Object.values(p.partyEquipment), ...Object.values(p.party2Equipment||{})];
     if (allEq.some(e => sameItem(e, item))) { game.log("⚠ 장착 중인 아이템"); return; }
     p.money += price;
     p.inventory.splice(index, 1);

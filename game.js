@@ -16,6 +16,8 @@ class Game {
     this.battleManager    = new BattleManager();
     this.attendanceManager = typeof AttendanceManager !== "undefined"
       ? new AttendanceManager() : null;
+    this.achievementManager = typeof AchievementManager !== "undefined"
+      ? new AchievementManager() : null;
 
     // 동료 선택 세션 플래그 (마을 복귀 시 초기화)
     this._party2Selected  = false; // 일반 던전 2번째 동료
@@ -85,12 +87,126 @@ class Game {
           </div>
         </div>
         <button class="btn-load" id="mainLoadBtn">💾 저장 데이터 불러오기</button>
+      </div>
+
+      <!-- 타이틀 화면 불러오기 — 슬롯/파티 선택 모달 -->
+      <div id="titleLoadModal" style="display:none;position:fixed;inset:0;z-index:600;
+        background:rgba(0,0,0,0.95);flex-direction:column;overflow-y:auto;padding:20px;
+        font-family:inherit;">
+        <style>
+          #titleLoadModal .bank-btn{background:rgba(20,10,30,.85);border:1px solid #4a2e38;color:var(--text);padding:9px 18px;cursor:pointer;font-family:inherit;font-size:.78rem;border-radius:4px;font-weight:700;}
+          #titleLoadModal .bank-btn:hover{filter:brightness(1.3);}
+        </style>
+        <div style="max-width:600px;margin:0 auto;width:100%;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <span style="font-size:1.1rem;font-weight:700;color:var(--gold2);">📂 불러올 캐릭터 선택</span>
+            <button id="titleLoadClose" class="bank-btn">✕ 닫기</button>
+          </div>
+          <div id="titleLoadSlotContainer" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
       </div>`;
 
     c.querySelectorAll("[data-start]").forEach(btn =>
       btn.addEventListener("click", () => this.start(btn.dataset.start))
     );
-    document.getElementById("mainLoadBtn")?.addEventListener("click", () => this.loadGame());
+    document.getElementById("mainLoadBtn")?.addEventListener("click", () => this._openTitleLoadModal());
+    document.getElementById("titleLoadClose")?.addEventListener("click", () => {
+      const m = document.getElementById("titleLoadModal");
+      if (m) m.style.display = "none";
+    });
+  }
+
+  // 타이틀 화면에서 "불러오기" 클릭 시 — 슬롯 0 으로 바로 불러오지 않고
+  // 저장된 캐릭터(파티 구성 포함)를 보고 고를 수 있는 선택창을 띄운다
+  _openTitleLoadModal() {
+    const m = document.getElementById("titleLoadModal");
+    if (!m) return;
+    m.style.display = "flex";
+    this._renderTitleLoadSlots();
+  }
+
+  _renderTitleLoadSlots() {
+    const ct = document.getElementById("titleLoadSlotContainer");
+    if (!ct) return;
+    ct.innerHTML = "";
+
+    const portMap = {
+      knight:   "images/portrait_Knight.png",
+      mage:     "images/portrait_magician.png",
+      magician: "images/portrait_magician.png",
+      archer:   "images/portrait_archer.png",
+      tanker:   "images/portrait_tanker.png",
+      healer:   "images/portrait_healer.png",
+    };
+    const partyPortMap = {
+      healer:     "images/portrait_healer.png",
+      tanker:     "images/portrait_tanker.png",
+      mage_party: "images/portrait_magician.png",
+      archer:     "images/portrait_archer.png",
+      dealer:     "images/portrait_Knight.png",
+    };
+    const imgTag = (src, size=60) =>
+      `<img src="${src}" style="width:${size}px;height:${size}px;object-fit:contain;border:1px solid #4a2e38;border-radius:2px;flex-shrink:0;" onerror="this.style.display='none'"/>`;
+
+    let anySave = false;
+    for (let i = 0; i < 3; i++) {
+      const key = `rpgSave_slot_${i}`;
+      let sp = null;
+      try { const r = localStorage.getItem(key); if (r) sp = JSON.parse(r); } catch (e) {}
+
+      const pl = sp?.player || null;
+      const card = document.createElement("div");
+      card.style.cssText = "background:rgba(255,255,255,.04);border:1px solid #3a2428;border-radius:6px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;";
+
+      if (pl) {
+        anySave = true;
+        const psrc = portMap[pl.type] || portMap.knight;
+        const d = sp.savedAt ? new Date(sp.savedAt).toLocaleString("ko-KR", {month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"}) : "";
+        const parties = [pl.party, pl.party2, pl.party3].filter(Boolean);
+        const partyImgs = parties.map(p => {
+          const psrc2 = partyPortMap[p] || "";
+          return psrc2 ? imgTag(psrc2, 44) : "";
+        }).join("");
+
+        card.innerHTML = `
+          ${imgTag(psrc, 64)}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.85rem;font-weight:700;color:var(--gold2);margin-bottom:3px;">
+              ${pl.name||"플레이어"} <span style="font-size:.72rem;color:var(--text-dim);">(${pl.type||"?"})</span>
+            </div>
+            <div style="font-size:.7rem;color:var(--text-dim);margin-bottom:6px;">Lv.${pl.level||1} &nbsp;${d}</div>
+            ${parties.length ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+              <span style="font-size:.62rem;color:var(--text-dim);">파티:</span>
+              ${partyImgs}
+            </div>` : `<div style="font-size:.62rem;color:var(--text-dim);">파티 없음</div>`}
+          </div>
+          <button class="bank-btn" style="border-color:#88aaff;color:#88aaff;flex-shrink:0;" onclick="window.rpgGame._loadFromTitleSlot(${i})">불러오기</button>`;
+      } else {
+        card.innerHTML = `
+          <div style="width:64px;height:64px;border:1px dashed #3a2428;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:1.6rem;border-radius:2px;">?</div>
+          <div style="flex:1;color:var(--text-dim);font-size:.82rem;">슬롯 ${i+1} — 빈 슬롯</div>`;
+      }
+      ct.appendChild(card);
+    }
+    if (!anySave) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "text-align:center;color:var(--text-dim);font-size:.8rem;padding:20px;";
+      empty.textContent = "저장된 캐릭터가 없습니다.";
+      ct.appendChild(empty);
+    }
+  }
+
+  _loadFromTitleSlot(idx) {
+    const data = this.saveManager.load(idx);
+    if (!data) { alert("저장 데이터가 없습니다."); return; }
+    this.player = this.saveManager.hydrate(data.player);
+    if (!this.player) { alert("저장 데이터 손상"); return; }
+    this.currentMonster = null;
+    this._hadLoad = true;
+    const m = document.getElementById("titleLoadModal");
+    if (m) m.style.display = "none";
+    this._toTown();
+    this.log(`💾 슬롯 ${idx+1} 불러오기 완료! Lv.${this.player.level}`);
   }
 
   // ─────────────────────────────────────────────────
@@ -132,6 +248,7 @@ class Game {
     this.player = this.saveManager.hydrate(data.player);
     if (!this.player) { alert("저장 데이터 손상"); return; }
     this.currentMonster = null;
+    this._hadLoad = true;
     this._toTown();
     this.log(`💾 저장 데이터 불러오기 완료! Lv.${this.player.level}`);
   }
@@ -152,8 +269,10 @@ class Game {
     // 전투 후 귀환 여부 기록 (TownScene에서 NPC 대화 분기에 사용)
     this._returnedFromBattle = !!(this._hadBattle);
     this._returnedFromFlee   = !!(this._hadFlee);
+    this._returnedFromLoad   = !!(this._hadLoad);
     this._hadBattle = false;
     this._hadFlee   = false;
+    this._hadLoad   = false;
 
     // 레벨업 동료 반응 대사 예약 처리
     const pendingDlg     = this._pendingLevelUpDialogue;
@@ -167,16 +286,20 @@ class Game {
       p._partyKnockedOut = false;
       this.log(`💊 ${PARTY_MEMBERS[p.party]?.name ?? "동료"}이(가) 의식을 되찾았다 (HP 30% 회복)`);
     }
+    // 2번 동료도 1번 동료처럼 영구 유지 — 전투 불능이면 마을 귀환 시 HP 30% 회복
+    if (p.party2 && p._party2KnockedOut) {
+      p.party2Hp = Math.floor(p.party2MaxHp * 0.3);
+      p._party2KnockedOut = false;
+      this.log(`💊 ${PARTY_MEMBERS[p.party2]?.name ?? "2번 동료"}이(가) 의식을 되찾았다 (HP 30% 회복)`);
+    }
 
-    // 동료 2·3 해제 (전투 불능이면 회복 로그)
+    // 3번 동료(심연 전용 임시 동료)만 마을 귀환 시 해제
     const clearSlot = (field, hpF, maxF, koF, label) => {
       if (!p[field]) return;
       if (p[koF]) this.log(`💊 ${PARTY_MEMBERS[p[field]]?.name ?? label}이(가) 회복됐다`);
       p[field] = null; p[hpF] = 0; p[maxF] = 0; p[koF] = false;
     };
-    clearSlot("party2", "party2Hp", "party2MaxHp", "_party2KnockedOut", "보조 동료");
     clearSlot("party3", "party3Hp", "party3MaxHp", "_party3KnockedOut", "3번째 동료");
-    this._party2Selected = false;
     this._party3Selected = false;
 
     // 던전 씬 정리
@@ -187,6 +310,9 @@ class Game {
 
     this._showScreen("town");
     const c = this.containers.town;
+
+    // 이전 마을 화면의 대화 체인 타이머가 살아남아 새 화면에 대화가 겹쳐 뜨는 것을 방지
+    if (this.townScene?.destroy) this.townScene.destroy();
 
     if (typeof TownScene !== "undefined") {
       this.townScene = new TownScene(this);
@@ -225,7 +351,27 @@ class Game {
       if (attendanceResult) {
         this.attendanceManager.applyReward(this, attendanceResult.reward);
         this.saveManager.autoSave(this); // 보상 지급 후 즉시 저장
-        setTimeout(() => this._showAttendanceModal(attendanceResult), 350);
+
+        // 대화창(특히 인트로 체인·환영 대사 등)이 떠 있는 동안에는 출석 보상
+        // 전체화면 오버레이가 그 위를 덮어 클릭을 가로채는 문제가 있었음 —
+        // 대화 디스패치(600ms 지연)가 결정될 시간을 먼저 준 뒤, 인트로 체인이
+        // 끝났고 대화창도 연속 4회(약 1.4초) 동안 계속 없을 때만 띄운다 —
+        // 체인 단계 사이의 짧은 틈에 끼어드는 것을 방지
+        setTimeout(() => {
+          let clearTicks = 0;
+          const waitDialogueClear = setInterval(() => {
+            if (this.currentScene !== "town") { clearInterval(waitDialogueClear); return; } // 화면 전환 시 취소
+            if (this._introChainActive || document.getElementById("npcDialogueBox")) {
+              clearTicks = 0;
+              return;
+            }
+            clearTicks++;
+            if (clearTicks >= 4) {
+              clearInterval(waitDialogueClear);
+              this._showAttendanceModal(attendanceResult);
+            }
+          }, 350);
+        }, 700);
       }
     }
   }
@@ -335,13 +481,56 @@ class Game {
     this._toTown();
   }
 
+  // ── 던전 탈출 확인 모달 ───────────────────────────────
+  // "탈출하시겠습니까?"를 먼저 묻고, 예를 선택해야만 마을로 나간다.
+  // onConfirm 콜백을 받아 다양한 탈출 경로(출구 타일·HUD 버튼)에서 재사용.
+  _confirmExitDungeon(onConfirm) {
+    // 이미 떠 있으면 중복 생성 방지
+    if (document.getElementById("dungeonExitConfirm")) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = "dungeonExitConfirm";
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;" +
+      "align-items:center;justify-content:center;z-index:10000;";
+    overlay.innerHTML = `
+      <div style="background:#0c0609;border:1px solid #5a1a30;border-radius:14px;
+                  padding:24px 20px 20px;max-width:300px;width:90%;text-align:center;">
+        <div style="font-size:30px;margin-bottom:10px;line-height:1;">🚪</div>
+        <div style="font-size:16px;font-weight:bold;color:#e8c060;margin-bottom:8px;">던전 탈출</div>
+        <div style="font-size:13px;color:#b09080;margin-bottom:20px;line-height:1.5;">
+          정말 탈출하시겠습니까?<br>
+          <span style="font-size:11px;color:#806070;">마을로 돌아갑니다.</span>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button id="dungeonExitNo"
+            style="flex:1;background:#241018;color:#b09098;border:0.5px solid #5a3040;
+                   padding:11px 0;border-radius:8px;cursor:pointer;font-size:13px;
+                   font-weight:bold;font-family:inherit;">아니오</button>
+          <button id="dungeonExitYes"
+            style="flex:1;background:#5a1a30;color:#e8b080;border:0.5px solid #8a3050;
+                   padding:11px 0;border-radius:8px;cursor:pointer;font-size:13px;
+                   font-weight:bold;font-family:inherit;">예, 탈출</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => { overlay.remove(); };
+    document.getElementById("dungeonExitNo").addEventListener("click", close);
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+    document.getElementById("dungeonExitYes").addEventListener("click", () => {
+      close();
+      onConfirm();
+    });
+  }
+
   // ─────────────────────────────────────────────────
   //  던전 탐험
   // ─────────────────────────────────────────────────
   goToDungeon(type = "normal", startFloor = 1) {
     const p = this.player;
-    // 일반 던전: 2번째 동료 선택 (첫 진입 시)
-    if (type === "normal" && startFloor === 1 && !this._party2Selected && p?.party) {
+    // 일반 던전: 2번째 동료 선택 (아직 2번 동료가 없을 때만)
+    if (type === "normal" && startFloor === 1 && !this._party2Selected && !p?.party2 && p?.party) {
       this._showPartySelectModal(2, [p.party], type, startFloor);
       return;
     }
@@ -636,11 +825,24 @@ class Game {
       <button class="dpad-btn" id="dDown" >▼</button>
     </div>
 
+    <!-- 인벤토리 -->
+    <button class="location-btn" id="dhInvBtn" style="width:100%;margin-top:8px;">🎒 인벤토리</button>
+
     <!-- 마을 복귀 -->
     <button class="location-btn" id="dhReturnBtn" style="width:100%;margin-top:8px;">🏘 마을로</button>
 
     <!-- 메시지 -->
     <div id="dhFlashMsg" style="font-size:.75rem;color:var(--gold2);min-height:20px;text-align:center;margin-top:4px;"></div>
+  </div>
+</div>
+
+<!-- 던전 내 인벤토리 모달 -->
+<div id="dhInvModal" class="skill-modal" style="display:none;">
+  <div class="skill-box" style="max-width:420px;">
+    <h2>🎒 인벤토리</h2>
+    <div id="dhInvEquipSummary" style="display:flex;flex-direction:column;gap:4px;font-size:.72rem;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border2);"></div>
+    <div id="dhInvList" style="display:flex;flex-direction:column;gap:5px;max-height:280px;overflow-y:auto;"></div>
+    <button id="dhInvClose">닫기</button>
   </div>
 </div>`;
   }
@@ -1086,6 +1288,29 @@ class Game {
     console.log("[RPG]", plain);
     if (this.battleScene) this.battleScene.log(msg);
     if (this.dungeonHud)  this.dungeonHud.flashMsg(plain);
+    // 전투/던전 화면이 아니면(예: 마을 상점·인벤토리) 위 두 경로 모두 안 타서
+    // 메시지가 콘솔에만 찍히고 화면에는 전혀 안 보이는 문제가 있었음.
+    // 장착 성공/실패 메시지가 그 경우라 "동료 장착이 안 된다"처럼 보였던 것.
+    // 항상 화면 어딘가에는 보이도록 전역 토스트로 보완.
+    if (!this.battleScene && !this.dungeonHud) this._showGlobalToast(plain);
+  }
+
+  _showGlobalToast(text) {
+    let el = document.getElementById("gameToast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gameToast";
+      el.style.cssText = "position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-8px);z-index:9999;background:rgba(10,4,8,.95);border:1px solid var(--border2);border-radius:6px;padding:9px 20px;font-size:.78rem;color:var(--gold2);box-shadow:0 4px 18px rgba(0,0,0,.55);opacity:0;transition:opacity .25s ease,transform .25s ease;pointer-events:none;max-width:90vw;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.style.opacity = "1";
+    el.style.transform = "translateX(-50%) translateY(0)";
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transform = "translateX(-50%) translateY(-8px)";
+    }, 2200);
   }
 
   showNarrative(text, duration = 3000) {
@@ -1104,6 +1329,57 @@ class Game {
     box.style.display = "flex";
     clearTimeout(this._narrTimer);
     this._narrTimer = setTimeout(() => { box.style.display = "none"; }, duration);
+  }
+
+  // ─────────────────────────────────────────────────
+  //  동료 호감도 공통 지급 — 전투 외 활동(카드 게임 등)에서 사용
+  //  battle-manager.js의 전투 호감도 로직과는 별도로 동작하며,
+  //  같은 호감도 임계치(25/30/50/75/100) 이벤트를 동일하게 처리한다.
+  // ─────────────────────────────────────────────────
+  grantPartyAffinity(amount) {
+    const p = this.player;
+    if (!p || !p.party || !amount || amount <= 0) return 0;
+    if (!p.affinity) p.affinity = { archer:0, healer:0, tanker:0, dealer:0, mage_party:0 };
+    if (!p.partyEvents) p.partyEvents = { affinity25:false, affinity50:false, affinity75:false, affinity100:false };
+
+    const before = p.affinity[p.party] || 0;
+    const after  = Math.min(100, before + amount);
+    p.affinity[p.party] = after;
+    const gained = after - before;
+    if (gained <= 0) return 0;
+
+    const memName = PARTY_MEMBERS[p.party]?.name || "동료";
+
+    if (before < 25 && after >= 25 && !p.partyEvents.affinity25) {
+      p.partyEvents.affinity25 = true;
+      p.maxHp += 10;
+      p.hp = Math.min(p.hp + 10, p.maxHp + p.bonusHp);
+      this.log(`💬 ${memName}와(과) 처음 마음을 나눴다! 최대 HP +10`);
+    }
+    if (before < 30 && after >= 30 && !p.partyUltimateUnlocked) {
+      p.partyUltimateUnlocked = true;
+      this.log("✨ 동료 궁극기 해금!");
+    }
+    if (before < 50 && after >= 50 && !p.partyEvents.affinity50) {
+      p.partyEvents.affinity50 = true;
+      p.baseAttack += 10;
+      this.log("💞 유대 강화! 공격력 +10");
+    }
+    if (before < 75 && after >= 75 && !p.partyEvents.affinity75) {
+      p.partyEvents.affinity75 = true;
+      p.partyStoryUnlocked = true;
+      this.log("📖 개인 스토리 해금!");
+    }
+    if (before < 100 && after >= 100 && !p.partyEvents.affinity100) {
+      p.partyEvents.affinity100 = true;
+      p.partyBondMax    = true;
+      p.partyUltimateEX = true;
+      p.partyExAwakened = true;
+      p.baseAttack += 30; p.maxHp += 100;
+      p.hp = Math.min(p.hp + 100, p.maxHp + p.bonusHp);
+      this.log("🌟 EX 궁극기 해금! 공격력+30 HP+100");
+    }
+    return gained;
   }
 
   restAtInn() {
@@ -1134,18 +1410,12 @@ class Game {
     // 합류 대화 표시 (TownScene NPC 대화 시스템 사용) — 즉시 표시
     const npcId = `join_${key}`;
     if (this.townScene?.showNpcDialogue) {
-      this.townScene.showNpcDialogue(npcId); // 지연 없이 즉시 호출 → 동료 모습도 즉시 표시
-
       // 오프닝 스토리 체인 도중이면, 합류 대화 종료 후 장비 안내로 이어감
-      if (this.player.introPendingEquipPrompt) {
-        this.player.introPendingEquipPrompt = false;
-        const waitJoin = setInterval(() => {
-          if (!document.getElementById("npcDialogueBox")) {
-            clearInterval(waitJoin);
-            setTimeout(() => this.townScene._playEquipPromptChain?.(), 400);
-          }
-        }, 300);
-      }
+      const chainEquipPrompt = this.player.introPendingEquipPrompt;
+      this.player.introPendingEquipPrompt = false;
+      this.townScene.showNpcDialogue(npcId, chainEquipPrompt
+        ? () => setTimeout(() => this.townScene._playEquipPromptChain?.(), 400)
+        : undefined);
     } else {
       this.showNarrative(`${mem.name}이(가) 파티에 합류했다!`, 2500);
     }
@@ -1227,6 +1497,7 @@ class DungeonHud {
     this._flashTimer = null;
     this._bindDpad();
     this._bindReturnBtn();
+    this._bindInventoryBtn();
   }
 
   _bindDpad() {
@@ -1240,7 +1511,122 @@ class DungeonHud {
 
   _bindReturnBtn() {
     document.getElementById("dhReturnBtn")?.addEventListener("click", () => {
-      this.game.returnToTown("exit");
+      this.game._confirmExitDungeon(() => this.game.returnToTown("exit"));
+    });
+  }
+
+  // ── 던전 내 인벤토리 모달 ─────────────────────────
+  _bindInventoryBtn() {
+    document.getElementById("dhInvBtn")?.addEventListener("click", () => this.openInventory());
+    document.getElementById("dhInvClose")?.addEventListener("click", () => this.closeInventory());
+  }
+
+  openInventory() {
+    const modal = document.getElementById("dhInvModal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    this.renderInventory();
+  }
+
+  closeInventory() {
+    const modal = document.getElementById("dhInvModal");
+    if (modal) modal.style.display = "none";
+  }
+
+  renderInventory() {
+    const p = this.game.player;
+    const summary = document.getElementById("dhInvEquipSummary");
+    const list    = document.getElementById("dhInvList");
+    if (!p || !summary || !list) return;
+
+    const gColor = window.ITEM_GRADE_COLOR || {};
+    const fmtEq = (item) => item
+      ? wrapItemIconText(item, `<span style="color:${gColor[item.class]||"#b8a888"}">+${item.enhance||0} ${item.name}</span>`, 17)
+      : `<span style="color:#504040;">없음</span>`;
+
+    // ── 장착 중인 장비 요약 (주인공 + 동료) ──
+    let summaryHTML = `
+      <div style="color:var(--gold2);font-weight:700;margin-bottom:2px;">⚔ 주인공 장비</div>
+      <div>무기 ${fmtEq(p.equipment?.weapon)} &nbsp; 투구 ${fmtEq(p.equipment?.helmet)} &nbsp; 갑옷 ${fmtEq(p.equipment?.armor)}</div>`;
+    if (p.party) {
+      const mem = (window.PARTY_MEMBERS || {})[p.party];
+      summaryHTML += `
+      <div style="color:var(--gold2);font-weight:700;margin-top:6px;margin-bottom:2px;">⚔ ${mem?.name || "동료"} 장비</div>
+      <div>무기 ${fmtEq(p.partyEquipment?.weapon)} &nbsp; 투구 ${fmtEq(p.partyEquipment?.helmet)} &nbsp; 갑옷 ${fmtEq(p.partyEquipment?.armor)}</div>`;
+    }
+    summary.innerHTML = summaryHTML;
+
+    // ── 인벤토리 목록 (장착/동료 장착만 — 판매는 마을 대장간에서) ──
+    list.innerHTML = "";
+    if (!p.inventory.length) {
+      list.innerHTML = `<div style="font-size:.7rem;color:var(--text-dim);padding:8px 0;">인벤토리 비어있음</div>`;
+      return;
+    }
+    p.inventory.forEach((item, idx) => {
+      const color = gColor[item.class] || gColor.normal || "#b8a888";
+      const stat = item.type === "weapon" ? `ATK+${item.attack}`
+                 : item.type === "potion" ? `회복`
+                 : `DEF+${item.defense}`;
+
+      const row = document.createElement("div");
+      row.className = "inv-row";
+      row.style.borderColor = color + "55";
+      row.innerHTML = `
+        <span class="item-icon">${getItemIconSVG(item, 24)}</span>
+        <span class="inv-name" style="color:${color};flex:1;font-size:.66rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          +${item.enhance||0} ${item.name}
+          <span style="color:var(--text-dim);font-size:.6rem;">${stat}</span>
+        </span>`;
+
+      if (item.type === "potion") {
+        const use = document.createElement("button");
+        use.className = "inv-btn";
+        use.textContent = "사용";
+        use.title = "물약 사용 (HP 회복)";
+        use.style.cssText = "border-color:#44aa44;color:#88ee88;";
+        use.addEventListener("click", () => {
+          this.game.itemManager.usePotion(this.game, idx);
+          this.renderInventory();
+        });
+        row.appendChild(use);
+      } else {
+        const eq = document.createElement("button");
+        eq.className = "inv-btn";
+        eq.textContent = "장착";
+        eq.title = "주인공 장착";
+        eq.addEventListener("click", () => {
+          this.game.itemManager.equip(this.game, idx, false);
+          this.renderInventory();
+        });
+        row.appendChild(eq);
+
+        if (p.party) {
+          const eqComp = document.createElement("button");
+          eqComp.className = "inv-btn";
+          eqComp.textContent = "동료";
+          eqComp.title = "1번 동료 장착";
+          eqComp.style.cssText = "border-color:#4444cc;color:#8888ff;";
+          eqComp.addEventListener("click", () => {
+            this.game.itemManager.equip(this.game, idx, "party");
+            this.renderInventory();
+          });
+          row.appendChild(eqComp);
+        }
+
+        if (p.party2) {
+          const eqComp2 = document.createElement("button");
+          eqComp2.className = "inv-btn";
+          eqComp2.textContent = "동료2";
+          eqComp2.title = "2번 동료 장착";
+          eqComp2.style.cssText = "border-color:#9944cc;color:#cc88ff;";
+          eqComp2.addEventListener("click", () => {
+            this.game.itemManager.equip(this.game, idx, "party2");
+            this.renderInventory();
+          });
+          row.appendChild(eqComp2);
+        }
+      }
+      list.appendChild(row);
     });
   }
 

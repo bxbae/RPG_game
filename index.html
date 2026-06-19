@@ -9,11 +9,17 @@
   <meta name="theme-color" content="#0a0608"/>
   <title>마왕 토벌 — 어둠의 용사</title>
 
-  <!-- PWA manifest -->
-  <link rel="manifest" href="manifest.json"/>
+  <!-- PWA manifest — http/https 환경에서만 로드 -->
+  <script>
+    if (location.protocol !== "file:") {
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = "manifest.json";
+      document.head.appendChild(link);
+    }
+  </script>
 
   <!-- iOS 홈 화면 아이콘 (apple-touch-icon) -->
-  <link rel="apple-touch-icon" href="images/icon-192.png"/>
   <!-- 파비콘 대체 (icon 없을 때 던전 이미지 사용) -->
   <link rel="icon" type="image/png" href="images/Dungeon_Entrance.png"/>
   <link rel="stylesheet" href="rpg-main.css"/>
@@ -47,12 +53,15 @@
 
 <!-- ── 스크립트 로딩 순서 ── -->
 <script src="models.js"></script>
+<script src="item-icons.js"></script>
 <script src="managers.js"></script>
 <script src="achievement-system.js"></script>
 <script src="battle-manager.js"></script>
 <script src="dungeon-scene.js"></script>
+<script src="trap-room.js"></script>
 <script src="battle-scene.js"></script>
 <script src="town-scene.js"></script>
+<script src="card-game.js"></script>
 <script src="dialogue-scene.js"></script>
 <script src="game.js"></script>
 
@@ -146,9 +155,9 @@ class AudioManager {
 window.audioMgr = new AudioManager();
 </script>
 
-  <!-- Service Worker 등록 -->
+  <!-- Service Worker 등록 — http/https 환경에서만 작동 -->
   <script>
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js")
           .then(reg => {

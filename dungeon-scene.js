@@ -13,6 +13,7 @@ const TILE = {
   EXIT:   5,
   STAIRS: 6,
   START:  7,
+  TRAPROOM: 8, // 함정의 방 — 지뢰찾기 퍼즐 (trap-room.js에서 처리)
 };
 
 const TILE_COLORS = {
@@ -24,6 +25,7 @@ const TILE_COLORS = {
   [TILE.EXIT]:  { bg:"#0e1a1a", border:"#1a3a3a" },
   [TILE.STAIRS]:{ bg:"#0e0e2a", border:"#2a2a8a" }, // 계단: 파란빛
   [TILE.START]: { bg:"#1a1e0e", border:"#2a3018" },
+  [TILE.TRAPROOM]: { bg:"#160a22", border:"#4a1a6a" }, // 함정의 방: 보랏빛
 };
 
 const TILE_ICONS = {
@@ -33,6 +35,7 @@ const TILE_ICONS = {
   [TILE.EXIT]:   "🚪",
   [TILE.STAIRS]: "⬇",  // 다음 층으로 내려가는 계단
   [TILE.START]:  "⬤",
+  [TILE.TRAPROOM]: "🕳",
 };
 
 // 던전 유형·층별 적 풀
@@ -161,6 +164,9 @@ function generateDungeonMap(width = 25, height = 18, floor = 1, isLastFloor = fa
   // 보물상자 (층이 깊을수록 더 많이)
   const chestCount = 2 + Math.floor(floor / 2) + Math.floor(Math.random() * 2);
   for (let i = 0; i < chestCount; i++) place(TILE.CHEST);
+
+  // 함정의 방 — 지뢰찾기 퍼즐 (층마다 고정 1회 등장, 튜토리얼 성 밖에는 미등장)
+  if (dungeonType !== "outside") place(TILE.TRAPROOM);
 
   // 출구 — 언제든지 마을로 탈출 (모든 층에 존재)
   place(TILE.EXIT);
@@ -307,6 +313,7 @@ class DungeonScene {
   // ── 이동 처리 ────────────────────────────────────
   _tryMove(dx, dy) {
     if (this.moving) return;
+    if (this._trapRoomActive) return; // 함정의 방 퍼즐 진행 중에는 이동 불가
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;
     const { map, width, height, objects } = this.mapData;
@@ -365,15 +372,19 @@ class DungeonScene {
         this.mapData.objects.delete(`${x},${y}`);
         this._openChest(x, y);
         break;
+      case TILE.TRAPROOM:
+        this.mapData.objects.delete(`${x},${y}`);
+        this._openTrapRoom(x, y);
+        break;
       case TILE.STAIRS:
         // 다음 층으로 이동
         this.mapData.objects.delete(`${x},${y}`);
         setTimeout(() => this._nextFloor(), 200);
         break;
       case TILE.EXIT:
-        // 마을로 탈출
-        this.mapData.objects.delete(`${x},${y}`);
-        setTimeout(() => this.game.returnToTown("exit"), 200);
+        // 마을로 탈출 — 바로 나가지 않고 먼저 "탈출하시겠습니까?" 확인
+        // 취소하면 출구 타일을 그대로 두어 나중에 다시 이용할 수 있게 한다
+        this.game._confirmExitDungeon(() => this.game.returnToTown("exit"));
         break;
     }
   }
@@ -540,6 +551,9 @@ class DungeonScene {
           } else if (obj.type === TILE.STAIRS) {
             ctx.shadowColor = "#4488ff"; // 파란 발광으로 계단 강조
             ctx.shadowBlur  = 14;
+          } else if (obj.type === TILE.TRAPROOM) {
+            ctx.shadowColor = "#aa44ff"; // 보랏빛 발광으로 함정의 방 강조
+            ctx.shadowBlur  = 16;
           } else {
             ctx.shadowBlur = 0;
           }
@@ -672,6 +686,7 @@ class DungeonScene {
           else if (obj.type === TILE.CHEST)  color = "#6a6a20";
           else if (obj.type === TILE.EXIT)   color = "#1a5050";
           else if (obj.type === TILE.STAIRS) color = "#1a2a6a"; // 파란색으로 계단 표시
+          else if (obj.type === TILE.TRAPROOM) color = "#7a2ab0"; // 보랏빛으로 함정의 방 표시
         }
         mCtx.fillStyle = color;
         mCtx.fillRect(tx * mts, ty * mts, mts, mts);

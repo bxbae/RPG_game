@@ -62,9 +62,10 @@ class BattleManager {
   // skip: 방금 사용한 스킬명 — 그 턴에 자신의 쿨다운은 감소시키지 않음
   _tickCooldowns(game, ...skip) {
     const cd = game.player.cooldowns;
-    if (!skip.includes("heal")          && cd.heal > 0)          cd.heal--;
-    if (!skip.includes("jobSkill")      && cd.jobSkill > 0)      cd.jobSkill--;
-    if (!skip.includes("partyUltimate") && cd.partyUltimate > 0) cd.partyUltimate--;
+    if (!skip.includes("heal")           && cd.heal > 0)           cd.heal--;
+    if (!skip.includes("jobSkill")       && cd.jobSkill > 0)       cd.jobSkill--;
+    if (!skip.includes("partyUltimate")  && cd.partyUltimate > 0)  cd.partyUltimate--;
+    if (!skip.includes("party2Ultimate") && (cd.party2Ultimate||0) > 0) cd.party2Ultimate--;
   }
 
   // ── 상태이상 적용 ─────────────────────────────────
@@ -337,6 +338,59 @@ class BattleManager {
     p.cooldowns.partyUltimate = 8;
     if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
     this._tickCooldowns(game, "partyUltimate"); // partyUltimate는 방금 사용했으므로 제외
+    this._emit("render");
+    this._flushUI(game);
+  }
+
+  // ── 2번 동료 궁극기 (party2 전용) ───────────────────
+  party2Ultimate(game) {
+    this._events = [];
+
+    const p = game.player;
+    const m = game.currentMonster;
+    const party = p.party2;
+    if (!party || !m) { game.log("❌ 2번 동료가 없습니다"); return; }
+    if (p.party2Hp <= 0) { game.log("💔 2번 동료 전투 불능 (마을에서 회복 가능)"); return; }
+
+    const aff = p.affinity?.[party] || 0;
+    if (aff < 30) { game.log(`💔 호감도 부족 (현재 ${aff}/30)`); return; }
+    if ((p.cooldowns?.party2Ultimate || 0) > 0) { game.log(`⏳ 쿨타임 ${p.cooldowns.party2Ultimate}턴`); return; }
+
+    if (aff >= 30) this._emit("exCutin");
+
+    const ex = aff >= 100;
+    switch (party) {
+      case "healer":
+        p.hp = p.maxHp + p.bonusHp;
+        if (p.party2Hp) p.party2Hp = p.party2MaxHp;
+        if (ex) p.guardBuff = 5;
+        game.log(ex ? "🌟 EX 천상의 기적!" : "✨ 천상의 기적!"); break;
+      case "tanker":
+        p.guardBuff = ex ? 10 : 5;
+        game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
+      case "archer": {
+        const hits = ex ? 10 : 6;
+        const hitDmg = Math.floor(p.party2Attack || 20);
+        for (let i = 0; i < hits; i++) m.hp -= hitDmg;
+        this._emit("damage", { amount: hitDmg * hits, target: "monster" });
+        game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
+      }
+      case "mage_party": {
+        const dmg = Math.floor(p.totalAttack * (ex ? 8 : 5));
+        m.hp -= dmg;
+        this._emit("damage", { amount: dmg, target: "monster" });
+        game.log(`☄ 아포칼립스! ${dmg}`); break;
+      }
+      case "dealer": {
+        const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
+        m.hp -= dmg;
+        this._emit("damage", { amount: dmg, target: "monster" });
+        game.log(`⚔ 그림자 참격! ${dmg}`); break;
+      }
+    }
+    p.cooldowns.party2Ultimate = 8;
+    if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
+    this._tickCooldowns(game, "party2Ultimate"); // 방금 사용했으므로 제외
     this._emit("render");
     this._flushUI(game);
   }

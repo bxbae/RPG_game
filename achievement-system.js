@@ -51,6 +51,9 @@ const ACHIEVEMENTS = [
   { id:"dice_jackpot",    cat:"미니게임", icon:"💎",  title:"대박!",             desc:"주사위 소/대(×2.5)를 적중하라",      cond: p => (p._diceJackpot||0) >= 1,     reward:"골드 +500" },
   { id:"dice_10wins",     cat:"미니게임", icon:"🎰",  title:"도박꾼",            desc:"주사위 도박에서 10번 적중하라",       cond: p => (p._diceWins||0) >= 10,       reward:"골드 +1000" },
   { id:"minigame_rich",   cat:"미니게임", icon:"💸",  title:"주막의 제왕",       desc:"미니게임으로 총 5000G를 획득하라",    cond: p => (p._minigameGold||0) >= 5000, reward:"공격력 +3" },
+  { id:"trap_first_clear",cat:"미니게임", icon:"🕳",  title:"함정 해체사",       desc:"함정의 방을 처음 클리어하라",         cond: p => (p._trapRoomClears||0) >= 1, reward:"골드 +150" },
+  { id:"trap_clear_5",    cat:"미니게임", icon:"🧭",  title:"유적 탐사가",       desc:"함정의 방을 5번 클리어하라",          cond: p => (p._trapRoomClears||0) >= 5, reward:"공격력 +5" },
+  { id:"trap_abyss_clear",cat:"미니게임", icon:"💀",  title:"심연의 정복자",     desc:"심연 던전에서 함정의 방을 클리어하라", cond: p => p._trapAbyssClear === true,  reward:"HP +50" },
 ];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -109,6 +112,13 @@ class AchievementManager {
     if (r.includes("경험치 +")) {
       const n = parseInt(r.match(/경험치 \+(\d+)/)?.[1] || 0);
       if (n) p.gainExp?.(n);
+    }
+    if (r.includes("호감도 +")) {
+      const n = parseInt(r.match(/호감도 \+(\d+)/)?.[1] || 0);
+      if (n && p.party) {
+        if (!p.affinity) p.affinity = {};
+        p.affinity[p.party] = Math.min(100, (p.affinity[p.party] || 0) + n);
+      }
     }
   }
 

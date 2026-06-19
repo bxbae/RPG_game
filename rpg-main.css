@@ -70,9 +70,10 @@ button { font-family:inherit; }
 .equip-slot { font-size:.7rem; color:var(--text-dim); margin-bottom:3px; }
 .equip-slot span { color:var(--text); }
 #tnShop { display:flex; flex-direction:column; gap:5px; }
-.shop-btn { display:flex; justify-content:space-between; background:rgba(16,9,11,.85); border:1px solid var(--border); color:var(--text); padding:7px 9px; cursor:pointer; font-size:.7rem; transition:.2s; width:100%; font-family:inherit; }
+.shop-btn { display:flex; align-items:center; gap:8px; justify-content:space-between; background:rgba(16,9,11,.85); border:1px solid var(--border); color:var(--text); padding:7px 9px; cursor:pointer; font-size:.7rem; transition:.2s; width:100%; font-family:inherit; }
 .shop-btn:hover { border-color:var(--gold); }
 .item-cost { color:var(--gold2); font-size:.65rem; }
+.item-icon { display:inline-flex; align-items:center; flex-shrink:0; }
 #tnInventory { display:flex; flex-direction:column; gap:4px; }
 .inv-row { display:flex; align-items:center; gap:4px; padding:4px 6px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:2px; }
 .inv-name { flex:1; font-size:.65rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -162,7 +163,8 @@ button { font-family:inherit; }
 @keyframes poke-player-attack { 0%{transform:translate(0,0) scale(1);} 30%{transform:translate(50px,-25px) scale(1.1);} 65%{transform:translate(22px,-10px) scale(1.05);} 100%{transform:translate(0,0) scale(1);} }
 @keyframes poke-player-hit    { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-12px);} 60%{transform:translateX(12px);} }
 @keyframes poke-player-defeat { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(40px) rotate(-30deg);opacity:0;} }
-.poke-companion-sprite-wrap { position:absolute; left:calc(6% + min(21%,200px) + 6px); bottom:0; width:min(18%,170px); z-index:3; filter:drop-shadow(0 6px 18px rgba(0,0,0,.95)); animation:poke-companion-idle 3.6s ease-in-out infinite; }
+.poke-companion-sprite-wrap { position:absolute; left:calc(6% + min(21%,200px) + 6px); bottom:0; width:min(21%,200px); z-index:3; filter:drop-shadow(0 6px 18px rgba(0,0,0,.95)); animation:poke-companion-idle 3.6s ease-in-out infinite; }
+.poke-companion2-sprite-wrap { left:calc(6% + 2*(min(21%,200px) + 6px)); z-index:2; animation:poke-companion-idle 4.0s ease-in-out infinite; }
 .poke-companion-sprite { width:100%; height:auto; display:block; object-fit:contain; }
 @keyframes poke-companion-idle { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
 
@@ -317,7 +319,8 @@ button { font-family:inherit; }
 
   .poke-enemy-sprite-wrap  { width:min(42%,220px); right:4%; top:3%; }
   .poke-player-sprite-wrap { width:min(24%,150px); left:4%; }
-  .poke-companion-sprite-wrap { width:min(18%,120px); }
+  .poke-companion-sprite-wrap { width:min(24%,150px); left:calc(4% + min(24%,150px) + 4px); }
+  .poke-companion2-sprite-wrap { left:calc(4% + 2*(min(24%,150px) + 4px)); }
 
   .player-level { font-size:.68rem; left:4%; }
   .player-exp   { font-size:.62rem; left:4%; }

@@ -118,6 +118,7 @@ class Player {
 
     this.equipment      = { weapon: starterWeapon, helmet: null, armor: null };
     this.partyEquipment = { weapon: null, helmet: null, armor: null };
+    this.party2Equipment= { weapon: null, helmet: null, armor: null };
     this.inventory      = [];
 
     // 동료
@@ -145,7 +146,7 @@ class Player {
     // 전투
     this.ultimateGauge= 0;
     this.guardBuff    = 0;
-    this.cooldowns    = { jobSkill:0, partyUltimate:0, heal:0 };
+    this.cooldowns    = { jobSkill:0, partyUltimate:0, party2Ultimate:0, heal:0 };
     this.status       = { poison:0, stun:0, burn:0 };
 
     // 호감도
@@ -239,15 +240,19 @@ class Player {
          + (this.partyEquipment.armor?.defense  || 0);
   }
 
-  // 심연 보조 동료 스탯 (장비 없음 — 기본 스탯만)
+  // 심연 보조 동료 스탯 (이제 장비 반영)
   get party2Attack() {
     if (!this.party2) return 0;
-    return PARTY_MEMBERS[this.party2]?.attack || 0;
+    return (PARTY_MEMBERS[this.party2]?.attack || 0)
+         + (this.party2Equipment.weapon?.attack  || 0)
+         + (this.party2Equipment.weapon?.enhance || 0);
   }
 
   get party2Defense() {
     if (!this.party2) return 0;
-    return PARTY_MEMBERS[this.party2]?.defense || 0;
+    return (PARTY_MEMBERS[this.party2]?.defense || 0)
+         + (this.party2Equipment.helmet?.defense || 0)
+         + (this.party2Equipment.armor?.defense  || 0);
   }
 
   // 심연 3번째 동료 스탯

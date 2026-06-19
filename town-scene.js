@@ -27,129 +27,160 @@ function applyBattleInterest(player) {
 class TownScene {
   constructor(game) {
     this.game = game;
+    this._destroyed = false;
     if (!game.player.bank)
       game.player.bank = { deposit:0, interest:0, totalInvested:0, milestones:[] };
   }
 
+  // 새 TownScene이 만들어지기 전에 호출됨 — 이 인스턴스가 예약해둔 대화 체인 타이머가
+  // 뒤늦게 발동해 새 마을 화면에 대화가 겹쳐 뜨는 것을 막기 위한 표시만 한다
+  // (dungeonScene/battleScene처럼 DOM을 직접 정리할 필요는 없음 — mount()가 매번 새로 그림)
+  destroy() {
+    this._destroyed = true;
+  }
+
   mount(container) {
+    this._destroyed = false;
     container.innerHTML = this._buildHTML();
     this._injectLayoutCSS();
     this._bindEvents();
     this.render();
     const fromBattle  = this.game._returnedFromBattle;
     const fromFlee    = this.game._returnedFromFlee;
+    const fromLoad    = this.game._returnedFromLoad;
     const levelDlg    = this.game._pendingLevelUpDialogue;
     const questDlg    = this.game._pendingQuestCompleteDlg;
     this.game._returnedFromBattle      = false;
     this.game._returnedFromFlee        = false;
+    this.game._returnedFromLoad        = false;
     this.game._pendingLevelUpDialogue  = null;
     this.game._pendingQuestCompleteDlg = null;
 
     setTimeout(() => {
-      // ── 첫 마을 입장 오프닝 스토리 체인 ──
-      // 주인공 독백 → 상인 → 주인공 독백 → 공주 → 주인공 독백 → 동료 모집 자동 오픈
-      if (!this.game.player.introChainDone && !fromBattle && !fromFlee) {
-        this.game.player.introChainDone = true;
-        this._playIntroChain();
-        return;
-      }
-
-      // ① 상인 귀환 대사
-      if (fromFlee)        this.showNpcDialogue("merchant_after_flee");
-      else if (fromBattle) this.showNpcDialogue("merchant_after_battle");
-      else                 this.showNpcDialogue("merchant");
-
-      // ② 퀘스트 완료 → 의뢰인 보상 대사
-      if (questDlg) {
-        const waitMerchant = setInterval(() => {
-          if (!document.getElementById("npcDialogueBox")) {
-            clearInterval(waitMerchant);
-            setTimeout(() => this.showNpcDialogue(questDlg), 500);
-          }
-        }, 400);
-      }
-      // ③ 레벨업 동료 반응 (퀘스트 완료 대화 이후)
-      else if (levelDlg && this.game.player?.party) {
-        const waitMerchant = setInterval(() => {
-          if (!document.getElementById("npcDialogueBox")) {
-            clearInterval(waitMerchant);
-            const npcId = `${levelDlg}_${this.game.player.party}`;
-            setTimeout(() => this.showNpcDialogue(npcId), 500);
-          }
-        }, 400);
-      }
+      // 이 인스턴스가 이미 교체된 뒤라면(예: 대화 체인 대기 중 다른 세이브 불러오기 등)
+      // 오래된 타이머가 뒤늦게 발동해 새 마을 화면에 대화가 겹쳐 뜨는 것을 방지
+      if (this._destroyed) return;
+      this._dispatchTownDialogue({ fromBattle, fromFlee, fromLoad, levelDlg, questDlg });
     }, 600);
+
+    // 진행 중인 대화 체인이 모두 끝나면 기본 대기 대사("이제 어디로 갈까?")를 표시
+    this._watchIdleBubbleReady();
+  }
+
+  // ── 마을 진입 시 상황별 대사 분기 (async) ───────────────
+  // 귀환 상황(전투/도망/불러오기)에 맞는 상인 대사를 띄우고, 이어서
+  // 퀘스트 완료 보상 대사 / 레벨업 동료 반응 / 공주 깜짝 방문 중 하나를 연결한다.
+  // 예전엔 각 단계를 setInterval 폴링으로 이었으나, 이제 await 로 순차 실행.
+  async _dispatchTownDialogue({ fromBattle, fromFlee, fromLoad, levelDlg, questDlg }) {
+    // ── 첫 마을 입장 오프닝 스토리 체인 ──
+    // fromLoad(세이브 불러오기)인 경우엔 절대 인트로를 재생하지 않는다.
+    // 불러오기 했다는 건 이미 플레이한 적이 있다는 뜻이므로, 혹시 세이브에
+    // introChainDone 이 빠져 있어도(구버전·인트로 도중 저장 등) 인트로가
+    // 다시 나오지 않도록 막고, 동시에 플래그를 올바르게 보정해 저장해 둔다.
+    if (fromLoad && !this.game.player.introChainDone) {
+      this.game.player.introChainDone = true;
+      this.game.player.metVillageChief = true;
+      this.game.player.introDepartureDone = true;
+      this.game.saveManager?.autoSave?.(this.game);
+    }
+
+    if (!this.game.player.introChainDone && !fromBattle && !fromFlee && !fromLoad) {
+      this.game.player.introChainDone = true;
+      // 인트로 시작 플래그를 즉시 저장 — 이렇게 안 하면 마을 진입 시점의
+      // 자동저장(introChainDone=false)이 남아, 그 세이브를 불러올 때 인트로가 또 재생됨
+      this.game.saveManager?.autoSave?.(this.game);
+      this._playIntroChain();
+      return;
+    }
+
+    // ① 상인 귀환 대사
+    let greeting = "merchant";
+    if (fromFlee)        greeting = "merchant_after_flee";
+    else if (fromBattle) greeting = "merchant_after_battle";
+    else if (fromLoad)   greeting = "merchant_welcome_back";
+    await this.npcDialogueAsync(greeting);
+
+    // ② 퀘스트 완료 → 의뢰인 보상 대사
+    if (questDlg) {
+      await this._delay(500);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync(questDlg);
+    }
+    // ③ 레벨업 동료 반응 (퀘스트 완료가 없을 때)
+    else if (levelDlg && this.game.player?.party) {
+      await this._delay(500);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync(`${levelDlg}_${this.game.player.party}`);
+    }
+    // ④ 그 외 평상시 귀환 — 첫 만남 이후부터 공주가 종종(약 35%) 들러 다정하게 다시 한번 당부
+    else if (this.game.player?.metVillageChief && Math.random() < 0.35) {
+      await this._delay(500);
+      if (this._destroyed) return;
+      this._showPrincessReminder();
+    }
   }
 
   // ── 첫 마을 입장 오프닝 스토리 체인 ──────────────────
-  _playIntroChain() {
+  async _playIntroChain() {
     const p = this.game.player;
+    this.game._introChainActive = true; // 출석 보상 등이 체인 중간에 끼어들지 않도록 표시
 
     // ① 주인공 독백: 마을 상태를 보고 받은 첫 인상
-    this._showSelfDialogue("self_intro_town", [
+    await this.selfDialogueAsync("self_intro_town", [
       "...성 안 내부가 공격을 받았나봐.",
       "여기저기 무너진 건물들과 불안에 떠는 사람들이 보이는군.",
       "일단 상황을 좀 알아봐야겠다.",
-    ], () => {
-      // ② 상인 대화 (기존 첫 입장 대사 재사용)
-      this.showNpcDialogue("merchant");
-      const waitMerchant = setInterval(() => {
-        if (!document.getElementById("npcDialogueBox")) {
-          clearInterval(waitMerchant);
+    ]);
 
-          // ③ 주인공 독백: 상인 말에 대한 반응
-          setTimeout(() => {
-            this._showSelfDialogue("self_after_merchant", [
-              "네, 알겠습니다. 그럼 공주님과 대화를 해볼게요!",
-              "공주님이라면 이 마을의 사정을 더 잘 알고 계시겠지.",
-            ], () => {
-              // ④ 공주(이장) 첫 만남 대화
-              p.metVillageChief = true;
-              this.showNpcDialogue("village_chief");
-              const waitPrincess = setInterval(() => {
-                if (!document.getElementById("npcDialogueBox")) {
-                  clearInterval(waitPrincess);
+    // ② 상인 대화 (기존 첫 입장 대사 재사용)
+    await this.npcDialogueAsync("merchant");
+    await this._delay(500);
 
-                  // ⑤ 주인공 독백: 동료 모집 결심
-                  setTimeout(() => {
-                    this._showSelfDialogue("self_before_party", [
-                      "그럼... 함께할 동료를 구해볼까?",
-                      "혼자서는 마왕에게 닿을 수 없으니까. 듬직한 동료가 필요해.",
-                    ], () => {
-                      // ⑥ 동료 모집 버튼 자동 클릭
-                      p.introPendingEquipPrompt = true; // 합류 대화 종료 후 장비 안내 트리거
-                      setTimeout(() => this._openPartyModal(), 400);
-                    });
-                  }, 400);
-                }
-              }, 300);
-            });
-          }, 500);
-        }
-      }, 300);
-    });
+    // ③ 주인공 독백: 상인 말에 대한 반응
+    await this.selfDialogueAsync("self_after_merchant", [
+      "네, 알겠습니다. 그럼 공주님과 대화를 해볼게요!",
+      "공주님이라면 이 마을의 사정을 더 잘 알고 계시겠지.",
+    ]);
+
+    // ④ 공주(이장) 첫 만남 대화
+    p.metVillageChief = true;
+    await this.npcDialogueAsync("village_chief");
+    await this._delay(400);
+    // 공주까지 만난 시점의 진행상황을 저장 (이후 동료 모집창은 별도 흐름)
+    this.game.saveManager?.autoSave?.(this.game);
+
+    // ⑤ 주인공 독백: 동료 모집 결심
+    await this.selfDialogueAsync("self_before_party", [
+      "그럼... 함께할 동료를 구해볼까?",
+      "혼자서는 마왕에게 닿을 수 없으니까. 듬직한 동료가 필요해.",
+    ]);
+
+    // ⑥ 동료 모집 모달 자동 오픈
+    p.introPendingEquipPrompt = true; // 합류 대화 종료 후 장비 안내 트리거
+    this.game._introChainActive = false;
+    await this._delay(400);
+    if (!this._destroyed) this._openPartyModal();
   }
 
   // ── 합류 직후 장비 안내 체인 ──────────────────────────
-  _playEquipPromptChain() {
-    this._showSelfDialogue("self_equip_prompt", [
+  async _playEquipPromptChain() {
+    await this.selfDialogueAsync("self_equip_prompt", [
       "이제 장비를 맞춘 다음, 성 밖에 마물부터 정리해보자.",
       "상점에서 쓸만한 무기와 방어구를 사서 미리 장착해두는 게 좋겠어.",
       "🛒 상점/인벤을 한번 둘러볼까.",
-    ], () => {
-      // 대화 종료 후 상점/인벤 오버레이 자동 오픈
-      setTimeout(() => {
-        const ov = document.getElementById("shopInvenOverlay");
-        if (ov) {
-          ov.style.display = "block";
-          this._refreshShopOverlay();
-          ["townCharSlot1","townCharSlot2","townCharSlot3"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerHTML = "";
-          });
-        }
-      }, 300);
-    });
+    ]);
+    // 대화 종료 후 상점/인벤 오버레이 자동 오픈
+    await this._delay(300);
+    if (this._destroyed) return;
+    const ov = document.getElementById("shopInvenOverlay");
+    if (ov) {
+      ov.style.display = "block";
+      this._refreshShopOverlay();
+      ["townCharSlot1","townCharSlot2","townCharSlot3"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = "";
+      });
+    }
   }
 
   _injectLayoutCSS() {
@@ -185,6 +216,8 @@ class TownScene {
       "#shopInvenOverlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.9);overflow-y:auto;padding:20px;}",
       ".shop-inven-inner{max-width:680px;margin:0 auto;}",
       ".shop-inven-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid #3a2028;padding-bottom:12px;font-size:1rem;font-weight:700;color:var(--gold2);}",
+      "#townIdleBubble{position:fixed;left:50%;bottom:180px;transform:translateX(-50%) translateY(6px);z-index:40;background:rgba(10,4,8,.88);border:1px solid var(--border2);border-radius:20px;padding:10px 22px;font-size:.8rem;color:var(--gold2);white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .25s ease,transform .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.5);}",
+      "#townIdleBubble.tib-show{opacity:1;transform:translateX(-50%) translateY(0);}",
     ];
     s.textContent = rules.join(" ");
     document.head.appendChild(s);
@@ -241,6 +274,9 @@ class TownScene {
     </div>
   </div>
 
+  <!-- 주인공 대기 대사 (말풍선) -->
+  <div id="townIdleBubble">이제 어디로 갈까?</div>
+
   <!-- 숨김 데이터 (기능 유지용) -->
   <div id="townHiddenData">
     <span id="tnQuestProg"></span>
@@ -276,7 +312,13 @@ class TownScene {
       <div id="tnCompEquip2" style="display:none;padding:14px;background:rgba(255,255,255,.04);border:1px solid #2a1428;border-radius:6px;margin-bottom:16px;">
         <div id="tnCompEquipName2" style="font-size:.78rem;color:var(--gold);font-weight:700;margin-bottom:6px;"></div>
         <div style="font-size:.75rem;color:var(--text-dim);">
-          무기: <span id="tnCompWeapon2">없음</span> &nbsp;|&nbsp; 갑옷: <span id="tnCompArmor2">없음</span>
+          무기: <span id="tnCompWeapon2">없음</span> &nbsp;|&nbsp; 투구: <span id="tnCompHelmet2">없음</span> &nbsp;|&nbsp; 갑옷: <span id="tnCompArmor2">없음</span>
+        </div>
+      </div>
+      <div id="tnComp2Equip2" style="display:none;padding:14px;background:rgba(255,255,255,.04);border:1px solid #3a1838;border-radius:6px;margin-bottom:16px;">
+        <div id="tnComp2EquipName2" style="font-size:.78rem;color:#cc88ff;font-weight:700;margin-bottom:6px;"></div>
+        <div style="font-size:.75rem;color:var(--text-dim);">
+          무기: <span id="tnComp2Weapon2">없음</span> &nbsp;|&nbsp; 투구: <span id="tnComp2Helmet2">없음</span> &nbsp;|&nbsp; 갑옷: <span id="tnComp2Armor2">없음</span>
         </div>
       </div>
       <div style="margin-bottom:16px;">
@@ -492,6 +534,54 @@ class TownScene {
     <button id="tnCloseParty">닫기</button>
   </div>
 </div>
+
+<!-- 여관 모달 -->
+<div id="tnInnModal" class="skill-modal" style="display:none;">
+  <div class="skill-box" style="max-width:380px;text-align:center;">
+    <h2>🏨 여관</h2>
+    <p style="font-size:.78rem;color:var(--text-dim);line-height:1.7;margin-bottom:18px;">
+      따뜻한 침대와 술 한 잔이 기다리는 곳.<br/>푹 쉬어가거나, 동료와 카드 한 판 어떨까요?
+    </p>
+    <button id="tnInnRest">🛏 휴식하기 (HP·동료 회복)</button>
+    <button id="tnInnCardGame">🃏 카드 게임</button>
+    <button id="tnCloseInn">닫기</button>
+  </div>
+</div>
+
+<!-- 카드 게임 모달 -->
+<div id="cgModal" class="skill-modal" style="display:none;z-index:8200;">
+  <div class="skill-box cg-box">
+    <button id="cgCloseX" class="cg-close-x" title="닫기">✕</button>
+    <h2>🃏 카드 게임 — 하이카드</h2>
+    <div id="cgOpponentInfo" class="cg-opponent"></div>
+    <div class="cg-round-info">
+      <span id="cgRoundLabel">라운드 1 / 3</span>
+      <span id="cgScoreLabel">승 0 · 무 0 · 패 0</span>
+    </div>
+    <div class="cg-table">
+      <div class="cg-slot">
+        <div class="cg-slot-label">나</div>
+        <div id="cgPlayerCard" class="cg-card cg-facedown">🂠</div>
+      </div>
+      <div class="cg-vs">VS</div>
+      <div class="cg-slot">
+        <div class="cg-slot-label" id="cgOppLabel">동료</div>
+        <div id="cgOppCard" class="cg-card cg-facedown">🂠</div>
+      </div>
+    </div>
+    <div id="cgResultMsg" class="cg-result-msg">카드를 뽑아 승부를 시작하세요!</div>
+    <div id="cgFinalMsg" class="cg-final-msg" style="display:none;"></div>
+    <div id="cgActiveButtons" class="cg-btn-row">
+      <button id="cgDrawBtn" class="cg-btn">🎴 카드 뽑기</button>
+      <button id="cgGiveUpBtn" class="cg-btn cg-btn-danger">🚪 포기하기</button>
+    </div>
+    <div id="cgFinishedButtons" class="cg-btn-row" style="display:none;">
+      <button id="cgPlayAgainBtn" class="cg-btn">🔄 다시 하기</button>
+      <button id="cgCloseBtn" class="cg-btn">닫기</button>
+    </div>
+  </div>
+</div>
+
 `;
   }
 
@@ -508,23 +598,23 @@ class TownScene {
           "이제 출발하자!",
         ], () => g.goToDungeon("outside"));
       } else {
-        g.goToDungeon("outside");
+        this._confirmDeparture("outside");
       }
     });
-    q("tn-forest")  ?.addEventListener("click", () => g.goToDungeon("forest"));
-    q("tn-dungeon") ?.addEventListener("click", () => g.goToDungeon("normal"));
+    q("tn-forest")  ?.addEventListener("click", () => this._confirmDeparture("forest"));
+    q("tn-dungeon") ?.addEventListener("click", () => this._confirmDeparture("normal"));
     q("tn-abyss")   ?.addEventListener("click", () => {
       if (!g.player.abyssUnlocked) {
         g.showNarrative("🔒 일반 던전 수호자를 처치하면 해금됩니다.", 3000);
         return;
       }
-      g.goToDungeon("abyss");
+      this._confirmDeparture("abyss");
     });
     q("tn-party")  ?.addEventListener("click", () => this._openPartyModal());
     q("tn-quest")  ?.addEventListener("click", () => this._openQuestModal());
     q("tn-skill")  ?.addEventListener("click", () => this._openSkillModal());
     q("tn-smith")  ?.addEventListener("click", () => this._openSmithModal());
-    q("tn-inn")    ?.addEventListener("click", () => g.restAtInn());
+    q("tn-inn")    ?.addEventListener("click", () => this._openInnModal());
     q("tn-bank")   ?.addEventListener("click", () => this._openBankScreen());
     q("tn-bond")   ?.addEventListener("click", () => g.showPartyStory());
     q("tn-guide")  ?.addEventListener("click", () => this._openGuideQuestModal());
@@ -561,6 +651,18 @@ class TownScene {
     q("tnCloseSmith") ?.addEventListener("click", () => q("tnSmithModal")  && (q("tnSmithModal").style.display="none"));
     q("tnCloseParty") ?.addEventListener("click", () => q("tnPartyModal")  && (q("tnPartyModal").style.display="none"));
 
+    // 여관 모달
+    q("tnInnRest")     ?.addEventListener("click", () => { q("tnInnModal").style.display = "none"; g.restAtInn(); });
+    q("tnInnCardGame") ?.addEventListener("click", () => this._openCardGame());
+    q("tnCloseInn")    ?.addEventListener("click", () => { q("tnInnModal").style.display = "none"; });
+
+    // 카드 게임 모달
+    q("cgDrawBtn")      ?.addEventListener("click", () => this._cgDrawRound());
+    q("cgGiveUpBtn")    ?.addEventListener("click", () => this._cgGiveUp());
+    q("cgPlayAgainBtn") ?.addEventListener("click", () => this._cgPlayAgain());
+    q("cgCloseBtn")     ?.addEventListener("click", () => this._closeCardGameModal());
+    q("cgCloseX")       ?.addEventListener("click", () => this._closeCardGameModal());
+
     // 스킬 탭
     q("tnTabActive") ?.addEventListener("click", () => this._switchSkillTab("active"));
     q("tnTabPassive")?.addEventListener("click", () => this._switchSkillTab("passive"));
@@ -591,7 +693,7 @@ class TownScene {
     rare:"#4898d8", epic:"#bb66ff", legend:"#d8a820"
   };
   const fmtEq = (item) => item
-    ? `<span style="color:${gradeColor[item.class]||"#b8a888"}">+${item.enhance||0} ${item.name}</span>`
+    ? wrapItemIconText(item, `<span style="color:${gradeColor[item.class]||"#b8a888"}">+${item.enhance||0} ${item.name}</span>`, 18)
     : `<span style="color:#504040;">없음</span>`;
 
   const weaponEl = q("tnWeapon");
@@ -632,17 +734,32 @@ class TownScene {
   _syncShopOverlay() {
     const p = this.game.player;
     const setText = (id, v) => { const e = document.getElementById(id); if(e) e.innerText = v; };
+    const setItemHTML = (id, item) => {
+      const e = document.getElementById(id);
+      if (!e) return;
+      e.innerHTML = item ? wrapItemIconText(item, `<span>${item.name}</span>`, 16) : "없음";
+    };
     const eq = p.equipment || {};
-    setText("tnWeapon2", eq.weapon?.name || "없음");
-    setText("tnHelmet2", eq.helmet?.name || "없음");
-    setText("tnArmor2",  eq.armor?.name  || "없음");
+    setItemHTML("tnWeapon2", eq.weapon);
+    setItemHTML("tnHelmet2", eq.helmet);
+    setItemHTML("tnArmor2",  eq.armor);
     const compEq2 = document.getElementById("tnCompEquip2");
-    if (p.party && p.partyEquip) {
+    if (p.party && p.partyEquipment) {
       if (compEq2) compEq2.style.display = "block";
       setText("tnCompEquipName2", "⚔ 동료 장착 장비");
-      setText("tnCompWeapon2", p.partyEquip?.weapon?.name || "없음");
-      setText("tnCompArmor2",  p.partyEquip?.armor?.name  || "없음");
+      setItemHTML("tnCompWeapon2", p.partyEquipment?.weapon);
+      setItemHTML("tnCompHelmet2", p.partyEquipment?.helmet);
+      setItemHTML("tnCompArmor2",  p.partyEquipment?.armor);
     } else if (compEq2) compEq2.style.display = "none";
+
+    const comp2Eq = document.getElementById("tnComp2Equip2");
+    if (p.party2 && p.party2Equipment) {
+      if (comp2Eq) comp2Eq.style.display = "block";
+      setText("tnComp2EquipName2", "⚔ 2번 동료 장착 장비");
+      setItemHTML("tnComp2Weapon2", p.party2Equipment?.weapon);
+      setItemHTML("tnComp2Helmet2", p.party2Equipment?.helmet);
+      setItemHTML("tnComp2Armor2",  p.party2Equipment?.armor);
+    } else if (comp2Eq) comp2Eq.style.display = "none";
   }
 
   _refreshShopOverlay() {
@@ -674,7 +791,7 @@ class TownScene {
 
   // ── fmtItem: 동료 장비 표시용 ──
   const fmtItem = (item) => item
-    ? `<span style="color:${grade[item.class]?.color||"#b8a888"}">+${item.enhance||0} ${item.name}</span>`
+    ? wrapItemIconText(item, `<span style="color:${grade[item.class]?.color||"#b8a888"}">+${item.enhance||0} ${item.name}</span>`, 18)
     : `<span style="color:#504040;">없음</span>`;
 
   // ── 동료 장비 섹션 갱신 ──
@@ -712,14 +829,26 @@ class TownScene {
         : `DEF+${item.defense}`;
 
     row.innerHTML = `
-      <span style="width:6px;height:6px;border-radius:50%;background:${g.color};flex-shrink:0;display:inline-block;"></span>
+      <span class="item-icon">${getItemIconSVG(item, 24)}</span>
       <span class="inv-name" style="color:${g.color};flex:1;font-size:.66rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         +${item.enhance||0} ${item.name}
         <span style="color:var(--text-dim);font-size:.6rem;">${stat}</span>
       </span>`;
 
-    // 플레이어 장착
-    if (item.type !== "potion") {
+    // 물약 사용 / 장비 장착
+    if (item.type === "potion") {
+      const use = document.createElement("button");
+      use.className = "inv-btn";
+      use.textContent = "사용";
+      use.title = "물약 사용 (HP 회복)";
+      use.style.cssText = "border-color:#44aa44;color:#88ee88;";
+      use.addEventListener("click", () => {
+        this.game.itemManager.usePotion(this.game, idx);
+        this._refreshShopOverlay?.() || this.render();
+        this._refreshGuideQuestIfOpen?.();
+      });
+      row.appendChild(use);
+    } else {
       const eq = document.createElement("button");
       eq.className = "inv-btn";
       eq.textContent = "장착";
@@ -735,13 +864,27 @@ class TownScene {
         const eqComp = document.createElement("button");
         eqComp.className = "inv-btn";
         eqComp.textContent = "동료";
-        eqComp.title = "동료 장착";
+        eqComp.title = "1번 동료 장착";
         eqComp.style.cssText = "border-color:#4444cc;color:#8888ff;";
         eqComp.addEventListener("click", () => {
-          this.game.itemManager.equip(this.game, idx, true);
+          this.game.itemManager.equip(this.game, idx, "party");
           this._refreshShopOverlay?.() || this.render();
         });
         row.appendChild(eqComp);
+      }
+
+      // 2번 동료 장착 (2번 동료가 있을 때만)
+      if (p.party2) {
+        const eqComp2 = document.createElement("button");
+        eqComp2.className = "inv-btn";
+        eqComp2.textContent = "동료2";
+        eqComp2.title = "2번 동료 장착";
+        eqComp2.style.cssText = "border-color:#9944cc;color:#cc88ff;";
+        eqComp2.addEventListener("click", () => {
+          this.game.itemManager.equip(this.game, idx, "party2");
+          this._refreshShopOverlay?.() || this.render();
+        });
+        row.appendChild(eqComp2);
       }
     }
 
@@ -800,6 +943,7 @@ class TownScene {
         : "";
 
       btn.innerHTML = `
+        <span class="item-icon">${getItemIconSVG(item, 24)}</span>
         <span class="item-name">${item.name}</span>
         ${classBadge}
         <span class="item-stat">${statStr}</span>
@@ -807,6 +951,9 @@ class TownScene {
       btn.addEventListener("click", () => {
         this.game.itemManager.buyShop(this.game, idx);
         this._refreshShopOverlay?.() || this.render();
+        // 물약 등 구매가 공략/일일 퀘스트 조건에 영향 줄 수 있으므로,
+        // 퀘스트 모달이 열려 있으면 즉시 다시 그려서 체크 상태를 갱신
+        this._refreshGuideQuestIfOpen?.();
       });
       c.appendChild(btn);
     });
@@ -854,13 +1001,9 @@ class TownScene {
           this.render();
           // 의뢰인 수락 대화 표시 후 던전으로
           if (q.giverNpc && this.showNpcDialogue) {
-            this.showNpcDialogue(q.giverNpc);
-            const waitDlg = setInterval(() => {
-              if (!document.getElementById("npcDialogueBox")) {
-                clearInterval(waitDlg);
-                setTimeout(() => this.game.goToDungeon("normal"), 400);
-              }
-            }, 300);
+            this.showNpcDialogue(q.giverNpc, () => {
+              setTimeout(() => this.game.goToDungeon("normal"), 400);
+            });
           } else {
             this.game.goToDungeon("normal");
           }
@@ -984,7 +1127,7 @@ class TownScene {
       BLACKSMITH_WEAPONS.forEach(w => {
         const btn = document.createElement("button");
         btn.className = "shop-btn";
-        btn.textContent = `${w.name} ${w.cost}G`;
+        btn.innerHTML = `${getItemIconSVG(w, 22)}<span class="item-name">${w.name}</span><span class="item-cost">${w.cost}G</span>`;
         btn.addEventListener("click", () => {
           if (p.money < w.cost) { this.game.log("💰 골드 부족"); return; }
           p.money -= w.cost;
@@ -1005,7 +1148,7 @@ class TownScene {
         const cost = (item.enhance + 1) * 100;
         const btn = document.createElement("button");
         btn.className = "shop-btn";
-        btn.textContent = `+${item.enhance} ${item.name} 강화 (${cost}G)`;
+        btn.innerHTML = `${getItemIconSVG(item, 22)}<span class="item-name">+${item.enhance} ${item.name}</span><span class="item-cost">강화 ${cost}G</span>`;
         btn.addEventListener("click", () => {
           this.game.itemManager.enhance(this.game, idx);
           this._openSmithModal(); // 갱신
@@ -1021,7 +1164,7 @@ class TownScene {
         const price = 50 + (item.enhance || 0) * 20;
         const btn = document.createElement("button");
         btn.className = "shop-btn";
-        btn.textContent = `${item.name} 판매 ${price}G`;
+        btn.innerHTML = `${getItemIconSVG(item, 22)}<span class="item-name">${item.name}</span><span class="item-cost">판매 ${price}G</span>`;
         btn.addEventListener("click", () => {
           this.game.itemManager.sellToBlacksmith(this.game, idx, price);
           this._openSmithModal();
@@ -1188,27 +1331,18 @@ TownScene.prototype._investTown = function(amt) {
         // 번영 완료 → 이장 대사 후 왕 등장
         if (!p.chiefInvestCompleteDone) {
           p.chiefInvestCompleteDone = true;
-          this.showNpcDialogue("village_chief_invest_complete");
-          // 이장 대화 끝나면 왕 등장
-          const waitKing = setInterval(() => {
-            if (!document.getElementById("npcDialogueBox")) {
-              clearInterval(waitKing);
-              setTimeout(() => {
-                this.showNpcDialogue("king");
-                // 왕 대화 후 칭호 수여
-                const waitTitle = setInterval(() => {
-                  if (!document.getElementById("npcDialogueBox")) {
-                    clearInterval(waitTitle);
-                    if (!p.dukeTitle) {
-                      p.dukeTitle = true;
-                      this.game.log("👑 공작 작위를 수여받았습니다!");
-                      this.game.showNarrative("👑 공작 작위 수여\n\n왕실의 인장으로 공작이 되었습니다!\n이제 왕국과 한 가족입니다.", 4000);
-                    }
-                  }
-                }, 400);
-              }, 800);
-            }
-          }, 400);
+          // 이장 → (잠시 후) 왕 → 칭호 수여 순으로 연결 (폴링 대신 onClose 콜백)
+          this.showNpcDialogue("village_chief_invest_complete", () => {
+            setTimeout(() => {
+              this.showNpcDialogue("king", () => {
+                if (!p.dukeTitle) {
+                  p.dukeTitle = true;
+                  this.game.log("👑 공작 작위를 수여받았습니다!");
+                  this.game.showNarrative("👑 공작 작위 수여\n\n왕실의 인장으로 공작이 되었습니다!\n이제 왕국과 한 가족입니다.", 4000);
+                }
+              });
+            }, 800);
+          });
         }
       }
     }, 2600); // 발전 내러티브 후에 표시
@@ -1350,6 +1484,7 @@ TownScene.prototype._doLoad = function(idx) {
   const data = sm.load(idx);
   if (data) {
     this.game.player = sm.hydrate(data.player);
+    this.game._hadLoad = true;
     this.game._toTown();
     this.game.log(`📂 슬롯 ${idx+1} 불러오기 완료!`);
   } else {
@@ -1371,6 +1506,8 @@ const NPC_DATA = {
     dialogues:["수고하셨습니다, 용사님! 무사히 돌아오셨군요. 정말 다행이에요. 😊","다음 전투까지 푹 쉬세요! 저도 좋은 물건 준비해 두겠습니다. 💰"]},
   merchant_after_flee:{name:"상인 카를로",nameColor:"#44dd88",portrait:"images/sd_merchant.png",
     dialogues:["잘 돌아오셨습니다, 용사님! 무사히 살아 돌아오셨으니 그것만으로도 다행이에요. 😅","서두를 필요 없어요. 여관에서 충분히 쉬시고, 장비도 정비해 두세요. 제가 도와드릴게요! 🛒","준비가 됐다 싶으면 다시 도전하시죠! 용사님이라면 반드시 해낼 수 있을 거예요. 💪"]},
+  merchant_welcome_back:{name:"상인 카를로",nameColor:"#44dd88",portrait:"images/sd_merchant.png",
+    dialogues:["오, 돌아오셨네요! 다시 뵙게 되어 반갑습니다, 용사님. 😊","그동안 별일 없으셨죠? 마왕 토벌은 차근차근 준비하시면 됩니다.","필요한 게 있으면 언제든 말씀하세요. 좋은 물건 준비해 두었습니다! 🛒"]},
   village_chief:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
     dialogues:[
       "당신이 전설의 용사군요. 저는 에드워드 왕국의 공주 실비아입니다.",
@@ -1679,6 +1816,26 @@ const NPC_DATA = {
       "왕실의 인장이에요. 이걸 가지고 있으면 왕국의 모든 힘이 당신과 함께할 거예요.",
       "마왕을 쓰러뜨리고 반드시 제게 돌아와 주세요. 저는... 여기서 당신을 기다리고 있을게요. ❤",
     ]},
+
+  // ── 평상시 마을 귀환 시, 상인 인사 후 종종 등장하는 공주의 다정한 당부 ──
+  princess_reminder_a:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "용사님, 잠깐 들렀어요. 잘 지내고 계신가요? 😊",
+      "마왕의 위협은 여전하지만... 당신이 있어 마음이 한결 놓여요.",
+      "그래도 다시 한번 부탁드릴게요. 📋 공략 퀘스트, 무리하지 않게 천천히라도 꼭 살펴봐 주세요!",
+    ]},
+  princess_reminder_b:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "아, 용사님! 마침 잘 만났네요. 😊",
+      "마을 사람들이 요즘 부쩍 용사님 얘기를 많이 해요. 다들 큰 힘이 되고 있다고 그러더라고요.",
+      "저도 다시 한번... 부탁드리고 싶어요. 끝까지 함께해 주실 거죠?",
+    ]},
+  princess_reminder_c:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "용사님, 여기서 또 뵙네요! 사실은... 일부러 한 번 와봤어요. 😳",
+      "괜한 걱정인 줄 알지만, 자꾸 신경이 쓰여서요.",
+      "무리하지 마세요. 그래도... 다시 한번, 저희를 잘 부탁드려요.",
+    ]},
 };
 
 (function(){
@@ -1687,6 +1844,64 @@ const NPC_DATA = {
   s.textContent=`#npcDialogueBox{position:fixed;bottom:0;left:0;right:0;z-index:8000;display:flex;justify-content:center;padding:0 0 18px;pointer-events:none;animation:npcFadeIn .35s ease}@keyframes npcFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}.npc-wrap{pointer-events:all;width:min(740px,96vw);background:linear-gradient(170deg,#0d0808 80%,#1a0a10);border:2px solid #6b3a20;border-radius:4px;box-shadow:0 0 0 1px #3a1a0a,0 8px 40px rgba(0,0,0,.92);cursor:pointer}.npc-namebar{padding:7px 16px;background:rgba(0,0,0,.6);border-bottom:1px solid #4a2510;font-size:.83rem;font-weight:700;letter-spacing:.14em}.npc-body{display:flex;align-items:flex-start;gap:16px;padding:16px;min-height:108px}.npc-portrait{width:96px;height:96px;flex-shrink:0;object-fit:contain;border:1px solid #4a2510;background:#080404;border-radius:3px}.npc-textarea{flex:1;display:flex;flex-direction:column;justify-content:center}.npc-text{color:#e8d8b8;font-size:.92rem;line-height:1.85;letter-spacing:.03em;min-height:56px}.npc-footer{display:flex;justify-content:space-between;align-items:center;padding:7px 16px 10px;border-top:1px solid #2a1208}.npc-progress{font-size:.65rem;color:#6a4828}.npc-hint{font-size:.72rem;color:#aa7744;animation:npcBlink 1.1s infinite}@keyframes npcBlink{0%,100%{opacity:1}50%{opacity:.15}}.npc-closebtn{background:transparent;border:1px solid #4a2510;color:#aa7744;padding:4px 14px;cursor:pointer;font-size:.72rem;font-family:inherit;border-radius:2px}.npc-closebtn:hover{background:#2a1008;color:#ffcc66}`;
   document.head.appendChild(s);
 })();
+// ── 대기 대사 말풍선 ("이제 어디로 갈까?") ──────────────
+TownScene.prototype._showIdleBubble = function(text) {
+  const el = document.getElementById("townIdleBubble");
+  if (!el) return;
+  if (text) el.textContent = text;
+  el.classList.add("tib-show");
+};
+
+TownScene.prototype._hideIdleBubble = function() {
+  const el = document.getElementById("townIdleBubble");
+  if (el) el.classList.remove("tib-show");
+};
+
+// 진입/귀환 시 재생되는 대화 체인이 모두 끝났는지 감지한 뒤
+// 기본 대기 대사를 표시한다 (대화창이 사라진 채로 안정되면 종료로 판단).
+//
+// 참고: 여기는 의도적으로 폴링을 유지한다. 다른 대화들은 "정해진 순서"라
+// onClose 콜백으로 이을 수 있지만, 이 감시는 "지금 어떤 체인이 돌고 있는지,
+// 대화가 몇 개나 남았는지 모르는" 불확정 상태를 기다리는 것이라 폴링이 더 맞다.
+// 대화창이 연속 3회(약 1.2초) 비어 있어야 종료로 판단해 체인 중간 틈에서 오발동 방지.
+TownScene.prototype._watchIdleBubbleReady = function() {
+  let stableTicks = 0;
+  const check = setInterval(() => {
+    if (this._destroyed) { clearInterval(check); return; }
+    if (this.game._introChainActive || document.getElementById("npcDialogueBox")) {
+      stableTicks = 0;
+      return;
+    }
+    stableTicks++;
+    if (stableTicks >= 3) {
+      clearInterval(check);
+      this._showIdleBubble("이제 어디로 갈까?");
+    }
+  }, 400);
+};
+
+// 던전 출발 버튼 클릭 시 — "좋아! 여기로 가자!" 표시 후 잠시 뒤 사라지고 이동
+TownScene.prototype._confirmDeparture = function(dungeonType) {
+  this._showIdleBubble("좋아! 여기로 가자!");
+  setTimeout(() => {
+    this._hideIdleBubble();
+    this.game.goToDungeon(dungeonType);
+  }, 700);
+};
+
+// 평상시 마을 귀환 시 공주가 종종 들러 다정하게 다시 한번 당부하는 대사 (변주 랜덤 선택)
+TownScene.prototype._showPrincessReminder = function() {
+  const p = this.game.player;
+  const variants = ["princess_reminder_a", "princess_reminder_b", "princess_reminder_c"];
+  let pool = variants;
+  if (p?._lastPrincessReminder) {
+    pool = variants.filter(v => v !== p._lastPrincessReminder);
+  }
+  const key = pool[Math.floor(Math.random() * pool.length)];
+  if (p) p._lastPrincessReminder = key;
+  this.showNpcDialogue(key);
+};
+
 TownScene.prototype._showSelfDialogue = function(key, lines, onClose) {
   const p = this.game.player;
   const PLAYER_PORTRAIT = {
@@ -1703,20 +1918,40 @@ TownScene.prototype._showSelfDialogue = function(key, lines, onClose) {
     portrait: PLAYER_PORTRAIT[p?.type] || PLAYER_PORTRAIT.knight,
     dialogues: lines,
   };
-  this.showNpcDialogue(key);
-
-  if (onClose) {
-    const waitClose = setInterval(() => {
-      if (!document.getElementById("npcDialogueBox")) {
-        clearInterval(waitClose);
-        onClose();
-      }
-    }, 300);
-  }
+  // onClose 를 그대로 전달 — showNpcDialogue 가 닫힐 때 직접 호출(폴링 제거).
+  // 단, 이 인스턴스가 폐기되면 콜백을 실행하지 않아 끊긴 체인이 새 화면을 건드리지 않게 한다.
+  this.showNpcDialogue(key, onClose ? () => { if (!this._destroyed) onClose(); } : undefined);
 };
 
-TownScene.prototype.showNpcDialogue = function(npcId) {
-  const npc=NPC_DATA[npcId]; if(!npc)return;
+// ── 대화를 Promise 로 감싸는 헬퍼 ───────────────────────
+// 대화창이 완전히 닫히면 resolve. async/await 로 대화 체인을 위→아래로
+// 자연스럽게 작성할 수 있게 해준다. 인스턴스가 폐기되면 resolve 하지 않아
+// (await 가 영원히 멈춤) 끊긴 체인의 다음 단계가 실행되지 않는다.
+TownScene.prototype.npcDialogueAsync = function(npcId) {
+  return new Promise(resolve => {
+    this.showNpcDialogue(npcId, () => { if (!this._destroyed) resolve(); });
+  });
+};
+
+// 주인공 독백(self dialogue)을 Promise 로 감싼 버전
+TownScene.prototype.selfDialogueAsync = function(key, lines) {
+  return new Promise(resolve => {
+    this._showSelfDialogue(key, lines, () => resolve());
+  });
+};
+
+// 지정 시간(ms) 대기 — 인스턴스가 폐기되면 resolve 안 함
+TownScene.prototype._delay = function(ms) {
+  return new Promise(resolve => {
+    setTimeout(() => { if (!this._destroyed) resolve(); }, ms);
+  });
+};
+
+
+TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
+  const npc=NPC_DATA[npcId];
+  if(!npc){ if(onClose) onClose(); return; }  // NPC 데이터 없으면 즉시 콜백(체인 안 끊기게)
+  this._hideIdleBubble();
   document.getElementById("npcDialogueBox")?.remove();
 
   // ── NPC 전신 이미지 맵 (슬롯 표시용) ──
@@ -1793,6 +2028,9 @@ TownScene.prototype.showNpcDialogue = function(npcId) {
     princess_milestone_50:  "images/Silvia_front.png",
     princess_milestone_75:  "images/Silvia_front.png",
     princess_milestone_100: "images/Silvia_front.png",
+    princess_reminder_a:    "images/Silvia_front.png",
+    princess_reminder_b:    "images/Silvia_front.png",
+    princess_reminder_c:    "images/Silvia_front.png",
   };
 
   // ── 플레이어 이미지 맵 ──
@@ -1877,7 +2115,10 @@ TownScene.prototype.showNpcDialogue = function(npcId) {
   const advance=()=>{const line=npc.dialogues[lineIdx]||"";if(charIdx<line.length){clearTimeout(typeTimer);textEl.textContent=line;charIdx=line.length;updateUI();return;}if(!lastLine()){lineIdx++;typeLine();}else closeBox();};
 
   // ── 닫기: 슬롯을 원래 플레이어/동료로 복원 ──
+  let _closed = false;  // 중복 호출 방지 (클릭+키 동시 등)
   const closeBox=()=>{
+    if (_closed) return;
+    _closed = true;
     clearTimeout(typeTimer);
     box.style.transition="opacity .25s";
     box.style.opacity="0";
@@ -1885,6 +2126,8 @@ TownScene.prototype.showNpcDialogue = function(npcId) {
       box.remove();
       // 슬롯 복원
       if (this._renderTownCharacters) this._renderTownCharacters();
+      // 대화가 완전히 닫힌 뒤 콜백 실행 — setInterval 폴링 대신 직접 호출
+      if (onClose) onClose();
     }, 270);
     document.removeEventListener("keydown",onKey);
   };
@@ -1909,21 +2152,14 @@ TownScene.prototype._talkToPrincess = function() {
   else if (aff >= 25)  npcId = "princess_talk_25";
   else                 npcId = "princess_talk_0";
 
-  this.showNpcDialogue(npcId);
-
-  // 하루 1회만 호감도 상승
+  // 하루 1회만 호감도 상승 — 대화가 끝나면 마일스톤 이벤트 체크
   if (p.princessTalkDate !== today) {
     p.princessTalkDate = today;
     p.princessAffinity = Math.min(100, aff + 3);
     this.game.log(`👸 공주 호감도 +3 (현재 ${p.princessAffinity})`);
-
-    // 마일스톤 이벤트 체크 (대화 종료 후)
-    const waitClose = setInterval(() => {
-      if (!document.getElementById("npcDialogueBox")) {
-        clearInterval(waitClose);
-        this._checkPrincessMilestone();
-      }
-    }, 300);
+    this.showNpcDialogue(npcId, () => this._checkPrincessMilestone());
+  } else {
+    this.showNpcDialogue(npcId);
   }
 };
 
@@ -1956,19 +2192,20 @@ TownScene.prototype._checkPrincessMilestone = function() {
   }
 };
 
+TownScene.prototype._refreshGuideQuestIfOpen = function() {
+  const modal = document.getElementById("guideQuestModal");
+  if (modal && modal.style.display !== "none") {
+    this._renderGuideQuestModal();
+  }
+};
+
 TownScene.prototype._openGuideQuestModal = function() {
-  // 이장 미만남 → 이장 대화 먼저
+  // 이장 미만남 → 이장 대화 먼저, 끝나면 모달 열기
   if (!this.game.player.metVillageChief) {
     this.game.player.metVillageChief = true;
-    this.showNpcDialogue("village_chief");
-    // 대화 후 모달 열기
-    const orig = document.getElementById("npcDialogueBox");
-    const waitClose = setInterval(() => {
-      if (!document.getElementById("npcDialogueBox")) {
-        clearInterval(waitClose);
-        setTimeout(() => this._renderGuideQuestModal(), 400);
-      }
-    }, 300);
+    this.showNpcDialogue("village_chief", () => {
+      setTimeout(() => this._renderGuideQuestModal(), 400);
+    });
     return;
   }
   this._renderGuideQuestModal();
