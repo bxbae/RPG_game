@@ -209,6 +209,18 @@ class BattleScene {
       <div class="poke-hp-nums" id="bComp2HpVal">90/90</div>
       <div id="bComp2Affinity" style="color:#ff77aa;font-size:.6rem;text-align:right;margin-top:2px;">❤ 0</div>
     </div>
+    <div class="poke-companion-hud" id="bCompanionHud3" style="display:none;">
+      <div class="poke-hud-name" id="bComp3Name">동료3</div>
+      <div class="poke-hud-sub-name" id="bComp3Class">궁수</div>
+      <div class="poke-hud-row">
+        <div class="poke-hp-bar-wrap">
+          <div class="poke-hp-label">HP</div>
+          <div class="poke-hp-track"><div id="bComp3HpBar" class="poke-hp-fill companion-hp"></div></div>
+        </div>
+      </div>
+      <div class="poke-hp-nums" id="bComp3HpVal">90/90</div>
+      <div id="bComp3Affinity" style="color:#ff77aa;font-size:.6rem;text-align:right;margin-top:2px;">❤ 0</div>
+    </div>
   </div>
   <div class="player-level">Lv.<span id="bLevel">1</span></div>
   <div class="player-exp">EXP <span id="bExp">0</span>/<span id="bNextExp">100</span></div>
@@ -222,10 +234,16 @@ class BattleScene {
       transition:opacity 0.08s ease;z-index:5;"/>
   </div>
   <div class="poke-companion-sprite-wrap" id="bCompWrap" style="display:none;">
+    <div class="poke-passive-badge" id="bCompPassiveBadge" style="display:none;" title=""></div>
     <img id="bCompImg" class="poke-companion-sprite" src="" alt="동료"/>
   </div>
   <div class="poke-companion-sprite-wrap poke-companion2-sprite-wrap" id="bCompWrap2" style="display:none;">
+    <div class="poke-passive-badge" id="bComp2PassiveBadge" style="display:none;" title=""></div>
     <img id="bCompImg2" class="poke-companion-sprite" src="" alt="동료2"/>
+  </div>
+  <div class="poke-companion-sprite-wrap poke-companion3-sprite-wrap" id="bCompWrap3" style="display:none;">
+    <div class="poke-passive-badge" id="bComp3PassiveBadge" style="display:none;" title=""></div>
+    <img id="bCompImg3" class="poke-companion-sprite" src="" alt="동료3"/>
   </div>
   <div id="bLog" style="display:none;"></div>
   <div id="playerStatusIcons" style="position:absolute;left:6%;bottom:calc(min(21%,200px)+10px);z-index:6;display:flex;gap:3px;"></div>
@@ -242,6 +260,7 @@ class BattleScene {
     <button class="poke-cmd hero-ult-cmd" id="bHeroUlt" type="button">⚡ 궁극기 0%</button>
     <button class="poke-cmd ult-cmd" id="bPartyUlt" type="button">💫 동료 궁극기</button>
     <button class="poke-cmd ult-cmd" id="bParty2Ult" type="button" style="display:none;">💫 2번 동료 궁극기</button>
+    <button class="poke-cmd ult-cmd" id="bParty3Ult" type="button" style="display:none;">💫 3번 동료 궁극기</button>
     <button class="poke-cmd" id="bFlee"     type="button">🏃 도망</button>
   </div>
 </div>`;
@@ -268,9 +287,14 @@ class BattleScene {
       comp2Class: q("bComp2Class"), comp2HpBar: q("bComp2HpBar"),
       comp2HpVal: q("bComp2HpVal"), comp2Affinity: q("bComp2Affinity"),
       compWrap2: q("bCompWrap2"), compImg2: q("bCompImg2"),
+      companionHud3: q("bCompanionHud3"), comp3Name: q("bComp3Name"),
+      comp3Class: q("bComp3Class"), comp3HpBar: q("bComp3HpBar"),
+      comp3HpVal: q("bComp3HpVal"), comp3Affinity: q("bComp3Affinity"),
+      compWrap3: q("bCompWrap3"), compImg3: q("bCompImg3"),
       textLatest: q("bTextLatest"),
       btnAttack: q("bAttack"), btnHeal: q("bHeal"), btnJobSkill: q("bJobSkill"),
-      btnHeroUlt: q("bHeroUlt"), btnPartyUlt: q("bPartyUlt"), btnParty2Ult: q("bParty2Ult"), btnFlee: q("bFlee"),
+      btnHeroUlt: q("bHeroUlt"), btnPartyUlt: q("bPartyUlt"), btnParty2Ult: q("bParty2Ult"),
+      btnParty3Ult: q("bParty3Ult"), btnFlee: q("bFlee"),
       monsterStatus: q("monsterStatusIcons"), playerStatus: q("playerStatusIcons"),
       bossWarning: q("bBossWarning"),
     };
@@ -302,6 +326,14 @@ class BattleScene {
       if (aff < 30) { g.log(`💔 호감도 부족 (현재 ${aff}/30)`); return; }
       if ((p.cooldowns?.party2Ultimate || 0) > 0) { g.log(`⏳ 쿨타임 ${p.cooldowns.party2Ultimate}턴`); return; }
       g.battleManager.party2Ultimate(g);
+    });
+    this.el.btnParty3Ult?.addEventListener("click", () => {
+      const p = g.player;
+      if (!p.party3) { g.log("❌ 3번 동료가 없습니다"); return; }
+      const aff = p.affinity?.[p.party3] || 0;
+      if (aff < 30) { g.log(`💔 호감도 부족 (현재 ${aff}/30)`); return; }
+      if ((p.cooldowns?.party3Ultimate || 0) > 0) { g.log(`⏳ 쿨타임 ${p.cooldowns.party3Ultimate}턴`); return; }
+      g.battleManager.party3Ultimate(g);
     });
     this.el.btnFlee?.addEventListener("click", () => g.onFlee());
 
@@ -398,6 +430,13 @@ class BattleScene {
       console.log("[전투] 동료2 파티키:", p.party2, "뒷모습:", c2Src);
       if (c2Src && this.el.compImg2) this.el.compImg2.src = c2Src;
       if (this.el.compWrap2) this.el.compWrap2.style.display = "block";
+    }
+
+    if (p?.party3 && p.party3Hp > 0) {
+      const c3Src = COMPANION_BACK[p.party3] || "";
+      console.log("[전투] 동료3 파티키:", p.party3, "뒷모습:", c3Src);
+      if (c3Src && this.el.compImg3) this.el.compImg3.src = c3Src;
+      if (this.el.compWrap3) this.el.compWrap3.style.display = "block";
     }
 
     if (monster.isBoss) {
@@ -562,6 +601,50 @@ class BattleScene {
       }
     }
 
+    // 3번 동료 궁극기 버튼 — party3가 있을 때만 표시 (심연 전용)
+    if (this.el.btnParty3Ult) {
+      if (!p.party3) {
+        this.el.btnParty3Ult.style.display = "none";
+      } else {
+        this.el.btnParty3Ult.style.display = "";
+        const aff3      = p.affinity?.[p.party3] || 0;
+        const cd3       = p.cooldowns?.party3Ultimate || 0;
+        const hasParty3 = !!(p.party3 && p.party3Hp > 0);
+
+        if (!hasParty3) {
+          this.el.btnParty3Ult.disabled      = true;
+          this.el.btnParty3Ult.textContent   = "💫 3번 동료 전투불능";
+          this.el.btnParty3Ult.style.opacity = "0.4";
+          this.el.btnParty3Ult.style.color   = "#cc4444";
+          this.el.btnParty3Ult.style.borderColor = "#cc4444";
+        } else if (aff3 < 30) {
+          this.el.btnParty3Ult.disabled      = true;
+          this.el.btnParty3Ult.textContent   = `💫 3번 동료 궁극기 (❤${aff3}/30)`;
+          this.el.btnParty3Ult.style.opacity = "0.5";
+          this.el.btnParty3Ult.style.color   = "#888";
+          this.el.btnParty3Ult.style.borderColor = "";
+        } else if (cd3 > 0) {
+          this.el.btnParty3Ult.disabled      = true;
+          this.el.btnParty3Ult.textContent   = `💫 3번 동료 궁극기 (${cd3}턴)`;
+          this.el.btnParty3Ult.style.opacity = "0.6";
+          this.el.btnParty3Ult.style.color   = "";
+          this.el.btnParty3Ult.style.borderColor = "";
+        } else if (aff3 >= 100) {
+          this.el.btnParty3Ult.disabled      = false;
+          this.el.btnParty3Ult.textContent   = "🌟 3번 EX 궁극기 READY!";
+          this.el.btnParty3Ult.style.opacity = "1";
+          this.el.btnParty3Ult.style.color       = "#ffd700";
+          this.el.btnParty3Ult.style.borderColor = "#ffd700";
+        } else {
+          this.el.btnParty3Ult.disabled      = false;
+          this.el.btnParty3Ult.textContent   = `💫 3번 동료 궁극기 READY (❤${aff3})`;
+          this.el.btnParty3Ult.style.opacity = "1";
+          this.el.btnParty3Ult.style.color       = "#88ddff";
+          this.el.btnParty3Ult.style.borderColor = "#88ddff";
+        }
+      }
+    }
+
     // 동료 HUD
     const hasParty = !!(p.party && p.partyHp > 0);
     if (this.el.companionHud) this.el.companionHud.style.display = hasParty ? "block" : "none";
@@ -573,6 +656,7 @@ class BattleScene {
       this._bar ("compHpBar",    p.partyHp, p.partyMaxHp);
       this._text("compHpVal",    `${p.partyHp}/${p.partyMaxHp}`);
       this._text("compAffinity", `❤ ${p.affinity?.[p.party] || 0}`);
+      this._renderPassiveBadge("bCompPassiveBadge", p.companionPassives?.[p.party]);
     }
 
     // 동료2 HUD
@@ -586,6 +670,21 @@ class BattleScene {
       this._bar ("comp2HpBar",    p.party2Hp, p.party2MaxHp);
       this._text("comp2HpVal",    `${p.party2Hp}/${p.party2MaxHp}`);
       this._text("comp2Affinity", `❤ ${p.affinity?.[p.party2] || 0}`);
+      this._renderPassiveBadge("bComp2PassiveBadge", p.companionPassives?.[p.party2]);
+    }
+
+    // 동료3 HUD (심연 전용)
+    const hasParty3 = !!(p.party3 && p.party3Hp > 0);
+    if (this.el.companionHud3) this.el.companionHud3.style.display = hasParty3 ? "block" : "none";
+    if (this.el.compWrap3)     this.el.compWrap3.style.display     = hasParty3 ? "block" : "none";
+    if (hasParty3) {
+      const mem3 = PARTY_MEMBERS[p.party3];
+      this._text("comp3Name",     mem3?.name     || "동료3");
+      this._text("comp3Class",    mem3?.className || "");
+      this._bar ("comp3HpBar",    p.party3Hp, p.party3MaxHp);
+      this._text("comp3HpVal",    `${p.party3Hp}/${p.party3MaxHp}`);
+      this._text("comp3Affinity", `❤ ${p.affinity?.[p.party3] || 0}`);
+      this._renderPassiveBadge("bComp3PassiveBadge", p.companionPassives?.[p.party3]);
     }
 
     // 몬스터 HUD
@@ -695,8 +794,8 @@ class BattleScene {
     this._playUltimateCutThenVideo(cutImg, vidSrc, title);
   }
 
-  showEXCutin() {
-    const party = this.game.player?.party;
+  showEXCutin(partyKey) {
+    const party = partyKey || this.game.player?.party;
     if (!party) return;
     if (this.el?.attackOverlay) this.el.attackOverlay.style.opacity = "0";
     if (this.el?.playerImg)     this.el.playerImg.style.opacity     = "1";
@@ -1035,6 +1134,25 @@ class BattleScene {
   }
 
   _text(id, val) { const e = this.el[id]; if (e) e.innerText = val; }
+
+  // 동료 개인 스토리 보상으로 얻은 패시브를 머리 위 배지로 상설 표시 (클릭하면 설명)
+  _renderPassiveBadge(elId, passive) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!passive) { el.style.display = "none"; return; }
+    el.style.display = "flex";
+    el.textContent = passive.icon || "✨";
+    el.title = `${passive.name} — ${passive.desc}`;
+    if (!el._bound) {
+      el._bound = true;
+      el.addEventListener("click", e => {
+        e.stopPropagation();
+        const p = el._passive;
+        if (p) this.game?.showNarrative?.(`${p.icon || "✨"} ${p.name}\n\n${p.desc}`, 2600);
+      });
+    }
+    el._passive = passive;
+  }
 
   _bar(id, cur, max) {
     const e = this.el[id];

@@ -3,15 +3,16 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v2";
-const STATIC_CACHE  = "rpg-static-v2";
-const DYNAMIC_CACHE = "rpg-dynamic-v2";
+const CACHE_NAME    = "rpg-v34";
+const STATIC_CACHE  = "rpg-static-v34";
+const DYNAMIC_CACHE = "rpg-dynamic-v34";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
   "./index.html",
   "./rpg-main.css",
   "./models.js",
+  "./region-data.js",
   "./item-icons.js",
   "./managers.js",
   "./achievement-system.js",
@@ -20,6 +21,8 @@ const CORE_FILES = [
   "./trap-room.js",
   "./battle-scene.js",
   "./town-scene.js",
+  "./world-map-scene.js",
+  "./region-hub-scene.js",
   "./card-game.js",
   "./dialogue-scene.js",
   "./game.js",
@@ -38,6 +41,15 @@ const IMAGE_FILES = [
   "./images/inability_to_fight.png",
   "./images/pub_night.png",
   "./images/town_bustling.png",
+  "./images/Grim_mining_village_beneath_rocky_cliffs.png",
+  "./images/Gold_discovery_festival_in_the_mountains.png",
+  "./images/Mediterranean_fortress_by_the_sea.png",
+  "./images/Coastal_port_festival_celebration_in_full_swing.png",
+  "./images/Elven_village_amidst_mist_and_ruin.png",
+  "./images/Elven_festival_in_a_verdant_valley.png",
+  "./images/Heroes_face_looming_dark_god_in_cathedral.png",
+  "./images/Heroes_face_looming_dark_god_in_cathedral2.png",
+  "./images/Chained_in_darkness_under_a_tyrants_gaze.png",
   "./images/town_prosperity.png",
   "./images/festival_1.png",
   "./images/forest_exploration_day.png",

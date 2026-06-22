@@ -65,7 +65,21 @@ const MONSTERS = [
   { id:"dragon",      name:"고대 드래곤",  baseHp:500, baseAtk:28, img:"images/sd_dragon.png",         expRate:290, goldRate:350, isBoss:true },
   // ── 보스 ─────────────────────────────────────────
   { id:"guardian",    name:"던전 수호자",  baseHp:400, baseAtk:22, img:"images/sd_Dungeon_Guardian.png",        expRate:200, goldRate:180, isBoss:true },
+  // ── 마왕군 간부 (지역별 재난의 진짜 원인 — 각 동료의 사연과 직결) ──
+  { id:"general_gramos", name:"마왕군 간부 그라모스", baseHp:480, baseAtk:24, img:"images/sd_Dungeon_Guardian.png", expRate:240, goldRate:220, isBoss:true },
+  { id:"general_barkan", name:"마왕군 간부 바르칸",   baseHp:500, baseAtk:25, img:"images/sd_Dungeon_Guardian.png", expRate:250, goldRate:230, isBoss:true },
+  { id:"general_lilith", name:"마왕군 간부 릴리스",   baseHp:520, baseAtk:26, img:"images/sd_Dungeon_Guardian.png", expRate:260, goldRate:240, isBoss:true },
+  { id:"general_belzeron", name:"마왕군 간부 벨제론", baseHp:560, baseAtk:28, img:"images/sd_Dungeon_Guardian.png", expRate:280, goldRate:260, isBoss:true },
   { id:"demon",       name:"마왕 다르카스",baseHp:800, baseAtk:28, img:"images/sd_Demon.png",        expRate:300, goldRate:500, isBoss:true, isFinal:true },
+  // ── 진짜 최종보스 — 공허의 군주 네메시스 ──
+  // 다르카스가 처치된 직후, 그의 몸에 갈무리되어 있던 봉인이 무너지며 등장하는
+  // 고대부터 봉인된 진짜 존재. isFinal 도 함께 줘서 보상 배율 등 기존 보스 처리
+  // 로직은 그대로 타되, isTrueFinal 로 "진짜 승리"를 구분해 트리거한다.
+  { id:"nemesis",     name:"공허의 군주 네메시스",baseHp:1100, baseAtk:34, img:"images/Nemesis_Lord_of_the_Void.png", expRate:400, goldRate:700, isBoss:true, isFinal:true, isTrueFinal:true },
+  // ── 봉인의 관리자 — 수도 재건 완료 후 컷신 전투. 지금까지 "마왕"으로 알려졌던
+  // 존재이나, 사실은 진짜 마왕(다르카스)이 갇힌 봉인을 관리하던 자였음이 드러남.
+  // isFinal 이 아니므로 처치해도 게임이 끝나지 않고, 심연 던전(진실 탐색)이 열린다.
+  { id:"seal_keeper", name:"봉인의 관리자",baseHp:650, baseAtk:30, img:"images/sd_Demon.png",        expRate:280, goldRate:400, isBoss:true },
 ];
 
 // ── 아이템 유틸리티 ────────────────────────────────
@@ -146,7 +160,7 @@ class Player {
     // 전투
     this.ultimateGauge= 0;
     this.guardBuff    = 0;
-    this.cooldowns    = { jobSkill:0, partyUltimate:0, party2Ultimate:0, heal:0 };
+    this.cooldowns    = { jobSkill:0, partyUltimate:0, party2Ultimate:0, party3Ultimate:0, heal:0 };
     this.status       = { poison:0, stun:0, burn:0 };
 
     // 호감도
@@ -157,6 +171,7 @@ class Player {
     this.partyExAwakened      = false;
     this.partyStoryUnlocked   = false;
     this.partyBondMax         = false;
+    this.party2BondMax        = false;
     this.storyRewardClaimed   = {};
     this.partyCutinLevel      = { healer:0, tanker:0, mage_party:0, archer:0, dealer:0 };
 

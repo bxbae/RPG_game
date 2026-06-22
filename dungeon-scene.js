@@ -28,6 +28,43 @@ const TILE_COLORS = {
   [TILE.TRAPROOM]: { bg:"#160a22", border:"#4a1a6a" }, // 함정의 방: 보랏빛
 };
 
+// 던전 유형별 타일 배색 오버라이드 — 지정 안 한 타일/유형은 기본 TILE_COLORS 사용.
+// mine: 갱도 분위기를 내기 위해 벽/바닥/적 타일만 구릿빛·호박색 톤으로 교체.
+// harbor: 해저 동굴 분위기 — 짙은 청록빛 톤으로 교체.
+const TILE_COLORS_BY_TYPE = {
+  mine: {
+    [TILE.WALL]:  { bg:"#241509", border:"#120a02" }, // 갱도 암벽
+    [TILE.FLOOR]: { bg:"#2e1f10", border:"#3a2814" }, // 흙바닥
+    [TILE.ENEMY]: { bg:"#3a2008", border:"#5a3010" }, // 광물빛이 도는 위험 구역
+    [TILE.BOSS]:  { bg:"#3a1808", border:"#6a3210" },
+    [TILE.CHEST]: { bg:"#3a3008", border:"#5a4a10" }, // 금빛 광물 상자
+  },
+  harbor: {
+    [TILE.WALL]:  { bg:"#06181c", border:"#020c0e" }, // 젖은 암벽
+    [TILE.FLOOR]: { bg:"#0a2228", border:"#0e2e34" }, // 물 고인 바닥
+    [TILE.ENEMY]: { bg:"#082830", border:"#104450" }, // 인광이 도는 위험 구역
+    [TILE.BOSS]:  { bg:"#062028", border:"#0e4a58" },
+    [TILE.CHEST]: { bg:"#0a2c30", border:"#1a5a50" }, // 진주빛 상자
+  },
+  elfForest: {
+    [TILE.WALL]:  { bg:"#0a1a0e", border:"#040e06" }, // 빽빽한 수풀
+    [TILE.FLOOR]: { bg:"#142a18", border:"#1e3a22" }, // 이끼 낀 숲길
+    [TILE.ENEMY]: { bg:"#1a3a1e", border:"#2a5a30" }, // 정령빛이 도는 위험 구역
+    [TILE.BOSS]:  { bg:"#163018", border:"#2e5a34" },
+    [TILE.CHEST]: { bg:"#1e3a1a", border:"#3a5a28" }, // 엘프의 유물 상자
+  },
+  capital: {
+    [TILE.WALL]:  { bg:"#1e0808", border:"#0e0202" }, // 무너진 왕성 벽
+    [TILE.FLOOR]: { bg:"#2a1010", border:"#3a1818" }, // 핏빛 대리석 바닥
+    [TILE.ENEMY]: { bg:"#3a0c0c", border:"#5a1818" }, // 마왕의 기운이 도는 위험 구역
+    [TILE.BOSS]:  { bg:"#340a0a", border:"#6a1010" },
+    [TILE.CHEST]: { bg:"#3a2008", border:"#5a4010" }, // 왕실 보물 상자
+  },
+};
+function getTileColors(tileType, dungeonType) {
+  return TILE_COLORS_BY_TYPE[dungeonType]?.[tileType] || TILE_COLORS[tileType] || TILE_COLORS[TILE.WALL];
+}
+
 const TILE_ICONS = {
   [TILE.ENEMY]:  "👺",
   [TILE.BOSS]:   "👹",
@@ -38,20 +75,46 @@ const TILE_ICONS = {
   [TILE.TRAPROOM]: "🕳",
 };
 
+// 던전 유형별 적 타일 아이콘 오버라이드 (광산도시는 갱도, 항구도시는 해저 느낌으로)
+const TILE_ICONS_BY_TYPE = {
+  mine:      { [TILE.ENEMY]: "🦇", [TILE.BOSS]: "🪓" },
+  harbor:    { [TILE.ENEMY]: "🐚", [TILE.BOSS]: "🦑" },
+  elfForest: { [TILE.ENEMY]: "🍃", [TILE.BOSS]: "🏹" },
+  capital:   { [TILE.ENEMY]: "🗡", [TILE.BOSS]: "👑" },
+};
+function getTileIcon(tileType, dungeonType) {
+  return TILE_ICONS_BY_TYPE[dungeonType]?.[tileType] ?? TILE_ICONS[tileType];
+}
+
 // 던전 유형·층별 적 풀
 const FLOOR_ENEMY_POOLS = {
   outside: {                                               // 성 밖 사냥터 (튜토리얼, 1층)
     1: ["bat", "slime"],
   },
-  forest: {                                               // 숲 던전 (동료 1명)
-    1: ["goblin", "wolf"],
-    2: ["goblin", "lizardman", "orc"],
-    3: ["lizardman", "orc", "orc2"],
-  },
   normal: {                                               // 일반 던전 (동료 2명)
     1: ["slime", "ice_slime", "skeleton"],
     2: ["skeleton", "orc2", "mage_golem"],
     3: ["dark_knight", "vampire", "mage_golem"],
+  },
+  mine: {                                                  // 광산도시 갱도 (지역 재건 — 동료 2명)
+    1: ["bat", "skeleton", "slime"],
+    2: ["skeleton", "mage_golem", "orc"],
+    3: ["mage_golem", "orc2", "dark_knight"],
+  },
+  harbor: {                                                 // 항구도시 해안 동굴 (지역 재건 — 동료 2명)
+    1: ["ice_slime", "lizardman", "slime"],
+    2: ["lizardman", "ice_slime", "wyvern"],
+    3: ["wyvern", "chimera", "lizardman"],
+  },
+  elfForest: {                                              // 깊은 숲 — 엘프 마을 (지역 재건 — 동료 2명)
+    1: ["wolf", "goblin", "lizardman"],
+    2: ["goblin", "orc", "lizardman"],
+    3: ["orc", "orc2", "wolf"],
+  },
+  capital: {                                                // 수도 — 왕실에 잠입한 마왕 부하들 (지역 재건 — 동료 2명)
+    1: ["dark_knight", "vampire", "skeleton"],
+    2: ["vampire", "demon_knight", "dark_knight"],
+    3: ["demon_knight", "lich", "vampire"],
   },
   abyss: {                                                // 심연 던전 (동료 3명)
     1: ["dark_knight", "vampire", "wyvern", "chimera"],
@@ -63,16 +126,22 @@ const FLOOR_ENEMY_POOLS = {
 // 층별 난이도 배수
 const FLOOR_DIFFICULTY = {
   outside: [0.5,  0.5,  0.5 ],   // 매우 쉬움 (튜토리얼)
-  forest:  [0.8,  1.0,  1.2 ],   // 쉬움
   normal:  [1.0,  1.35, 1.7 ],   // 일반
+  mine:    [1.05, 1.4,  1.8 ],   // 광산도시 — 일반보다 살짝 단단함(골렘류 방어)
+  harbor:  [1.15, 1.55, 2.0 ],   // 항구도시 — 광산도시보다 한 단계 더 어려움 (와이번 등)
+  elfForest: [1.25, 1.7,  2.2 ], // 깊은 숲 — 항구도시보다 한 단계 더 어려움
+  capital: [1.4,  1.9,  2.5 ],   // 수도 — 지역 던전 중 가장 어려움 (심연 바로 아래)
   abyss:   [2.0,  2.6,  3.2 ],   // 심연
 };
 
 // 던전 타입별 표시명
 const DUNGEON_LABELS = {
   outside: "성 밖 사냥터",
-  forest:  "숲 던전",
   normal:  "일반 던전",
+  mine:    "광산도시 갱도",
+  harbor:  "항구도시 해저 동굴",
+  elfForest: "깊은 숲 — 엘프의 영역",
+  capital: "수도 — 왕실 잠입로",
   abyss:   "심연 던전",
 };
 
@@ -240,10 +309,37 @@ class DungeonScene {
     this._revealAround(this.playerX, this.playerY, 4);
     this._centerCamera();
 
+    this._applyDungeonBackground();
     this._bindKeys();
     this._startLoop();
     this._renderMinimap();
     this._startWalkAnim(); // 걷기 애니메이션 시작
+  }
+
+  // ── 지역 분위기 배경 — 재건 전/후 이미지를 던전 캔버스 주변(여백)에 표시 ──
+  _applyDungeonBackground() {
+    const wrap = document.getElementById("dungeonCanvasWrap");
+    if (!wrap) return;
+
+    const regionId = this.game._activeRegion;
+    const rm = this.game.regionManager;
+    const cfg = regionId ? rm?.getInvestConfig?.(regionId) : null;
+
+    if (!cfg) {
+      wrap.style.backgroundImage = "none";
+      return;
+    }
+
+    const investDone = rm.isFullyInvested?.(this.game.player, regionId);
+    const img = investDone ? (cfg.completedBgImage || cfg.bgImage) : cfg.bgImage;
+
+    if (img) {
+      wrap.style.backgroundImage = `linear-gradient(rgba(6,3,4,.55), rgba(6,3,4,.55)), url('${img}')`;
+      wrap.style.backgroundSize = "cover";
+      wrap.style.backgroundPosition = "center";
+    } else {
+      wrap.style.backgroundImage = "none";
+    }
   }
 
   // ── 걷기 애니메이션 타이머 ────────────────────────
@@ -260,7 +356,6 @@ class DungeonScene {
       this._compWalkFrame++;
       const p     = this.game.player;
       const type  = p?.type || "knight";
-      const party = p?.party;
 
       // 플레이어 스프라이트 프레임 교체
       const spr    = document.getElementById("dungeonPlayerSprite");
@@ -270,17 +365,27 @@ class DungeonScene {
         spr.onerror   = null;
       }
 
-      // 동료 스프라이트 프레임 교체
-      const cspr    = document.getElementById("dungeonCompSprite");
-      const cframes = party ? COMP_WALK_FRAMES[party] : null;
-      if (cspr && cframes) {
-        cspr.src     = cframes[this._compWalkFrame % cframes.length];
-        cspr.onerror = null;
-      }
+      // 동료 스프라이트 프레임 교체 (1·2·3번 모두)
+      this._compWalkFrame2 = (this._compWalkFrame2 || 0) + 1;
+      this._compWalkFrame3 = (this._compWalkFrame3 || 0) + 1;
+      [
+        { field: "party",  spriteId: "dungeonCompSprite",  frame: this._compWalkFrame  },
+        { field: "party2", spriteId: "dungeonComp2Sprite", frame: this._compWalkFrame2 },
+        { field: "party3", spriteId: "dungeonComp3Sprite", frame: this._compWalkFrame3 },
+      ].forEach(({ field, spriteId, frame }) => {
+        const key = p?.[field];
+        const cspr = document.getElementById(spriteId);
+        const cframes = key ? COMP_WALK_FRAMES[key] : null;
+        if (cspr && cframes) {
+          cspr.src     = cframes[frame % cframes.length];
+          cspr.onerror = null;
+        }
+      });
     }, 160); // 약 6FPS
   }
 
   destroy() {
+    this._destroyed = true;
     clearInterval(this._walkTimer);
     this._walkTimer = null;
     this._unbindKeys();
@@ -289,6 +394,24 @@ class DungeonScene {
     // 스프라이트 제거
     document.getElementById("dungeonPlayerSprite")?.remove();
     document.getElementById("dungeonCompSprite")?.remove();
+    document.getElementById("dungeonComp2Sprite")?.remove();
+    document.getElementById("dungeonComp3Sprite")?.remove();
+  }
+
+  // 빌려 쓰는 showNpcDialogue/​_showSelfDialogue 내부에서 호출되지만,
+  // 던전 화면엔 대기 말풍선이 없으므로 안전하게 아무 동작도 하지 않는 스텁
+  _hideIdleBubble() {}
+
+  // TownScene 의 대화창 구현을 빌려 쓴다 (this.game 만 있으면 동일하게 동작)
+  showNpcDialogue(npcId, onClose) {
+    if (typeof TownScene === "undefined") { if (onClose) onClose(); return; }
+    TownScene.prototype.showNpcDialogue.call(this, npcId, onClose);
+  }
+
+  // 주인공 독백(자체 대사)도 같은 방식으로 빌려 쓴다 — 단서 발견 같은 던전 내 1회성 이벤트에 사용
+  showSelfDialogue(key, lines, onClose) {
+    if (typeof TownScene === "undefined") { if (onClose) onClose(); return; }
+    TownScene.prototype._showSelfDialogue.call(this, key, lines, onClose);
   }
 
   // ── 키 입력 ─────────────────────────────────────
@@ -363,8 +486,24 @@ class DungeonScene {
       case TILE.BOSS: {
         this.mapData.objects.delete(`${x},${y}`);
         // 던전 타입별 보스 몬스터 결정
-        const BOSS_MAP = { forest:"orc2", normal:"guardian", abyss:"demon" };
+        const BOSS_MAP = {
+          normal: "guardian", abyss: "demon",
+          mine: "general_gramos", harbor: "general_barkan",
+          elfForest: "general_lilith", capital: "general_belzeron",
+        };
         const bossId = BOSS_MAP[this.dungeonType] ?? "guardian";
+
+        // 심연 최종 보스(다르카스) — 전투 전, 1회성 등장 대사
+        if (bossId === "demon" && !this.game.player._darkasPreFightSeen) {
+          this.game.player._darkasPreFightSeen = true;
+          this.game.saveManager?.autoSave?.(this.game);
+          this.showNpcDialogue("darkas_pre_fight", () => {
+            if (this._destroyed) return;
+            setTimeout(() => this.game.startBattle(bossId, true), 100);
+          });
+          break;
+        }
+
         setTimeout(() => this.game.startBattle(bossId, true), 100);
         break;
       }
@@ -424,24 +563,49 @@ class DungeonScene {
       const msg = ABYSS_FLOOR_MSG[this.floor];
       if (msg) setTimeout(() => this.game.dungeonHud?.flashMsg(msg.text, msg.color), msg.delay);
     }
+
+    // ── 수도 던전 2층 — 왕성 조사: 단서 발견 (1회성, 자동 발동) ──
+    if (this.dungeonType === "capital" && this.floor === 2 && !this.game.player._capitalClueShown) {
+      this.game.player._capitalClueShown = true;
+      this.game.saveManager?.autoSave?.(this.game);
+      setTimeout(() => {
+        if (this._destroyed) return;
+        this.showSelfDialogue("capital_clue_discovery", [
+          "...이건? 알현실 바닥에 핏자국 하나 없어. 다툰 흔적도, 끌려간 흔적도 없다.",
+          "전하께서는... 납치당한 게 아니야. 스스로 모습을 감추신 거다.",
+          "대체 무엇 때문에... 일단 계속 안으로 들어가 보자.",
+        ]);
+      }, 1000);
+    }
   }
+
+  // 지역 던전별 보물상자 테마 — 골드 발견 문구 / 아이템 발견 문구
+  static REGION_CHEST_FLAVOR = {
+    mine:      { gold: "⛏ 광맥 발견!",            item: "⛏ 채굴 중 발견:" },
+    harbor:    { gold: "🦪 진주 발견!",            item: "🌊 해류에 떠밀려온 발견:" },
+    elfForest: { gold: "🍃 정령의 선물!",          item: "🌳 고목 틈에서 발견:" },
+    capital:   { gold: "👑 왕실 보물 발견!",       item: "🏛 왕성 잔해에서 발견:" },
+  };
 
   _openChest(x, y) {
     const roll = Math.random();
     const p    = this.game.player;
     // 층이 깊을수록 더 많은 골드, 더 좋은 아이템
     const floorBonus = (this.floor - 1) * 60;
+    // 지역 던전 보너스 — 테마에 맞는 추가 골드/문구
+    const flavor = DungeonScene.REGION_CHEST_FLAVOR[this.dungeonType];
+    const regionBonus = flavor ? Math.floor(40 + Math.random() * 80) : 0;
     if (roll < 0.5) {
-      const gold = 100 + floorBonus + Math.floor(Math.random() * 200);
+      const gold = 100 + floorBonus + Math.floor(Math.random() * 200) + regionBonus;
       p.money += gold;
-      this.game.log(`📦 보물 상자! +${gold}G`);
+      this.game.log(`${flavor ? flavor.gold : "📦 보물 상자!"} +${gold}G`);
       this.game.dungeonHud?.flashMsg(`💰 +${gold}G`, "#ffd700");
     } else {
       // 3층 상자는 희귀 아이템 확률 높음
       const isBossChest = this.floor >= 3 || Math.random() < 0.25;
       const item = createRandomItem(isBossChest);
       this.game.itemManager.add(this.game, item);
-      this.game.log(`📦 아이템 발견: ${item.name}`);
+      this.game.log(`${flavor ? flavor.item : "📦 아이템 발견:"} ${item.name}`);
       this.game.dungeonHud?.flashMsg(`🎁 ${item.name}`, "#88ddff");
     }
   }
@@ -508,7 +672,7 @@ class DungeonScene {
       const px = tx * ts - this.cameraX;
       const py = ty * ts - this.cameraY;
       const tileType  = map[ty][tx];
-      const colors    = TILE_COLORS[tileType] || TILE_COLORS[TILE.WALL];
+      const colors    = getTileColors(tileType, this.dungeonType);
       const isVisible = Math.abs(tx - this.playerX) <= 4
                      && Math.abs(ty - this.playerY) <= 4;
 
@@ -530,7 +694,7 @@ class DungeonScene {
       // ── 오브젝트 아이콘 ──
       const obj = objects.get(key);
       if (obj && obj.type !== TILE.START) {
-        const icon = TILE_ICONS[obj.type] || "";
+        const icon = getTileIcon(obj.type, this.dungeonType) || "";
         if (icon) {
           // 시야 내: 선명, 시야 밖 탐색됨: 반투명
           ctx.globalAlpha = isVisible ? 1.0 : 0.55;
@@ -628,34 +792,41 @@ class DungeonScene {
   spr.style.left   = `${this.canvas.offsetLeft + ppx * scaleX}px`;
   spr.style.top    = `${this.canvas.offsetTop  + ppy * scaleY}px`;
 
-  // 동료 스프라이트
-  let cspr = document.getElementById("dungeonCompSprite");
-  if (p?.party && COMP_WALK_FRAMES[p.party]) {
-    if (!cspr) {
-      cspr = document.createElement("img");
-      cspr.id = "dungeonCompSprite";
-      cspr.style.cssText = [
-        "position:absolute",
-        "pointer-events:none",
-        "z-index:14",
-        "transform:translate(-50%,-62%)",
-        "image-rendering:auto",
-        "opacity:0.88",
-        "transition:left .1s linear,top .1s linear",
-      ].join(";");
-      const cf = COMP_WALK_FRAMES[p.party];
-      if (cf) cspr.src = cf[0];
-      canvasParent?.appendChild(cspr);
+  // 동료 스프라이트 (1·2·3번 모두) — 플레이어 주변에 다른 위치로 배치
+  const COMPANION_OFFSETS = [
+    { field: "party",  spriteId: "dungeonCompSprite",  dx: 1.5,  dy: 0   },
+    { field: "party2", spriteId: "dungeonComp2Sprite", dx: -1.5, dy: 0   },
+    { field: "party3", spriteId: "dungeonComp3Sprite", dx: 0,    dy: 1.5 },
+  ];
+  COMPANION_OFFSETS.forEach(({ field, spriteId, dx, dy }) => {
+    const key = p?.[field];
+    let cspr = document.getElementById(spriteId);
+    if (key && COMP_WALK_FRAMES[key]) {
+      if (!cspr) {
+        cspr = document.createElement("img");
+        cspr.id = spriteId;
+        cspr.style.cssText = [
+          "position:absolute",
+          "pointer-events:none",
+          "z-index:14",
+          "transform:translate(-50%,-62%)",
+          "image-rendering:auto",
+          "opacity:0.88",
+          "transition:left .1s linear,top .1s linear",
+        ].join(";");
+        const cf = COMP_WALK_FRAMES[key];
+        if (cf) cspr.src = cf[0];
+        canvasParent?.appendChild(cspr);
+      }
+      cspr.style.width   = `${sprSize}px`;
+      cspr.style.height  = `${sprSize}px`;
+      cspr.style.left    = `${this.canvas.offsetLeft + (ppx + ts * dx) * scaleX}px`;
+      cspr.style.top     = `${this.canvas.offsetTop  + (ppy + ts * dy) * scaleY}px`;
+      cspr.style.display = "block";
+    } else if (cspr) {
+      cspr.style.display = "none";
     }
-    const cSize = sprSize;              // 플레이어와 동일 크기
-    cspr.style.width   = `${cSize}px`;
-    cspr.style.height  = `${cSize}px`;
-    cspr.style.left    = `${this.canvas.offsetLeft + (ppx + ts * 1.5) * scaleX}px`; // 옆으로, 간격 넓힘
-    cspr.style.top     = `${this.canvas.offsetTop  + ppy * scaleY}px`;             // 세로 위치는 플레이어와 동일 (일렬)
-    cspr.style.display = "block";
-  } else if (cspr) {
-    cspr.style.display = "none";
-  }
+  });
 }
 
 

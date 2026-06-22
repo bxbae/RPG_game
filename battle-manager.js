@@ -18,7 +18,7 @@ class BattleManager {
   // 직업별 무기 드랍 생성 헬퍼
   // names: { sword, staff, bow }  attack: 공격력 수치
   static _weaponDrop(playerType, names, attack) {
-    const wClass = { night:"sword", warrior:"sword", mage:"staff", archer:"bow" }[playerType] ?? "sword";
+    const wClass = { knight:"sword", night:"sword", warrior:"sword", mage:"staff", archer:"bow" }[playerType] ?? "sword";
     return normalizeItem({
       name:       names[wClass],
       type:       "weapon",
@@ -51,7 +51,7 @@ class BattleManager {
           if (game.currentScene === "battle") scene.showHeroUltimate(e.playerType);
           break;
         case "exCutin":
-          if (game.currentScene === "battle") scene.showEXCutin();
+          if (game.currentScene === "battle") scene.showEXCutin(e.partyKey);
           break;
         case "rewardPopup":   scene.showRewardPopup(e); break;
       }
@@ -66,6 +66,7 @@ class BattleManager {
     if (!skip.includes("jobSkill")       && cd.jobSkill > 0)       cd.jobSkill--;
     if (!skip.includes("partyUltimate")  && cd.partyUltimate > 0)  cd.partyUltimate--;
     if (!skip.includes("party2Ultimate") && (cd.party2Ultimate||0) > 0) cd.party2Ultimate--;
+    if (!skip.includes("party3Ultimate") && (cd.party3Ultimate||0) > 0) cd.party3Ultimate--;
   }
 
   // ── 상태이상 적용 ─────────────────────────────────
@@ -147,7 +148,7 @@ class BattleManager {
     }
 
     if (window.audioMgr) {
-      const sfxMap = { night:"sword", mage:"magic", archer:"arrow" };
+      const sfxMap = { knight:"sword", night:"sword", mage:"magic", archer:"arrow" };
       audioMgr.playSfx(sfxMap[p.type] || "sword");
     }
 
@@ -172,7 +173,9 @@ class BattleManager {
 
     const critChance = p.skills.criticalBoost * 5 + p.setBonus.crit
       + (partyActive && p.party === "archer" ? 15 : 0)
-      + ((p.passiveSkills?.eagle_eye || 0) ? [0,8,16,26][p.passiveSkills.eagle_eye] : 0);
+      + ((p.passiveSkills?.eagle_eye || 0) ? [0,8,16,26][p.passiveSkills.eagle_eye] : 0)
+      // "기사의 책무" — 카르나(딜러) 개인 스토리 보상. 파티 슬롯과 무관하게 적용.
+      + ((p.party === "dealer" || p.party2 === "dealer") && p.companionPassives?.dealer ? 15 : 0);
     const isCrit = Math.random() * 100 < critChance;
     if (isCrit) {
       const manaSurgeLv = p.passiveSkills?.mana_surge || 0;
@@ -263,6 +266,7 @@ class BattleManager {
 
     let dmg = 0;
     switch (p.type) {
+      case "knight":  // 현재 기본 직업 명칭
       case "warrior": // 하위호환 [BUG FIX 01]
       case "night":
         dmg = Math.floor(p.totalAttack * 3.5); m.hp -= dmg;
@@ -281,6 +285,16 @@ class BattleManager {
         if (!m.status) m.status = { poison:0, stun:0, burn:0 };
         m.status.poison = 4;
         game.log(`🏹 천격사격! ${dmg}×3 — 4턴 맹독!`); break;
+      case "tanker":
+        // 철벽 강타 — 강한 일격 + 3턴간 받는 피해 50% 감소(guardBuff)
+        dmg = Math.floor(p.totalAttack * 3.0); m.hp -= dmg;
+        p.guardBuff = 3;
+        game.log(`🛡 철벽 강타! ${dmg} — 3턴간 피해 50% 감소!`); break;
+      case "healer":
+        // 신성 폭발 — 적에게 피해 + 자신 HP 완전 회복
+        dmg = Math.floor(p.totalAttack * 2.5); m.hp -= dmg;
+        p.hp = p.maxHp + (p.bonusHp || 0);
+        game.log(`✝ 신성 폭발! ${dmg} — HP 완전 회복!`); break;
     }
     this._emit("damage", { amount: dmg, target: "monster" });
     if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
@@ -303,15 +317,25 @@ class BattleManager {
     if (aff < 30) { game.log(`💔 호감도 부족 (현재 ${aff}/30)`); return; }
     if ((p.cooldowns?.partyUltimate || 0) > 0) { game.log(`⏳ 쿨타임 ${p.cooldowns.partyUltimate}턴`); return; }
 
-    if (aff >= 30) this._emit("exCutin");
+    if (aff >= 30) this._emit("exCutin", { partyKey: party });
 
     const ex = aff >= 100;
     switch (party) {
-      case "healer":
+      case "healer": {
+        const hasStoryReward = !!p.companionPassives?.healer; // "완전한 자비" — 사연 해결 시 파티 전체 완전 회복+상태이상 해제로 강화
         p.hp = p.maxHp + p.bonusHp;
         if (p.partyHp) p.partyHp = p.partyMaxHp;
-        if (ex) p.guardBuff = 5;
-        game.log(ex ? "🌟 EX 천상의 기적!" : "✨ 천상의 기적!"); break;
+        if (p.party2Hp) p.party2Hp = p.party2MaxHp;
+        if (p.party3Hp) p.party3Hp = p.party3MaxHp;
+        if (hasStoryReward) {
+          p.status = { poison:0, stun:0, burn:0 };
+          game.log(ex ? "🌟 EX 완전한 자비!" : "✨ 완전한 자비! 파티 전체 회복 + 상태이상 해제");
+        } else {
+          if (ex) p.guardBuff = 5;
+          game.log(ex ? "🌟 EX 천상의 기적!" : "✨ 천상의 기적!");
+        }
+        break;
+      }
       case "tanker":
         p.guardBuff = ex ? 10 : 5;
         game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
@@ -323,10 +347,12 @@ class BattleManager {
         game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
       }
       case "mage_party": {
-        const dmg = Math.floor(p.totalAttack * (ex ? 8 : 5));
+        const hasStoryReward = !!p.companionPassives?.mage_party; // "금단의 비전" — 누명 해소 후 위력 대폭 강화
+        const mult = hasStoryReward ? (ex ? 13 : 8) : (ex ? 8 : 5);
+        const dmg = Math.floor(p.totalAttack * mult);
         m.hp -= dmg;
         this._emit("damage", { amount: dmg, target: "monster" });
-        game.log(`☄ 아포칼립스! ${dmg}`); break;
+        game.log(hasStoryReward ? `🔮 금단의 비전! ${dmg}` : `☄ 아포칼립스! ${dmg}`); break;
       }
       case "dealer": {
         const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
@@ -356,15 +382,25 @@ class BattleManager {
     if (aff < 30) { game.log(`💔 호감도 부족 (현재 ${aff}/30)`); return; }
     if ((p.cooldowns?.party2Ultimate || 0) > 0) { game.log(`⏳ 쿨타임 ${p.cooldowns.party2Ultimate}턴`); return; }
 
-    if (aff >= 30) this._emit("exCutin");
+    if (aff >= 30) this._emit("exCutin", { partyKey: party });
 
     const ex = aff >= 100;
     switch (party) {
-      case "healer":
+      case "healer": {
+        const hasStoryReward = !!p.companionPassives?.healer;
         p.hp = p.maxHp + p.bonusHp;
         if (p.party2Hp) p.party2Hp = p.party2MaxHp;
-        if (ex) p.guardBuff = 5;
-        game.log(ex ? "🌟 EX 천상의 기적!" : "✨ 천상의 기적!"); break;
+        if (p.partyHp) p.partyHp = p.partyMaxHp;
+        if (p.party3Hp) p.party3Hp = p.party3MaxHp;
+        if (hasStoryReward) {
+          p.status = { poison:0, stun:0, burn:0 };
+          game.log(ex ? "🌟 EX 완전한 자비!" : "✨ 완전한 자비! 파티 전체 회복 + 상태이상 해제");
+        } else {
+          if (ex) p.guardBuff = 5;
+          game.log(ex ? "🌟 EX 천상의 기적!" : "✨ 천상의 기적!");
+        }
+        break;
+      }
       case "tanker":
         p.guardBuff = ex ? 10 : 5;
         game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
@@ -376,10 +412,12 @@ class BattleManager {
         game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
       }
       case "mage_party": {
-        const dmg = Math.floor(p.totalAttack * (ex ? 8 : 5));
+        const hasStoryReward = !!p.companionPassives?.mage_party;
+        const mult = hasStoryReward ? (ex ? 13 : 8) : (ex ? 8 : 5);
+        const dmg = Math.floor(p.totalAttack * mult);
         m.hp -= dmg;
         this._emit("damage", { amount: dmg, target: "monster" });
-        game.log(`☄ 아포칼립스! ${dmg}`); break;
+        game.log(hasStoryReward ? `🔮 금단의 비전! ${dmg}` : `☄ 아포칼립스! ${dmg}`); break;
       }
       case "dealer": {
         const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
@@ -395,6 +433,71 @@ class BattleManager {
     this._flushUI(game);
   }
 
+  // ── 3번 동료 궁극기 (심연 전용) ──────────────────────
+  party3Ultimate(game) {
+    this._events = [];
+
+    const p = game.player;
+    const m = game.currentMonster;
+    const party = p.party3;
+    if (!party || !m) { game.log("❌ 3번 동료가 없습니다"); return; }
+    if (p.party3Hp <= 0) { game.log("💔 3번 동료 전투 불능 (마을에서 회복 가능)"); return; }
+
+    const aff = p.affinity?.[party] || 0;
+    if (aff < 30) { game.log(`💔 호감도 부족 (현재 ${aff}/30)`); return; }
+    if ((p.cooldowns?.party3Ultimate || 0) > 0) { game.log(`⏳ 쿨타임 ${p.cooldowns.party3Ultimate}턴`); return; }
+
+    if (aff >= 30) this._emit("exCutin", { partyKey: party });
+
+    const ex = aff >= 100;
+    switch (party) {
+      case "healer": {
+        const hasStoryReward = !!p.companionPassives?.healer;
+        p.hp = p.maxHp + p.bonusHp;
+        if (p.partyHp) p.partyHp = p.partyMaxHp;
+        if (p.party2Hp) p.party2Hp = p.party2MaxHp;
+        if (p.party3Hp) p.party3Hp = p.party3MaxHp;
+        if (hasStoryReward) {
+          p.status = { poison:0, stun:0, burn:0 };
+          game.log(ex ? "🌟 EX 완전한 자비!" : "✨ 완전한 자비! 파티 전체 회복 + 상태이상 해제");
+        } else {
+          if (ex) p.guardBuff = 5;
+          game.log(ex ? "🌟 EX 천상의 기적!" : "✨ 천상의 기적!");
+        }
+        break;
+      }
+      case "tanker":
+        p.guardBuff = ex ? 10 : 5;
+        game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
+      case "archer": {
+        const hits = ex ? 10 : 6;
+        const hitDmg = Math.floor(p.party3Attack || 20);
+        for (let i = 0; i < hits; i++) m.hp -= hitDmg;
+        this._emit("damage", { amount: hitDmg * hits, target: "monster" });
+        game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
+      }
+      case "mage_party": {
+        const hasStoryReward = !!p.companionPassives?.mage_party;
+        const mult = hasStoryReward ? (ex ? 13 : 8) : (ex ? 8 : 5);
+        const dmg = Math.floor(p.totalAttack * mult);
+        m.hp -= dmg;
+        this._emit("damage", { amount: dmg, target: "monster" });
+        game.log(hasStoryReward ? `🔮 금단의 비전! ${dmg}` : `☄ 아포칼립스! ${dmg}`); break;
+      }
+      case "dealer": {
+        const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
+        m.hp -= dmg;
+        this._emit("damage", { amount: dmg, target: "monster" });
+        game.log(`⚔ 그림자 참격! ${dmg}`); break;
+      }
+    }
+    p.cooldowns.party3Ultimate = 8;
+    if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
+    this._tickCooldowns(game, "party3Ultimate"); // 방금 사용했으므로 제외
+    this._emit("render");
+    this._flushUI(game);
+  }
+
   // ── 직업 스킬 ─────────────────────────────────────
   jobSkill(game) {
     this._events = [];
@@ -404,11 +507,12 @@ class BattleManager {
     if (!p || !m) return;
     if (p.cooldowns.jobSkill > 0) { game.log(`⏳ 쿨타임 ${p.cooldowns.jobSkill}턴`); return; }
 
-    const hasSkill = { night:p.activeSkills.whirlwind, mage:p.activeSkills.magicBall, archer:p.activeSkills.rapidShot }[p.type];
+    const hasSkill = { knight:p.activeSkills.whirlwind, night:p.activeSkills.whirlwind, mage:p.activeSkills.magicBall, archer:p.activeSkills.rapidShot }[p.type];
     if (!hasSkill) { game.log("❌ 스킬을 배우지 않았습니다"); return; }
 
     let dmg = 0;
     switch (p.type) {
+      case "knight":  // 현재 기본 직업 명칭
       case "warrior": // 하위호환 [BUG FIX 01: 중복 case 제거]
       case "night":   dmg = Math.floor(p.totalAttack * 2);   m.hp -= dmg;   game.log(`⚔ 회전베기! ${dmg}`);  break;
       case "mage":    dmg = Math.floor(p.totalAttack * 2.2); m.hp -= dmg;   game.log(`🔮 매직볼! ${dmg}`);    break;
@@ -430,7 +534,7 @@ class BattleManager {
     if (!m) return;
     if (p.type === "mage"    && Math.random() < 0.3)  this.applyStatus(m, "burn",   3, game, m.name);
     if (p.type === "archer"  && Math.random() < 0.25) this.applyStatus(m, "poison", 3 + ([0,1,2,3][p.passiveSkills?.poison_tip||0]||0), game, m.name);
-    if ((p.type === "night" || p.type === "warrior") && Math.random() < 0.15) {
+    if ((p.type === "night" || p.type === "warrior" || p.type === "knight") && Math.random() < 0.15) {
       this.applyStatus(m, "stun", 1, game, m.name);
       game.log("💫 적이 기절!");
     }
@@ -465,6 +569,8 @@ class BattleManager {
     const m = game.currentMonster;
     if (!m) return;
 
+    game._battleTurnCount = (game._battleTurnCount || 0) + 1;
+
     let monsterAtk = m.attack;
     const warCryLv = p.passiveSkills?.war_cry || 0;
     if (warCryLv > 0) monsterAtk = Math.floor(monsterAtk * (1 - [0,0.1,0.18,0.28][warCryLv]));
@@ -473,12 +579,27 @@ class BattleManager {
     const arcaneWardLv = p.passiveSkills?.arcane_ward || 0;
     if (arcaneWardLv > 0) dmg = Math.floor(dmg * (1 - [0,0.08,0.15,0.22][arcaneWardLv]));
 
+    // "수호의 맥동" — 카인(탱커) 개인 스토리 보상. 전투 시작 후 3턴 동안 받는 피해 30% 감소.
+    // 파티 슬롯과 무관하게 적용(탱커가 1번이든 2번이든 사연을 해결했다면 발동).
+    const hasTankerStory = (p.party === "tanker" || p.party2 === "tanker") && p.companionPassives?.tanker;
+    if (hasTankerStory && game._battleTurnCount <= 3) {
+      dmg = Math.floor(dmg * 0.7);
+    }
+
     const swiftLv = p.passiveSkills?.swift_feet || 0;
     if (swiftLv > 0 && Math.random() < [0,0.2,0.3,0.4][swiftLv]) {
       dmg = Math.floor(dmg * (1 - [0,0.1,0.15,0.2][swiftLv]));
       game.log("💨 회피!");
     }
     if (p.guardBuff > 0) { dmg = Math.floor(dmg * 0.5); p.guardBuff--; }
+
+    // 다르카스의 마지막 힘 — 네메시스 전투 중 단 1회, 이번 공격을 파티 전체 대신 받아낸다.
+    const darkasProtects = !!p._darkasProtectionCharge && dmg > 0;
+    if (darkasProtects) {
+      p._darkasProtectionCharge = false;
+      game.log(`🛡 다르카스가 마지막 힘으로 그 일격을 대신 받아냈다...! <span style="color:#ff8866">"부디... 이번에는 성공해라..."</span>`);
+      dmg = 0;
+    }
 
     p.hp = Math.max(0, p.hp - dmg);
     this._emit("damage", { amount: dmg, target: "player" });
@@ -487,7 +608,7 @@ class BattleManager {
 
     // 파티원 반격 피해 — outside 던전(혼자)은 제외
     if (p.party && p.partyHp > 0 && game.dungeonType !== "outside") {
-      const cd = Math.max(0, Math.floor(m.attack * 0.6) - p.partyDefense);
+      const cd = darkasProtects ? 0 : Math.max(0, Math.floor(m.attack * 0.6) - p.partyDefense);
       p.partyHp = Math.max(0, p.partyHp - cd);
       if (cd > 0) game.log(`👥 동료 ${cd} 피해`);
       if (p.partyHp <= 0) {
@@ -499,7 +620,7 @@ class BattleManager {
 
     // 2번째 동료 반격 피해 (일반+)
     if (p.party2 && p.party2Hp > 0) {
-      const cd2 = Math.max(0, Math.floor(m.attack * 0.4) - p.party2Defense);
+      const cd2 = darkasProtects ? 0 : Math.max(0, Math.floor(m.attack * 0.4) - p.party2Defense);
       p.party2Hp = Math.max(0, p.party2Hp - cd2);
       if (cd2 > 0) game.log(`👤 보조 동료 ${cd2} 피해`);
       if (p.party2Hp <= 0) { p.party2Hp = 0; p._party2KnockedOut = true; game.log("💔 보조 동료 전투 불능!"); }
@@ -507,7 +628,7 @@ class BattleManager {
 
     // 3번째 동료 반격 피해 (심연 전용)
     if (p.party3 && p.party3Hp > 0) {
-      const cd3 = Math.max(0, Math.floor(m.attack * 0.35) - p.party3Defense);
+      const cd3 = darkasProtects ? 0 : Math.max(0, Math.floor(m.attack * 0.35) - p.party3Defense);
       p.party3Hp = Math.max(0, p.party3Hp - cd3);
       if (cd3 > 0) game.log(`👥 3번째 동료 ${cd3} 피해`);
       if (p.party3Hp <= 0) { p.party3Hp = 0; p._party3KnockedOut = true; game.log("💔 3번째 동료 전투 불능!"); }
@@ -529,12 +650,22 @@ class BattleManager {
 
     p.killCount++;
     // [BUG FIX 03] models.js의 goldRate·expRate 우선 사용
-    const goldReward = m.goldRate ?? (m.isFinal ? 500 : m.isBoss ? 180 : 50);
-    const expReward  = m.expRate  ?? (m.isFinal ? 300 : m.isBoss ? 120 : 40);
+    let goldReward = m.goldRate ?? (m.isFinal ? 500 : m.isBoss ? 180 : 50);
+    const expReward = m.expRate  ?? (m.isFinal ? 300 : m.isBoss ? 120 : 40);
+
+    // 왕국 번영도 보너스 (8단계) — 지역을 재건할수록 경제가 살아나 전투 보상이 늘어남
+    // 0~100% 번영도를 0~20% 골드 보너스로 환산 (완전히 재건된 왕국 = 최대 +20%)
+    const kingdomProsp = game.regionManager?.kingdomProsperity(p) ?? 0;
+    const kingdomBonusPct = Math.floor(kingdomProsp * 0.2); // 0~20
+    if (kingdomBonusPct > 0) {
+      goldReward = Math.floor(goldReward * (1 + kingdomBonusPct / 100));
+    }
+
     p.money += goldReward; // setter가 MAX_GOLD 자동 클램프
     const lvUp = p.gainExp(expReward);
 
-    game.log(`🏆 ${m.name} 처치! +${goldReward.toLocaleString()}G +${expReward}EXP`);
+    game.log(`🏆 ${m.name} 처치! +${goldReward.toLocaleString()}G +${expReward}EXP`
+      + (kingdomBonusPct > 0 ? ` (왕국 번영 +${kingdomBonusPct}%)` : ""));
     if (lvUp) {
       game.log(p.level >= MAX_LEVEL
         ? `🏆 최고 레벨 달성! Lv.${p.level} ✦MAX`
@@ -599,6 +730,19 @@ class BattleManager {
       }
     }
 
+    // ── 2번 동료 호감도 (party2도 1번 동료처럼 매 전투 승리 시 +1) ──
+    // party2가 party1과 같은 직업이면 위에서 이미 +1 됐으므로 중복 증가를 막는다.
+    if (p.party2 && p.party2 !== p.party) {
+      p.affinity[p.party2] = Math.min(100, (p.affinity[p.party2] || 0) + 1);
+      const aff2 = p.affinity[p.party2];
+      // 호감도 30 → 2번 동료 궁극기 사용 가능 (게이지가 차오름)
+      if (aff2 === 30) game.log("✨ 2번 동료 궁극기 사용 가능!");
+      if (aff2 === 100 && !p.party2BondMax) {
+        p.party2BondMax = true;
+        game.log("🌟 2번 동료 EX 궁극기 각성!");
+      }
+    }
+
     const hadQuest    = !!(p.quest);
     const questGoal   = p.quest?.goal || 0;
     const monsterName = m.name;
@@ -608,12 +752,24 @@ class BattleManager {
 
     const qResult = game.questManager.onKill(game, monsterName);
 
-    // 수호자 처치 (일반 던전) → 심연 해금 + 자동저장 훅
+    // 지역 던전(광산도시 등) 최종 보스 = 마왕군 간부. 일반 던전은 기존 수호자 그대로.
+    const REGION_BOSS_IDS = new Set(["general_gramos", "general_barkan", "general_lilith", "general_belzeron"]);
+    const isRegionBoss = REGION_BOSS_IDS.has(m.id);
+
+    // 수호자 처치 (일반 던전) → 자동저장 훅 (심연 해금은 더 이상 여기서 하지 않음 —
+    // 이제 수도 재건 완료 후 왕 구출·마왕 위치 발견 컷신을 거쳐야 열린다)
     if (m.id === "guardian" && !p.guardianDefeated) {
       p.guardianDefeated = true;
-      p.abyssUnlocked    = true;
       game.onGuardianDefeated?.(); // 자동저장 등 훅
-      setTimeout(() => game.log("⚫ 심연 던전의 문이 열렸다! 마을로 돌아가 확인하세요."), 2500);
+    }
+    // 일반 던전 클리어 → 지역 재건도 반영 (매번 반복, 심연 해금 플래그와 무관)
+    // 지역 던전 종류(normal/mine/...)는 region-data.js 의 dungeonType 에 따라 다를 수 있음
+    if ((m.id === "guardian" || isRegionBoss) && dungeonType !== "abyss" && dungeonType !== "outside" && dungeonType !== "forest") {
+      game.onRegionDungeonCleared?.();
+    }
+    // 간부 격파 시 그 동료의 "마왕군 간부 처치" 결말 보너스 대사를 별도로 표시
+    if (isRegionBoss) {
+      game.onGeneralDefeated?.(m.id);
     }
 
     // ── 보스별 전용 드랍 ───────────────────────────────
@@ -634,6 +790,14 @@ class BattleManager {
       } else {
         item = normalizeItem({ name:"마왕의 면갑", type:"helmet", attack:0, defense:28, class:"legend", enhance:0 });
       }
+
+    } else if (isRegionBoss && Math.random() < 0.35) {
+      // 마왕군 간부: 직업별 무기 (수호자보다 살짝 높은 등급)
+      item = BattleManager._weaponDrop(p.type, {
+        sword: "간부의 검",
+        staff: "간부의 지팡이",
+        bow:   "간부의 각궁",
+      }, 55);
 
     } else if (m.id === "guardian" && Math.random() < 0.3) {
       // 던전 수호자: 직업별 무기

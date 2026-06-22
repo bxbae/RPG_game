@@ -165,8 +165,21 @@ button { font-family:inherit; }
 @keyframes poke-player-defeat { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(40px) rotate(-30deg);opacity:0;} }
 .poke-companion-sprite-wrap { position:absolute; left:calc(6% + min(21%,200px) + 6px); bottom:0; width:min(21%,200px); z-index:3; filter:drop-shadow(0 6px 18px rgba(0,0,0,.95)); animation:poke-companion-idle 3.6s ease-in-out infinite; }
 .poke-companion2-sprite-wrap { left:calc(6% + 2*(min(21%,200px) + 6px)); z-index:2; animation:poke-companion-idle 4.0s ease-in-out infinite; }
+.poke-companion3-sprite-wrap { left:calc(6% + 3*(min(21%,200px) + 6px)); z-index:1; animation:poke-companion-idle 4.4s ease-in-out infinite; }
 .poke-companion-sprite { width:100%; height:auto; display:block; object-fit:contain; }
 @keyframes poke-companion-idle { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+
+.poke-passive-badge {
+  position:absolute; top:-6px; right:-2px; z-index:6;
+  width:26px; height:26px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #ffe9a8, #c8980e 70%);
+  border:2px solid #fff3d0; box-shadow:0 2px 8px rgba(0,0,0,.6), 0 0 6px rgba(232,184,48,.7);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.85rem; cursor:pointer; pointer-events:auto;
+  animation:poke-passive-pulse 2.2s ease-in-out infinite;
+}
+.poke-passive-badge:hover { filter:brightness(1.2); }
+@keyframes poke-passive-pulse { 0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.6), 0 0 6px rgba(232,184,48,.7);} 50%{box-shadow:0 2px 8px rgba(0,0,0,.6), 0 0 14px rgba(232,184,48,1);} }
 
 .player-level { position:absolute; left:30px; bottom:220px; color:#fff; font-weight:bold; font-size:15px; text-shadow:0 0 4px #000; z-index:5; }
 .player-exp   { position:absolute; left:30px; bottom:198px; color:#ffd966; font-size:12px; text-shadow:0 0 4px #000; z-index:5; }
@@ -321,6 +334,7 @@ button { font-family:inherit; }
   .poke-player-sprite-wrap { width:min(24%,150px); left:4%; }
   .poke-companion-sprite-wrap { width:min(24%,150px); left:calc(4% + min(24%,150px) + 4px); }
   .poke-companion2-sprite-wrap { left:calc(4% + 2*(min(24%,150px) + 4px)); }
+  .poke-companion3-sprite-wrap { left:calc(4% + 3*(min(24%,150px) + 4px)); }
 
   .player-level { font-size:.68rem; left:4%; }
   .player-exp   { font-size:.62rem; left:4%; }

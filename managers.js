@@ -171,7 +171,7 @@ class SaveManager {
       affinity25: false, affinity50: false, affinity75: false, affinity100: false,
       ...(raw.partyEvents || {}),
     };
-    p.cooldowns = { jobSkill:0, partyUltimate:0, party2Ultimate:0, heal:0, ...(raw.cooldowns || {}) };
+    p.cooldowns = { jobSkill:0, partyUltimate:0, party2Ultimate:0, party3Ultimate:0, heal:0, ...(raw.cooldowns || {}) };
     p.status    = { poison:0, stun:0, burn:0,          ...(raw.status    || {}) };
     p.affinity  = { archer:0, healer:0, tanker:0, dealer:0, mage_party:0, ...(raw.affinity || {}) };
     p.bank      = { deposit:0, interest:0, totalInvested:0, milestones:[], ...(raw.bank || {}) };
@@ -208,11 +208,12 @@ class ItemManager {
       let sellIdx = -1;
       for (const g of gradeOrder) {
         sellIdx = p.inventory.findIndex(i =>
-          (i.class || "normal") === g && !equippedIds.has(i.itemId)
+          (i.class || "normal") === g && i.type !== "key" && !equippedIds.has(i.itemId)
         );
         if (sellIdx >= 0) break;
       }
-      if (sellIdx < 0) sellIdx = 0; // 모두 장착 중인 극단적 상황 대비 fallback
+      if (sellIdx < 0) sellIdx = p.inventory.findIndex(i => i.type !== "key"); // 모두 장착 중인 극단적 상황 대비 fallback (열쇠류는 절대 매각 대상에서 제외)
+      if (sellIdx < 0) sellIdx = 0; // 정말 인벤토리가 전부 열쇠류뿐인 극단적 경우의 최종 안전장치
       const sold = p.inventory.splice(sellIdx, 1)[0];
       const price = Math.max(10, Math.floor(((sold.attack||0)+(sold.defense||0))*5)+10);
       p.money += price;
@@ -225,7 +226,7 @@ class ItemManager {
   equip(game, index, target = false) {
     const p    = game.player;
     const item = p.inventory[index];
-    if (!item || item.type === "potion") return;
+    if (!item || item.type === "potion" || item.type === "key") return;
 
     // 하위호환: boolean → 문자열 정규화
     const who = target === true ? "party" : (target === false ? "player" : target);

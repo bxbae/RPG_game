@@ -26,7 +26,7 @@
   <style>
     /* ★ 전투화면이 던전 위를 완전히 덮도록 — 최우선 적용 */
     #titleScreen, #townScreen, #dungeonScreen,
-    #battleScreen, #victoryScreen, #defeatScreen {
+    #battleScreen, #victoryScreen, #defeatScreen, #worldMapScreen, #regionHubScreen {
       position: fixed !important;
       inset: 0 !important;
       flex-direction: column;
@@ -35,6 +35,8 @@
     #battleScreen  { z-index: 200 !important; background: #000 !important; display: none; flex-direction: column !important; }
     #victoryScreen { z-index: 300 !important; }
     #defeatScreen  { z-index: 300 !important; }
+    #worldMapScreen { z-index: 15 !important; background: #05060e; }
+    #regionHubScreen { z-index: 12 !important; background: #07060a; }
   </style>
 </head>
 <body>
@@ -43,6 +45,8 @@
 <div id="titleScreen" style="display:flex;"></div>
 <div id="townScreen"></div>
 <div id="dungeonScreen"></div>
+<div id="worldMapScreen"></div>
+<div id="regionHubScreen"></div>
 <div id="battleScreen"></div>
 <div id="victoryScreen"></div>
 <div id="defeatScreen"></div>
@@ -53,6 +57,7 @@
 
 <!-- ── 스크립트 로딩 순서 ── -->
 <script src="models.js"></script>
+<script src="region-data.js"></script>
 <script src="item-icons.js"></script>
 <script src="managers.js"></script>
 <script src="achievement-system.js"></script>
@@ -61,6 +66,8 @@
 <script src="trap-room.js"></script>
 <script src="battle-scene.js"></script>
 <script src="town-scene.js"></script>
+<script src="world-map-scene.js"></script>
+<script src="region-hub-scene.js"></script>
 <script src="card-game.js"></script>
 <script src="dialogue-scene.js"></script>
 <script src="game.js"></script>

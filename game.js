@@ -14,6 +14,8 @@ class Game {
     this.itemManager      = new ItemManager();
     this.questManager     = new QuestManager();
     this.battleManager    = new BattleManager();
+    this.regionManager    = typeof RegionManager !== "undefined"
+      ? new RegionManager() : null;
     this.attendanceManager = typeof AttendanceManager !== "undefined"
       ? new AttendanceManager() : null;
     this.achievementManager = typeof AchievementManager !== "undefined"
@@ -22,6 +24,7 @@ class Game {
     // 동료 선택 세션 플래그 (마을 복귀 시 초기화)
     this._party2Selected  = false; // 일반 던전 2번째 동료
     this._party3Selected  = false; // 심연 던전 3번째 동료
+    this._activeRegion    = null;  // 현재 재건하러 들어간 지역 id (월드맵 이동 4단계)
     this._tutorialShown   = false; // 성 밖 사냥터 튜토리얼 안내
     this._attendanceChecked = false; // 출석 체크 (세션당 1회)
 
@@ -48,6 +51,8 @@ class Game {
       title:   document.getElementById("titleScreen"),
       town:    document.getElementById("townScreen"),
       dungeon: document.getElementById("dungeonScreen"),
+      worldmap: document.getElementById("worldMapScreen"),
+      regionhub: document.getElementById("regionHubScreen"),
       battle:  document.getElementById("battleScreen"),
       victory: document.getElementById("victoryScreen"),
       defeat:  document.getElementById("defeatScreen"),
@@ -201,6 +206,7 @@ class Game {
     if (!data) { alert("저장 데이터가 없습니다."); return; }
     this.player = this.saveManager.hydrate(data.player);
     if (!this.player) { alert("저장 데이터 손상"); return; }
+    this.regionManager?.ensureState(this.player);
     this.currentMonster = null;
     this._hadLoad = true;
     const m = document.getElementById("titleLoadModal");
@@ -232,6 +238,7 @@ class Game {
   // ─────────────────────────────────────────────────
   start(type) {
     this.player         = new Player(type);
+    this.regionManager?.ensureState(this.player);
     this.currentMonster = null;
     this._toTown();
     // [ARCH 03] 신규 게임 오프닝 씬 재생 (scenes.js가 로드된 경우)
@@ -247,6 +254,7 @@ class Game {
     if (!data) { alert("저장 데이터가 없습니다."); return; }
     this.player = this.saveManager.hydrate(data.player);
     if (!this.player) { alert("저장 데이터 손상"); return; }
+    this.regionManager?.ensureState(this.player);
     this.currentMonster = null;
     this._hadLoad = true;
     this._toTown();
@@ -301,6 +309,8 @@ class Game {
     };
     clearSlot("party3", "party3Hp", "party3MaxHp", "_party3KnockedOut", "3번째 동료");
     this._party3Selected = false;
+    // 던전을 떠나 마을로 왔으므로 활성 지역 태그 해제 (다음 던전 진입 시 재설정)
+    this._activeRegion = null;
 
     // 던전 씬 정리
     if (this.dungeonScene) { this.dungeonScene.destroy(); this.dungeonScene = null; }
@@ -329,7 +339,6 @@ class Game {
           </div>
           ${[
             ["outside","🌿 성 밖 사냥터","#446633"],
-            ["forest", "🌲 숲 던전",     "#334433"],
             ["normal", "🗡 일반 던전",   "#443322"],
             ["abyss",  "⚫ 심연 던전",   "#332244"],
           ].map(([t,label,bg]) => `
@@ -400,6 +409,155 @@ class Game {
       const prefix = scene.speaker ? `[${scene.speaker}]\n` : "";
       this.showNarrative(prefix + scene.lines.slice(0, 3).join("\n"), 4500);
     }
+  }
+
+  // ─────────────────────────────────────────────────
+  //  월드맵 (지역 선택 화면)
+  // ─────────────────────────────────────────────────
+  _openWorldMap() {
+    const c = this.containers.worldmap;
+    if (!c) { this.log?.("월드맵 화면을 찾을 수 없습니다"); return; }
+    if (typeof WorldMapScene === "undefined") { this.log?.("world-map-scene.js 미로드"); return; }
+
+    this.regionManager?.ensureState(this.player);
+    this.worldMapScene = new WorldMapScene(this);
+    this.worldMapScene.mount(c);
+    this._showScreen("worldmap");
+  }
+
+  _fromWorldMapToTown() {
+    this._toTown();
+    return true;
+  }
+
+  // 월드맵에서 지역을 거점으로 확정했을 때 호출되는 훅 (3·4단계)
+  //  - 거점을 currentRegion 으로 확정(이미 RegionManager.select 에서 처리됨)하고
+  //  - 실제로 그 지역으로 "이동"한다:
+  //      · 시작마을(완료된 홈 거점) → 마을 화면으로
+  //      · 그 외 미완료 지역 → 해당 지역의 던전으로 진입(재건하러 감)
+  //    던전 진입 시 _activeRegion 에 지역 id 를 기록해, 클리어 시 그 지역의
+  //    재건도를 올릴 수 있게 한다(5단계 연동 지점).
+  _onRegionSelected(id) {
+    const rm = this.regionManager;
+    const r  = rm?.get(this.player, id);
+    if (!r) return;
+
+    // 거점 확정 즉시 저장 (유실 방지)
+    this.saveManager?.autoSave?.(this);
+
+    // 홈 거점(시작마을)이거나 이미 재건 완료된 지역 → 마을로 이동
+    if (id === "starterVillage" || r.completed) {
+      this._activeRegion = id;
+      this.showNarrative?.(`${r.icon || "📍"} ${r.name}\n으로 이동합니다.`, 1800);
+      setTimeout(() => this._fromWorldMapToTown(), 700);
+      return;
+    }
+
+    // 미완료 지역 → 그 지역의 거점 화면으로 먼저 이동 (NPC 인사·투자 시스템)
+    // 거점 화면이 없는 지역(아직 미설정)은 곧바로 던전으로 진입
+    this._activeRegion = id;
+    const investCfg = this.regionManager.getInvestConfig(id);
+    const briefKey = `_briefedFor_${id}`;
+
+    // 처음 선택하는 지역이고 사전 설명이 설정돼 있으면, 마을에서 공주의 설명을 먼저 듣고 간다
+    if (investCfg?.princessBriefId && !this.player[briefKey]) {
+      this.player[briefKey] = true;
+      this._pendingRegionBrief = { briefId: investCfg.princessBriefId, regionId: id };
+      this._fromWorldMapToTown();
+      return;
+    }
+
+    if (this.regionManager.hasInvestment(id) && typeof RegionHubScene !== "undefined") {
+      this.showNarrative?.(`${r.icon || "📍"} ${r.name}\n으로 향합니다.`, 1600);
+      setTimeout(() => this._openRegionHub(id), 700);
+    } else {
+      this.showNarrative?.(`${r.icon || "📍"} ${r.name}\n재건을 위해 출발합니다!`, 2000);
+      setTimeout(() => {
+        const dType = REGION_BY_ID?.[id]?.dungeonType || "normal";
+        this.goToDungeon(dType, 1);
+      }, 800);
+    }
+  }
+
+  // ── 지역 거점 화면 (광산도시 등) ──────────────────────
+  _openRegionHub(regionId) {
+    const c = this.containers.regionhub;
+    if (!c) { this.log?.("지역 거점 화면을 찾을 수 없습니다"); return; }
+    if (typeof RegionHubScene === "undefined") { this.log?.("region-hub-scene.js 미로드"); return; }
+
+    this.regionHubScene?.destroy?.();
+    this.regionHubScene = new RegionHubScene(this, regionId);
+    this.regionHubScene.mount(c);
+    this._showScreen("regionhub");
+  }
+
+  _fromRegionHubToWorldMap() {
+    this.regionHubScene?.destroy?.();
+    this._openWorldMap();
+  }
+
+  // 거점 화면에서 "던전으로 출발" 클릭 시 — 그 지역의 재건 던전으로 진입
+  _departFromRegionHub(regionId) {
+    this.regionHubScene?.destroy?.();
+    this._activeRegion = regionId;
+    const dType = REGION_BY_ID?.[regionId]?.dungeonType || "normal";
+    this.goToDungeon(dType, 1);
+  }
+
+  // ── 동료 개인 스토리 보상 적용 ─────────────────────────
+  _applyCompanionStoryReward(partyKey) {
+    const cfg = this.regionManager?.getCompanionStoryConfig(partyKey);
+    if (!cfg) return;
+    const r = cfg.reward;
+    const p = this.player;
+
+    if (r.type === "stat") {
+      if (r.atkBonus) p.bonusAttack = (p.bonusAttack || 0) + r.atkBonus;
+      if (r.hpBonus)  { p.maxHp += r.hpBonus; p.hp = Math.min(p.hp + r.hpBonus, p.maxHp + (p.bonusHp||0)); }
+      this.log(`✨ ${cfg.companionName}의 사연 해결: ${r.desc}`);
+    } else if (r.type === "passive" || r.type === "ultimate_upgrade") {
+      // 전투 중 효과는 battle-manager.js / battle-scene.js 가 이 플래그를 직접 참조한다
+      if (!p.companionPassives) p.companionPassives = {};
+      p.companionPassives[partyKey] = { id: r.id, name: r.name, desc: r.desc, icon: r.icon };
+      this.log(`✨ ${cfg.companionName}의 사연 해결: ${r.name} 획득`);
+    }
+
+    setTimeout(() => {
+      this.showNarrative?.(`💞 ${cfg.companionName}\n\n${r.name}\n${r.desc}`, 3200);
+    }, 400);
+  }
+
+  // ── 마왕군 간부 격파 — 지역 재난과 동료 사연을 하나로 묶는 마무리 대사 ──
+  // 연동된 동료가 파티에 있을 때만 "비하인드"(개인적 진실)를 들려주고,
+  // 없으면 지역 재난의 원인만 간단히 알려주는 일반 버전으로 진행한다.
+  static GENERAL_TO_COMPANION = {
+    general_gramos:   "tanker",
+    general_barkan:   "dealer",
+    general_lilith:   "archer",
+    general_belzeron: "mage_party",
+  };
+
+  onGeneralDefeated(generalId) {
+    const shownKey = `_generalRevealShown_${generalId}`;
+    if (this.player[shownKey]) return; // 이미 한 번 본 폭로 대사는 다시 보여주지 않음
+    this.player[shownKey] = true;
+
+    const companionKey = Game.GENERAL_TO_COMPANION[generalId];
+    const p = this.player;
+    const hasCompanion = !!companionKey && (p.party === companionKey || p.party2 === companionKey);
+    const dlgKey = `${generalId}_defeat_${hasCompanion ? "with_" + companionKey.replace("mage_party","mage") : "generic"}`;
+    this._pendingGeneralReveal = dlgKey;
+    this.saveManager?.autoSave?.(this);
+  }
+
+  // ── "봉인의 관리자" 컷신 전투 — 수도 재건 컷신의 마지막 단계 ──
+  // 마을(수도) 컷신 도중 곧바로 발동하는 특수 전투. 던전 맥락이 전혀 없으므로
+  // _storyOnlyBattle 플래그로 표시해, 승리 후 onBattleVictory가 던전이 아니라
+  // 심연 개방 후속 대사로 이어지도록 한다.
+  _startSealKeeperBattle() {
+    this._storyOnlyBattle = "seal_keeper";
+    this.dungeonScene = null; // 던전 맥락 없음 — 승리 후 dungeonScene 재개 분기를 타지 않게
+    this.startBattle("seal_keeper", true);
   }
 
   // ─────────────────────────────────────────────────
@@ -529,11 +687,25 @@ class Game {
   // ─────────────────────────────────────────────────
   goToDungeon(type = "normal", startFloor = 1) {
     const p = this.player;
-    // 일반 던전: 2번째 동료 선택 (아직 2번 동료가 없을 때만)
-    if (type === "normal" && startFloor === 1 && !this._party2Selected && !p?.party2 && p?.party) {
+    // 일반/지역(광산·항구·숲·수도 등) 던전: 2번째 동료 선택 (아직 2번 동료가 없을 때만)
+    const usesTwoCompanions = ["normal", "mine", "harbor", "elfForest", "capital"].includes(type);
+    if (usesTwoCompanions && startFloor === 1 && !this._party2Selected && !p?.party2 && p?.party) {
       this._showPartySelectModal(2, [p.party], type, startFloor);
       return;
     }
+
+    // 심연 진입 전 — 리온(힐러)의 개인 스토리 게이트 (복수와 용서 사이의 선택)
+    // 아직 안 봤고, 호감도가 충분하고, 실제로 파티에 있다면 던전 진입을 잠시 막고 마을에서 재생
+    if (type === "abyss" && startFloor === 1 && this.townScene && !this._pendingAbyssGateChecked) {
+      const healerKey = [p.party, p.party2].find(k => k === "healer");
+      if (healerKey && this.regionManager?.canTriggerAbyssGateStory?.(p, healerKey)) {
+        this._pendingAbyssGateChecked = true; // 재진입 시 무한 반복 방지(체인 끝나면 false로 복귀)
+        this._playHealerAbyssGate(type, startFloor);
+        return;
+      }
+    }
+    this._pendingAbyssGateChecked = false;
+
     // 심연 던전: 3번째 동료 선택 (첫 진입 시)
     if (type === "abyss" && startFloor === 1 && !this._party3Selected && p?.party) {
       this._showPartySelectModal(3, [p.party, p.party2].filter(Boolean), type, startFloor);
@@ -542,9 +714,29 @@ class Game {
     this._startDungeon(type, startFloor);
   }
 
+  // 리온(힐러)의 심연 진입 전 개인 스토리(갈등 → 용서) 재생 후, 끝나면 원래 흐름(goToDungeon) 재시도
+  async _playHealerAbyssGate(type, startFloor) {
+    const ts = this.townScene;
+    if (!ts?.showNpcDialogue) { this.goToDungeon(type, startFloor); return; }
+
+    await new Promise(resolve => ts.showNpcDialogue("healer_story_conflict", resolve));
+    await new Promise(resolve => setTimeout(resolve, 600));
+    await new Promise(resolve => ts.showNpcDialogue("healer_story_resolution", resolve));
+
+    this._applyCompanionStoryReward("healer");
+    this.regionManager?.markCompanionStoryDone(this.player, "healer");
+    this.saveManager?.autoSave?.(this);
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+    this.goToDungeon(type, startFloor); // 스토리 종료 후 본래 진입 흐름 재시도(3번 동료 선택 등)
+  }
+
   // 실제 던전 초기화 (goToDungeon의 이전 본문 — 모달 경유 후에도 동일 경로 사용)
   _startDungeon(type, startFloor) {
     this.dungeonType       = type;
+    // 이 던전이 어느 지역 재건에 속하는지 기록 (월드맵 이동으로 진입했으면 그 지역,
+    // 아니면 현재 거점). 5단계에서 클리어 시 이 지역의 재건도를 올리는 데 사용.
+    if (!this._activeRegion) this._activeRegion = this.player?.currentRegion || "starterVillage";
     this.player.storyPhase = (type === "abyss") ? "abyss" : "dungeon";
     this.player.killCount  = 0;
 
@@ -572,7 +764,6 @@ class Game {
     // ── 마왕 존재감 강화: 던전 진입 시 분위기 메시지 ──
     if (startFloor === 1) {
       const ATMOSPHERE_MSG = {
-        forest: { text: "어딘가에서 불길한 기운이 느껴진다...", color: "#aa88cc" },
         normal: { text: "공기가 무겁다. 마왕의 그림자가 가까워지고 있다...", color: "#cc8866" },
         abyss:  { text: "심연 깊은 곳에서 거대한 마력이 맥동하고 있다...", color: "#dd4444" },
       };
@@ -605,6 +796,75 @@ class Game {
   onGuardianDefeated() {
     // battle-manager.js에서 guardianDefeated·abyssUnlocked 이미 설정됨
     // 필요 시 여기서 연출 추가 가능
+    this.saveManager.autoSave(this);
+  }
+
+  // ─────────────────────────────────────────────────
+  //  지역 재건도 반영 (5단계)
+  //  일반 던전의 최종 보스(수호자)를 처치할 때마다 호출됨 — guardianDefeated
+  //  플래그(최초 1회용, 심연 해금과 연결)와는 별개로 매 클리어마다 반복 호출되어
+  //  지역 재건도가 여러 번 던전을 돌며 누적 상승하도록 한다.
+  // ─────────────────────────────────────────────────
+  onRegionDungeonCleared() {
+    const regionId = this._activeRegion || this.player?.currentRegion;
+    if (!regionId || !this.regionManager) return;
+
+    const RECONSTRUCTION_GAIN = 35; // 1회 클리어당 재건도 +35
+    const result = this.regionManager.addProsperity(this.player, regionId, RECONSTRUCTION_GAIN);
+    if (!result.region) return;
+
+    this.log(`🏗 ${result.region.name} 재건도 +${RECONSTRUCTION_GAIN} (현재 ${result.region.prosperity}%)`);
+    if (result.completed) {
+      // 재건도 100% + 투자 최종 단계가 모두 갖춰졌으면, 통합 축제 이벤트로 대체한다
+      // (이 지역에 축제 콘텐츠가 등록돼 있을 때만 — 아직 없는 지역은 기존 방식 유지)
+      if (this.regionManager.canTriggerRegionFestival(this.player, regionId)) {
+        this._pendingRegionFestival = regionId;
+        setTimeout(() => {
+          this.showNarrative?.(`🎉 ${result.region.icon || "📍"} ${result.region.name}\n완전히 되살아났습니다!`, 2400);
+        }, 600);
+        if (result.newlyUnlocked.length) {
+          const names = result.newlyUnlocked
+            .map(id => REGION_BY_ID?.[id]?.name || id)
+            .join(", ");
+          setTimeout(() => {
+            this.showNarrative?.(`🗺 새로운 지역 발견!\n${names}이(가) 해금되었습니다.`, 2800);
+          }, 3200);
+        }
+        this.saveManager.autoSave(this);
+        return;
+      }
+
+      // 이 지역에 연결된 동료 스토리의 결말편이 가능한지 확인 (갈등편을 이미 본 경우만)
+      const p = this.player;
+      for (const key of [p.party, p.party2].filter(Boolean)) {
+        if (this.regionManager.canTriggerCompanionResolution(p, key, regionId)) {
+          this._pendingCompanionResolution = key;
+          break;
+        }
+      }
+
+      if (regionId === "capital") {
+        // 수도 재건 완료 → 왕 구출·마왕 위치 발견·심연 개방 컷신을 다음 마을 진입 때 재생
+        // (전투 보상 팝업 등 정상적인 전투 후 흐름을 가로채지 않도록 화면 전환은 강제하지 않음)
+        this._pendingCapitalEnding = true;
+        setTimeout(() => {
+          this.showNarrative?.(`🎉 ${result.region.icon || "📍"} ${result.region.name}\n재건 완료!`, 2400);
+        }, 600);
+        this.saveManager.autoSave(this);
+        return;
+      }
+      setTimeout(() => {
+        this.showNarrative?.(`🎉 ${result.region.icon || "📍"} ${result.region.name}\n재건 완료!`, 2800);
+      }, 600);
+      if (result.newlyUnlocked.length) {
+        const names = result.newlyUnlocked
+          .map(id => REGION_BY_ID?.[id]?.name || id)
+          .join(", ");
+        setTimeout(() => {
+          this.showNarrative?.(`🗺 새로운 지역 발견!\n${names}이(가) 해금되었습니다.`, 2800);
+        }, 3600);
+      }
+    }
     this.saveManager.autoSave(this);
   }
 
@@ -866,6 +1126,7 @@ class Game {
     const floorMult = diffTbl[Math.min(floor - 1, diffTbl.length - 1)] ?? 1.0;
     const diffMult  = (1 + (this.player.level - 1) * 0.15) * floorMult;
     this.currentMonster = createMonsterInstance(monsterId, diffMult);
+    this._battleTurnCount = 0; // "수호의 맥동"(카인 사연 보상) 등 전투 초반 N턴 효과에 사용
     if (isBoss) {
       this.currentMonster.isBoss = true;
       if (monsterId === "demon") this.currentMonster.isFinal = true;
@@ -891,6 +1152,8 @@ class Game {
       }
       document.getElementById("dungeonPlayerSprite")?.remove();
       document.getElementById("dungeonCompSprite")?.remove();
+      document.getElementById("dungeonComp2Sprite")?.remove();
+      document.getElementById("dungeonComp3Sprite")?.remove();
     }
 
     const c = this.containers.battle;
@@ -911,6 +1174,19 @@ class Game {
     this.currentMonster = null;
     const ret = this._returnAfterBattle;
     this._returnAfterBattle = null;
+
+    // 스토리 전용 전투(봉인의 관리자 등) 승리 — 던전 복귀 분기를 타지 않고
+    // 곧바로 마을로 돌아가 다음 컷신(심연 개방)을 이어서 재생한다.
+    if (this._storyOnlyBattle) {
+      const which = this._storyOnlyBattle;
+      this._storyOnlyBattle = null;
+      if (which === "seal_keeper") {
+        this._pendingSealKeeperVictory = true;
+      }
+      this.saveManager.autoSave?.(this);
+      this._toTown();
+      return;
+    }
 
     // 전투 승리 시 예금 이자 적립
     if (this.player?.bank?.deposit > 0) {
@@ -978,29 +1254,248 @@ class Game {
   }
 
   onFinalBossDefeated() {
-    this.player.abyssUnlocked = true;
-    this.player.storyPhase    = "victory";
+    const defeatedId = this.currentMonster?.id;
+    this.player.storyPhase = "victory";
+
+    // ── 진짜 최종보스(네메시스) 격파 — 진엔딩 후일담 시작 ──
+    if (defeatedId === "nemesis") {
+      this.player.nemesisDefeated = true;
+      const ds = this.dungeonScene;
+      const chainNext = (key, next) => {
+        if (ds?.showNpcDialogue) ds.showNpcDialogue(key, next);
+        else next();
+      };
+
+      const reactionMap = {
+        tanker: "ending_companion_tanker", dealer: "ending_companion_dealer",
+        archer: "ending_companion_archer", mage_party: "ending_companion_mage",
+        healer: "ending_companion_healer",
+      };
+      const careerMap = {
+        tanker: "ending_career_tanker", dealer: "ending_career_dealer",
+        archer: "ending_career_archer", mage_party: "ending_career_mage",
+        healer: "ending_career_healer",
+      };
+      const inPartyKeys = [this.player.party, this.player.party2, this.player.party3].filter(Boolean);
+      const inPartyReactions = inPartyKeys.map(k => reactionMap[k]).filter(Boolean);
+      const inPartyCareers   = inPartyKeys.map(k => careerMap[k]).filter(Boolean);
+
+      const playSequentially = (list, idx, onDone) => {
+        if (idx >= list.length) { onDone(); return; }
+        chainNext(list[idx], () => setTimeout(() => playSequentially(list, idx + 1, onDone), 350));
+      };
+
+      chainNext("nemesis_victory_epilogue", () => {
+        setTimeout(() => playSequentially(inPartyReactions, 0, () => {
+          setTimeout(() => playSequentially(inPartyCareers, 0, () => {
+            setTimeout(() => chainNext("ending_return_resolve", () => {
+              this.currentMonster = null;
+              this._pendingTrueEnding = true;
+              setTimeout(() => this._toTown(), 500);
+            }), 500);
+          }), 400);
+        }), 400);
+      });
+      return;
+    }
+
+    // ── 다르카스 격파 — 일반엔딩(게임 클리어) 제시, 선택에 따라 더 깊은 탐험으로 ──
+    this.player.darkasDefeated = true; // 일반엔딩 달성 플래그
+    const ds = this.dungeonScene;
+
+    const chainNext = (key, next) => {
+      if (ds?.showNpcDialogue) ds.showNpcDialogue(key, next);
+      else next();
+    };
+
+    chainNext("darkas_post_defeat", () => {
+      setTimeout(() => this._showNormalEndingChoice(), 600);
+    });
+  }
+
+  // ── 일반엔딩(게임 클리어) 화면 — 여기서 마무리할지, 더 깊은 곳으로 갈지 선택 ──
+  _showNormalEndingChoice() {
     this.saveManager.save(this);
-    this.currentMonster = null;
 
     const c = this.containers.victory;
     c.innerHTML = `
       <div class="overlay-bg" style="background:url('images/동료들과 함께 기뻐하는 모습.png') center/cover no-repeat;opacity:.35;position:absolute;inset:0;"></div>
       <div class="overlay-content" style="position:relative;z-index:1;text-align:center;">
         <div class="overlay-title" style="color:var(--gold2);">🎉 마왕 토벌 성공!</div>
-        <p class="overlay-desc">마왕 다르카스를 물리쳤다!<br>세계에 평화가 찾아왔다.<br><br>
-          <strong style="color:var(--gold);">🌌 심연 던전이 해금되었습니다!</strong></p>
+        <p class="overlay-desc">마왕 다르카스를 물리쳤다!<br>세계에 평화가 돌아온 것처럼 보인다...<br><br>
+          <strong style="color:#ff8866;">하지만 그가 남긴 마지막 말이 마음에 걸린다.</strong></p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+          <button class="overlay-btn primary" id="endingAccept">🏘 여기서 마무리하기</button>
+          <button class="overlay-btn" id="endingExplore" style="border-color:#aa3030;color:#ff9988;">🌑 더 깊은 곳으로...</button>
+        </div>
+      </div>`;
+
+    document.getElementById("endingAccept")?.addEventListener("click", () => {
+      this.currentMonster = null;
+      this._showScreen("victory");
+      if (window.audioMgr) audioMgr.stopBgm();
+      // 일반엔딩 확정 화면으로 교체 (마을로/처음부터)
+      setTimeout(() => this._showNormalEndingFinal(), 50);
+    });
+
+    document.getElementById("endingExplore")?.addEventListener("click", () => {
+      this._continueToNemesis();
+    });
+
+    this._showScreen("victory");
+    if (window.audioMgr) audioMgr.stopBgm();
+  }
+
+  // 일반엔딩을 받아들였을 때의 최종 화면 (마을로/처음부터)
+  _showNormalEndingFinal() {
+    const c = this.containers.victory;
+    c.innerHTML = `
+      <div class="overlay-bg" style="background:url('images/동료들과 함께 기뻐하는 모습.png') center/cover no-repeat;opacity:.35;position:absolute;inset:0;"></div>
+      <div class="overlay-content" style="position:relative;z-index:1;text-align:center;">
+        <div class="overlay-title" style="color:var(--gold2);">🎉 - 일반엔딩 -</div>
+        <p class="overlay-desc">마왕 다르카스를 물리치고, 세계에 평화를 되찾았다.<br><br>
+          <strong style="color:var(--gold);">게임 클리어!</strong></p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
           <button class="overlay-btn primary" id="victoryToTown">🏘 마을로</button>
           <button class="overlay-btn" id="victoryRestart">🔄 처음부터</button>
         </div>
       </div>`;
-
     document.getElementById("victoryToTown")  ?.addEventListener("click", () => this._toTown());
     document.getElementById("victoryRestart") ?.addEventListener("click", () => this.restart());
+  }
+
+  // ── 진엔딩 최종 화면 — 왕의 진실 공개 + 왕국 완전재건 후 호출됨 ──
+  _showTrueEndingScreen(isFullyRebuilt = false) {
+    this.saveManager.save(this);
+    this.currentMonster = null;
+
+    const kingdomPct = this.regionManager?.kingdomProsperity?.(this.player) ?? 100;
+    const rebuildLine = isFullyRebuilt
+      ? "모든 지역이 완전히 재건되었다."
+      : "아직 손길이 필요한 곳들이 남아있지만, 그래도 평화는 돌아왔다.";
+    const protagonistLine = isFullyRebuilt
+      ? `<strong style="color:var(--gold);">왕실 최고 훈장을 받고, 왕국의 재상으로 임명되었다.</strong>`
+      : `<strong style="color:#ffcc88;">왕국의 영원한 영웅으로, 사람들의 마음속에 남게 되었다.</strong>`;
+
+    const c = this.containers.victory;
+    c.innerHTML = `
+      <div class="overlay-bg" style="background:url('images/동료들과 함께 기뻐하는 모습.png') center/cover no-repeat;opacity:.4;position:absolute;inset:0;"></div>
+      <div class="overlay-content" style="position:relative;z-index:1;text-align:center;">
+        <div class="overlay-title" style="color:var(--gold2);">✨ - 진엔딩 - ✨</div>
+        <p class="overlay-desc">공허의 군주 네메시스를 무찌르고, 봉인 너머의 진실까지 모두 밝혀냈다.<br>
+          왕국 번영도 <strong style="color:var(--gold);">${kingdomPct}%</strong> — ${rebuildLine}<br><br>
+          ${protagonistLine}</p>
+      </div>`;
 
     this._showScreen("victory");
     if (window.audioMgr) audioMgr.stopBgm();
+
+    // 잠시 음미할 시간을 준 뒤 자동으로 엔딩 크레딧으로 전환 (진엔딩에만)
+    setTimeout(() => this._showEndingCredits(isFullyRebuilt), 4200);
+  }
+
+  // ── 엔딩 크레딧 — 진엔딩 전용. 자동 스크롤, 클릭하면 빠르게 넘어감 ──
+  _showEndingCredits(isFullyRebuilt) {
+    const p = this.player;
+    const protagonistTitle = isFullyRebuilt ? "왕국의 재상" : "왕국의 영원한 영웅";
+
+    const c = this.containers.victory;
+    c.innerHTML = `
+      <style>
+        #endingCreditsRoot { position:absolute; inset:0; background:#05040a; overflow:hidden; z-index:2; }
+        #endingCreditsScroll {
+          position:absolute; left:0; right:0; top:100%; text-align:center;
+          animation: endingCreditsScroll 38s linear forwards;
+        }
+        #endingCreditsRoot.fast #endingCreditsScroll { animation-duration: 6s; }
+        @keyframes endingCreditsScroll { from { top:100%; } to { top:-220%; } }
+        .ec-game-title { font-size:1.6rem; font-weight:800; color:var(--gold2,#e8b830); letter-spacing:.08em; margin-bottom:6px; }
+        .ec-sub { font-size:.8rem; color:#cc99ff; margin-bottom:48px; letter-spacing:.16em; }
+        .ec-section-title { font-size:1.05rem; color:var(--gold,#c8980e); margin:38px 0 14px; letter-spacing:.1em; }
+        .ec-line { font-size:.85rem; color:#e8d8c0; line-height:2.1; }
+        .ec-line b { color:#fff3d0; }
+        .ec-line span { color:#8a7860; }
+        .ec-final { margin-top:60px; font-size:1.3rem; color:var(--gold2,#e8b830); letter-spacing:.2em; }
+        .ec-hint { position:absolute; bottom:14px; left:0; right:0; text-align:center; font-size:.66rem; color:#665544; }
+      </style>
+      <div id="endingCreditsRoot">
+        <div id="endingCreditsScroll">
+          <div class="ec-game-title">마왕 토벌 — 어둠의 용사</div>
+          <div class="ec-sub">- 진 엔 딩 -</div>
+
+          <div class="ec-section-title">주인공</div>
+          <div class="ec-line"><b>${p?.name || "용사"}</b> <span>— ${protagonistTitle}</span></div>
+
+          <div class="ec-section-title">함께한 동료들</div>
+          <div class="ec-line"><b>카인</b> <span>— 광산도시 길드장</span></div>
+          <div class="ec-line"><b>카르나</b> <span>— 왕국 기사단 재건</span></div>
+          <div class="ec-line"><b>아리아</b> <span>— 인간-엘프 외교관</span></div>
+          <div class="ec-line"><b>엘린</b> <span>— 왕립 마도원장</span></div>
+          <div class="ec-line"><b>리온</b> <span>— 왕립 대치유사</span></div>
+
+          <div class="ec-section-title">되살아난 왕국</div>
+          <div class="ec-line"><span>시작마을 · 광산도시 · 항구도시 · 깊은 숲 · 수도</span></div>
+
+          <div class="ec-section-title">마왕군 사천왕</div>
+          <div class="ec-line"><span>그라모스 · 바르칸 · 릴리스 · 벨제론</span></div>
+
+          <div class="ec-section-title">진실</div>
+          <div class="ec-line"><span>마왕 다르카스는 봉인의 마지막 관리자였다.</span></div>
+          <div class="ec-line"><span>공허의 군주 네메시스는 그 봉인 너머에 있었다.</span></div>
+          <div class="ec-line"><span>그 모든 것을 끝낸 것은, 바로 당신이었다.</span></div>
+
+          <div class="ec-final">- T H E &nbsp; E N D -</div>
+        </div>
+        <div class="ec-hint">화면을 클릭하면 빠르게 넘어갑니다</div>
+      </div>`;
+
+    const root = document.getElementById("endingCreditsRoot");
+    root?.addEventListener("click", () => root.classList.add("fast"));
+
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(fallbackTimer);
+      c.innerHTML = `
+        <div class="overlay-bg" style="background:url('images/동료들과 함께 기뻐하는 모습.png') center/cover no-repeat;opacity:.4;position:absolute;inset:0;"></div>
+        <div class="overlay-content" style="position:relative;z-index:1;text-align:center;">
+          <div class="overlay-title" style="color:var(--gold2);">✨ 마왕 토벌 — 어둠의 용사 ✨</div>
+          <p class="overlay-desc">플레이해주셔서 감사합니다.</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+            <button class="overlay-btn primary" id="victoryToTown">🗺 왕국 지도로</button>
+            <button class="overlay-btn" id="victoryRestart">🔄 처음부터</button>
+          </div>
+        </div>`;
+      document.getElementById("victoryToTown")  ?.addEventListener("click", () => this._openWorldMap());
+      document.getElementById("victoryRestart") ?.addEventListener("click", () => this.restart());
+    };
+
+    const scrollEl = document.getElementById("endingCreditsScroll");
+    scrollEl?.addEventListener("animationend", finish);
+    // 폴백: 어떤 이유로든 animationend가 안 잡히는 경우를 대비한 안전장치
+    const fallbackTimer = setTimeout(finish, 39000);
+  }
+
+  // "더 깊은 곳으로" 선택 시 — 봉인 붕괴 → 네메시스 등장 → 다르카스 마지막 말 → 전투 계속
+  _continueToNemesis() {
+    this.currentMonster = null;
+    this._showScreen("dungeon"); // 던전 화면으로 복귀해 컷신 이어감
+    const ds = this.dungeonScene;
+    const chainNext = (key, next) => {
+      if (ds?.showNpcDialogue) ds.showNpcDialogue(key, next);
+      else next();
+    };
+
+    setTimeout(() => chainNext("seal_collapse", () => {
+      setTimeout(() => chainNext("nemesis_appearance", () => {
+        setTimeout(() => chainNext("darkas_final_words", () => {
+          // 다르카스의 마지막 힘 — 네메시스 전투 중 1회, 파티 대신 받아준다.
+          this.player._darkasProtectionCharge = true;
+          setTimeout(() => this.startBattle("nemesis", true), 300);
+        }), 500);
+      }), 500);
+    }), 600);
   }
 
   onPlayerDefeated() {
@@ -1421,6 +1916,35 @@ class Game {
     }
   }
 
+  // ── 동료 모집 화면에서 "어느 슬롯을 바꿀지" 고른 뒤 호출되는 범용 버전 ──
+  // slotNum: 1/2/3. 이미 채워진 슬롯도 다른 동료로 교체할 수 있다.
+  selectPartySlot(slotNum, key) {
+    const mem = PARTY_MEMBERS[key];
+    const p = this.player;
+    if (!mem || !p) return;
+
+    const FIELD = {
+      1: { party:"party",  hp:"partyHp",  max:"partyMaxHp",  ko:"_partyKnockedOut"  },
+      2: { party:"party2", hp:"party2Hp", max:"party2MaxHp", ko:"_party2KnockedOut" },
+      3: { party:"party3", hp:"party3Hp", max:"party3MaxHp", ko:"_party3KnockedOut" },
+    }[slotNum];
+    if (!FIELD) return;
+
+    p[FIELD.party] = key;
+    p[FIELD.hp]    = mem.hp;
+    p[FIELD.max]   = mem.hp;
+    p[FIELD.ko]    = false;
+    this.log(`🤝 ${mem.name}이(가) ${slotNum}번째 동료로 합류!`);
+
+    const npcId = `join_${key}`;
+    if (this.townScene?.showNpcDialogue) {
+      this.townScene.showNpcDialogue(npcId);
+    } else {
+      this.showNarrative(`${mem.name}이(가) ${slotNum}번째 동료로 합류했다!`, 2500);
+    }
+    this.saveManager?.autoSave?.(this);
+  }
+
   // ─────────────────────────────────────────────────
   //  스킬 시스템
   // ─────────────────────────────────────────────────
@@ -1566,6 +2090,7 @@ class DungeonHud {
       const color = gColor[item.class] || gColor.normal || "#b8a888";
       const stat = item.type === "weapon" ? `ATK+${item.attack}`
                  : item.type === "potion" ? `회복`
+                 : item.type === "key"    ? `중요 아이템`
                  : `DEF+${item.defense}`;
 
       const row = document.createElement("div");
@@ -1578,7 +2103,9 @@ class DungeonHud {
           <span style="color:var(--text-dim);font-size:.6rem;">${stat}</span>
         </span>`;
 
-      if (item.type === "potion") {
+      if (item.type === "key") {
+        // 패시브 보관용 아이템 — 장착·사용 버튼 없이 그냥 보관만
+      } else if (item.type === "potion") {
         const use = document.createElement("button");
         use.className = "inv-btn";
         use.textContent = "사용";

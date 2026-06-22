@@ -50,17 +50,31 @@ class TownScene {
     const fromLoad    = this.game._returnedFromLoad;
     const levelDlg    = this.game._pendingLevelUpDialogue;
     const questDlg    = this.game._pendingQuestCompleteDlg;
+    const regionBrief = this.game._pendingRegionBrief;
+    const capitalEnding = this.game._pendingCapitalEnding;
+    const companionResolution = this.game._pendingCompanionResolution;
+    const generalReveal = this.game._pendingGeneralReveal;
+    const sealKeeperVictory = this.game._pendingSealKeeperVictory;
+    const trueEnding = this.game._pendingTrueEnding;
+    const regionFestival = this.game._pendingRegionFestival;
     this.game._returnedFromBattle      = false;
     this.game._returnedFromFlee        = false;
     this.game._returnedFromLoad        = false;
     this.game._pendingLevelUpDialogue  = null;
     this.game._pendingQuestCompleteDlg = null;
+    this.game._pendingRegionBrief      = null;
+    this.game._pendingCapitalEnding    = null;
+    this.game._pendingCompanionResolution = null;
+    this.game._pendingGeneralReveal    = null;
+    this.game._pendingSealKeeperVictory = null;
+    this.game._pendingTrueEnding       = null;
+    this.game._pendingRegionFestival   = null;
 
     setTimeout(() => {
       // 이 인스턴스가 이미 교체된 뒤라면(예: 대화 체인 대기 중 다른 세이브 불러오기 등)
       // 오래된 타이머가 뒤늦게 발동해 새 마을 화면에 대화가 겹쳐 뜨는 것을 방지
       if (this._destroyed) return;
-      this._dispatchTownDialogue({ fromBattle, fromFlee, fromLoad, levelDlg, questDlg });
+      this._dispatchTownDialogue({ fromBattle, fromFlee, fromLoad, levelDlg, questDlg, regionBrief, capitalEnding, companionResolution, generalReveal, sealKeeperVictory, trueEnding, regionFestival });
     }, 600);
 
     // 진행 중인 대화 체인이 모두 끝나면 기본 대기 대사("이제 어디로 갈까?")를 표시
@@ -71,7 +85,221 @@ class TownScene {
   // 귀환 상황(전투/도망/불러오기)에 맞는 상인 대사를 띄우고, 이어서
   // 퀘스트 완료 보상 대사 / 레벨업 동료 반응 / 공주 깜짝 방문 중 하나를 연결한다.
   // 예전엔 각 단계를 setInterval 폴링으로 이었으나, 이제 await 로 순차 실행.
-  async _dispatchTownDialogue({ fromBattle, fromFlee, fromLoad, levelDlg, questDlg }) {
+  async _dispatchTownDialogue({ fromBattle, fromFlee, fromLoad, levelDlg, questDlg, regionBrief, capitalEnding, companionResolution, generalReveal, sealKeeperVictory, trueEnding, regionFestival }) {
+    // ── 지역 완전 재건 통합 축제 — 재건 100% + 투자 최종 단계가 모두 갖춰졌을 때 ──
+    // 마왕군 간부 폭로(있다면) → 지역 분위기 전환(축제 소식) →
+    // (가능하면) 동료 개인 결말편을 같은 장면 안에서 이어붙임 → 마무리.
+    if (regionFestival) {
+      // 같은 전투에서 간부 폭로도 함께 대기 중이면, 사라지지 않도록 먼저 재생
+      if (generalReveal && NPC_DATA?.[generalReveal]) {
+        await this.npcDialogueAsync(generalReveal);
+        await this._delay(500);
+        if (this._destroyed) return;
+      }
+
+      const rm  = this.game.regionManager;
+      const cfg = rm.getFestivalConfig(regionFestival);
+      if (cfg) {
+        if (cfg.introNpcId) {
+          await this.npcDialogueAsync(cfg.introNpcId);
+          await this._delay(500);
+          if (this._destroyed) return;
+        }
+
+        // 이 지역과 연결된 동료가 파티에 있고, 결말편을 볼 조건이 갖춰져 있으면 같은 장면에 이어붙인다
+        const p = this.game.player;
+        const companionKey = cfg.companionKey;
+        const companionInParty = companionKey && (p.party === companionKey || p.party2 === companionKey);
+        if (companionInParty && rm.canTriggerCompanionResolution(p, companionKey, regionFestival)) {
+          const storyCfg = rm.getCompanionStoryConfig(companionKey);
+          if (storyCfg) {
+            await this.npcDialogueAsync(storyCfg.resolutionNpcId);
+            const secondKey = `${storyCfg.resolutionNpcId}2`;
+            if (NPC_DATA?.[secondKey]) {
+              await this._delay(400);
+              if (this._destroyed) return;
+              await this.npcDialogueAsync(secondKey);
+            }
+            this.game._applyCompanionStoryReward?.(companionKey);
+            rm.markCompanionStoryDone(p, companionKey);
+            await this._delay(500);
+            if (this._destroyed) return;
+          }
+        }
+
+        if (cfg.interludeNpcId) {
+          await this.npcDialogueAsync(cfg.interludeNpcId);
+          await this._delay(450);
+          if (this._destroyed) return;
+        }
+
+        if (cfg.outroNpcId) {
+          await this.npcDialogueAsync(cfg.outroNpcId);
+          await this._delay(400);
+          if (this._destroyed) return;
+        }
+
+        if (cfg.itemReward) {
+          this.game.itemManager?.add(this.game, {
+            ...cfg.itemReward, enhance: 0, attack: 0, defense: 0,
+          });
+          this.game.log?.(`🎁 '${cfg.itemReward.name}'을(를) 손에 넣었습니다.`);
+          this.game.showNarrative?.(`🎁 ${cfg.itemReward.name}\n${cfg.itemReward.desc}`, 3000);
+          await this._delay(400);
+          if (this._destroyed) return;
+        }
+      }
+
+      rm.markRegionFestivalDone(this.game.player, regionFestival);
+      this.game.saveManager?.autoSave?.(this.game);
+      return;
+    }
+
+    // ── 진엔딩 — 네메시스 격파 후 마을로 돌아왔을 때: 왕의 진실 공개 → 왕국 완전재건 → 최종 화면 ──
+    // 다른 무엇보다 먼저 재생되어야 하는 게임의 마지막 시퀀스라 최우선으로 처리.
+    if (trueEnding) {
+      await this.npcDialogueAsync("ending_king_truth1");
+      await this._delay(500);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync("ending_king_truth2");
+      await this._delay(600);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync("ending_kingdom_rebuilt");
+      await this._delay(600);
+      if (this._destroyed) return;
+
+      // 주인공의 결말 — 왕국 번영도 100%(5개 도시 지역 전부 재건)일 때만 재상 등극
+      const kingdomPct = this.game.regionManager?.kingdomProsperity?.(this.game.player) ?? 0;
+      const isFullyRebuilt = kingdomPct >= 100;
+      await this.npcDialogueAsync(isFullyRebuilt ? "ending_protagonist_chancellor" : "ending_protagonist_modest");
+      if (isFullyRebuilt) this.game.player.chancellorTitle = true;
+      await this._delay(500);
+      if (this._destroyed) return;
+
+      this.game._showTrueEndingScreen?.(isFullyRebuilt);
+      return;
+    }
+
+    // ── "봉인의 관리자" 전투 승리 후 — 수도 스토리의 나머지 절반 ──
+    // 재회 → 왕 구출(진실) → 마왕의 진실 → 동료 반응 → 주인공 결의 →
+    // 작위 수여 → 심연의 열쇠 + 엔딩 떡밥 → 심연 개방.
+    // 수도 재건 컷신의 마지막 단계. 다른 무엇보다 먼저 처리해 끊기지 않게 한다.
+    if (sealKeeperVictory) {
+      const p = this.game.player;
+
+      await this.npcDialogueAsync("capital_ending_reunion");
+      await this._delay(500);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync("capital_ending_rescue");
+      await this._delay(600);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync("capital_ending_kingtruth");
+      await this._delay(600);
+      if (this._destroyed) return;
+
+      // 동료 반응 — 파티에 있는 동료만 한 마디씩 (없으면 자연히 건너뜀)
+      const reactionMap = { tanker:"capital_ending_companion_tanker", archer:"capital_ending_companion_archer", mage_party:"capital_ending_companion_mage" };
+      for (const key of [p.party, p.party2].filter(Boolean)) {
+        const dlgKey = reactionMap[key];
+        if (dlgKey) {
+          await this.npcDialogueAsync(dlgKey);
+          await this._delay(350);
+          if (this._destroyed) return;
+        }
+      }
+
+      // 주인공의 결의 (독백)
+      await this.selfDialogueAsync("capital_ending_resolve", ["...심연으로 가야 한다."]);
+      await this._delay(500);
+      if (this._destroyed) return;
+
+      // 시민들이 광장에 모여듦 — 작위 수여식 직전 분위기
+      await this.npcDialogueAsync("capital_ending_plaza");
+      await this._delay(600);
+      if (this._destroyed) return;
+
+      // 작위 수여 — 왕국의 수호자
+      await this.npcDialogueAsync("capital_ending_title");
+      if (!p.guardianTitle) {
+        p.guardianTitle = true;
+        this.game.log("👑 '왕국의 수호자' 칭호를 받았습니다!");
+      }
+      await this._delay(500);
+      if (this._destroyed) return;
+
+      // 심연의 열쇠 + 엔딩 떡밥
+      await this.npcDialogueAsync("capital_ending_key");
+      if (!p._abyssKeyGiven) {
+        p._abyssKeyGiven = true;
+        this.game.itemManager?.add(this.game, {
+          name: "심연의 열쇠", type: "key", class: "legend", enhance: 0,
+          attack: 0, defense: 0,
+          desc: "왕실의 인장이 새겨진 열쇠. 심연으로 가는 문을 연다.",
+        });
+        this.game.log("🗝 '심연의 열쇠'를 손에 넣었습니다.");
+      }
+
+      p.abyssUnlocked = true;
+      this.game.log("⚫ 심연 던전의 문이 열렸다! 진짜 마왕을 찾아야 한다.");
+      this.game.saveManager?.autoSave?.(this.game);
+      await this._delay(400);
+      if (this._destroyed) return;
+      this.game.showNarrative?.("⚫ 심연 던전이 해금되었습니다!\n\n진짜 마왕 다르카스를 찾아 심연을 탐험하세요.", 3200);
+      return;
+    }
+
+    // ── 동료 개인 스토리 결말편 — 지역 재건 완료 시점에 우선 재생 ──
+    // (수도 재건과 동시에 발생할 수 있는 마법사 스토리는 컷신보다 먼저 보여줌)
+    if (companionResolution) {
+      const rm = this.game.regionManager;
+      const cfg = rm.getCompanionStoryConfig(companionResolution);
+      if (cfg) {
+        await this.npcDialogueAsync(cfg.resolutionNpcId);
+        const secondKey = `${cfg.resolutionNpcId}2`;
+        if (NPC_DATA?.[secondKey]) {
+          await this._delay(400);
+          if (this._destroyed) return;
+          await this.npcDialogueAsync(secondKey);
+        }
+        this.game._applyCompanionStoryReward?.(companionResolution);
+        rm.markCompanionStoryDone(this.game.player, companionResolution);
+        this.game.saveManager?.autoSave?.(this.game);
+        await this._delay(400);
+        if (this._destroyed) return;
+      }
+      // generalReveal·capitalEnding 이 함께 대기 중이면 이어서 재생 (return 하지 않고 계속 진행)
+      if (!generalReveal && !capitalEnding) return;
+    }
+
+    // ── 마왕군 간부 격파 — 지역 재난·동료 사연을 하나로 묶는 폭로 대사 ──
+    if (generalReveal) {
+      if (NPC_DATA?.[generalReveal]) {
+        await this.npcDialogueAsync(generalReveal);
+        await this._delay(400);
+        if (this._destroyed) return;
+      }
+      if (!capitalEnding) return;
+    }
+
+    // ── 수도 재건 완료 컷신 — 마왕 등장 → 충격적인 진실 → 봉인의 관리자 도발
+    //    → (전투) → [전투 승리 후 절차는 위 sealKeeperVictory 블록에서 이어짐] ──
+    // 다른 무엇보다 먼저 재생되어야 하는 핵심 스토리 분기라 최우선으로 처리.
+    if (capitalEnding) {
+      await this.npcDialogueAsync("capital_ending_appearance");
+      await this._delay(500);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync("capital_ending_truth");
+      await this._delay(500);
+      if (this._destroyed) return;
+      await this.npcDialogueAsync("capital_ending_sealkeeper");
+      await this._delay(600);
+      if (this._destroyed) return;
+
+      // 대화가 끝나면 곧바로 "봉인의 관리자"와의 컷신 전투로 진입
+      this.game._startSealKeeperBattle?.();
+      return;
+    }
+
     // ── 첫 마을 입장 오프닝 스토리 체인 ──
     // fromLoad(세이브 불러오기)인 경우엔 절대 인트로를 재생하지 않는다.
     // 불러오기 했다는 건 이미 플레이한 적이 있다는 뜻이므로, 혹시 세이브에
@@ -90,6 +318,15 @@ class TownScene {
       // 자동저장(introChainDone=false)이 남아, 그 세이브를 불러올 때 인트로가 또 재생됨
       this.game.saveManager?.autoSave?.(this.game);
       this._playIntroChain();
+      return;
+    }
+
+    // ⓪ 지역 출발 전 공주의 사전 설명 — 월드맵에서 지역을 처음 선택했을 때 우선 재생
+    if (regionBrief) {
+      await this.npcDialogueAsync(regionBrief.briefId);
+      await this._delay(500);
+      if (this._destroyed) return;
+      this.game._openRegionHub?.(regionBrief.regionId);
       return;
     }
 
@@ -238,15 +475,16 @@ class TownScene {
       <span class="tt-chip">마을: <span id="tnTownStageName">폐허</span></span>
       <span class="tt-chip">예금: <span id="tnSideDeposit">0G</span></span>
       <span class="tt-chip">👸 호감도: <span id="tnPrincessAff">0</span></span>
+      <span class="tt-chip" id="tnKingdomChip" style="border-color:#9a7ad0;color:#c0a0e8;">🗺 왕국 번영도: <span id="tnKingdomProsp">0</span>%</span>
     </div>
   </div>
 
   <!-- 버튼 네비 바 -->
   <div id="townNavbar">
     <button class="tn-navbtn tn-dungeon" id="tn-outside">🌿 성 밖</button>
-    <button class="tn-navbtn tn-dungeon" id="tn-forest">🌲 숲 던전</button>
     <button class="tn-navbtn tn-dungeon" id="tn-dungeon">🗡 일반 던전</button>
     <button class="tn-navbtn tn-dungeon" id="tn-abyss">⚫ 심연 던전</button>
+    <button class="tn-navbtn" id="tn-worldmap" style="border-color:#9a7ad0;color:#c0a0e8;">🗺 왕국 지도</button>
     <span class="tn-divider"></span>
     <button class="tn-navbtn" id="tn-party">🍺 동료 모집</button>
     <button class="tn-navbtn" id="tn-quest">📜 퀘스트</button>
@@ -601,16 +839,16 @@ class TownScene {
         this._confirmDeparture("outside");
       }
     });
-    q("tn-forest")  ?.addEventListener("click", () => this._confirmDeparture("forest"));
     q("tn-dungeon") ?.addEventListener("click", () => this._confirmDeparture("normal"));
     q("tn-abyss")   ?.addEventListener("click", () => {
       if (!g.player.abyssUnlocked) {
-        g.showNarrative("🔒 일반 던전 수호자를 처치하면 해금됩니다.", 3000);
+        g.showNarrative("🔒 수도를 완전히 재건하면 해금됩니다.", 3000);
         return;
       }
       this._confirmDeparture("abyss");
     });
     q("tn-party")  ?.addEventListener("click", () => this._openPartyModal());
+    q("tn-worldmap")?.addEventListener("click", () => this.game._openWorldMap());
     q("tn-quest")  ?.addEventListener("click", () => this._openQuestModal());
     q("tn-skill")  ?.addEventListener("click", () => this._openSkillModal());
     q("tn-smith")  ?.addEventListener("click", () => this._openSmithModal());
@@ -720,7 +958,7 @@ class TownScene {
     abyssBtn.style.opacity     = p.abyssUnlocked ? "1" : "0.4";
     abyssBtn.textContent       = p.abyssUnlocked ? "⚫ 심연 던전" : "🔒 심연 던전";
     abyssBtn.style.borderColor = p.abyssUnlocked ? "#8844cc" : "";
-    abyssBtn.title             = p.abyssUnlocked ? "" : "일반 던전 수호자를 처치하면 해금됩니다";
+    abyssBtn.title             = p.abyssUnlocked ? "" : "수도를 완전히 재건하면 해금됩니다";
   }
 
   // 인벤토리
@@ -826,7 +1064,9 @@ class TownScene {
       ? `ATK+${item.attack}`
       : item.type === "potion"
         ? `회복`
-        : `DEF+${item.defense}`;
+        : item.type === "key"
+          ? `중요 아이템`
+          : `DEF+${item.defense}`;
 
     row.innerHTML = `
       <span class="item-icon">${getItemIconSVG(item, 24)}</span>
@@ -835,8 +1075,10 @@ class TownScene {
         <span style="color:var(--text-dim);font-size:.6rem;">${stat}</span>
       </span>`;
 
-    // 물약 사용 / 장비 장착
-    if (item.type === "potion") {
+    // 물약 사용 / 장비 장착 / 중요 아이템(버튼 없음)
+    if (item.type === "key") {
+      // 패시브 보관용 아이템 — 장착·사용 버튼 없이 그냥 보관만
+    } else if (item.type === "potion") {
       const use = document.createElement("button");
       use.className = "inv-btn";
       use.textContent = "사용";
@@ -888,28 +1130,32 @@ class TownScene {
       }
     }
 
-    // 판매 버튼
-    const sellPrice = Math.max(1, Math.floor((item.price || 10) * 0.5 * (1 + (item.enhance || 0) * 0.2)));
-    const sell = document.createElement("button");
-    sell.className = "inv-btn";
-    sell.textContent = `💰${sellPrice}G`;
-    sell.title = `${sellPrice}G에 판매`;
-    sell.style.cssText = "border-color:#cc9900;color:#ffcc44;font-size:.62rem;";
-    sell.addEventListener("click", () => {
-      this.game.itemManager.sellToBlacksmith(this.game, idx, sellPrice);
-      this._refreshShopOverlay?.() || this.render();
-    });
-    row.appendChild(sell);
+    // 판매 버튼 — 중요 아이템(key)은 판매 불가 (스토리 진행용, 매각 대상 아님)
+    if (item.type !== "key") {
+      const sellPrice = Math.max(1, Math.floor((item.price || 10) * 0.5 * (1 + (item.enhance || 0) * 0.2)));
+      const sell = document.createElement("button");
+      sell.className = "inv-btn";
+      sell.textContent = `💰${sellPrice}G`;
+      sell.title = `${sellPrice}G에 판매`;
+      sell.style.cssText = "border-color:#cc9900;color:#ffcc44;font-size:.62rem;";
+      sell.addEventListener("click", () => {
+        this.game.itemManager.sellToBlacksmith(this.game, idx, sellPrice);
+        this._refreshShopOverlay?.() || this.render();
+      });
+      row.appendChild(sell);
+    }
 
-    // 삭제
-    const del = document.createElement("button");
-    del.className = "inv-btn del";
-    del.textContent = "❌";
-    del.addEventListener("click", () => {
-      this.game.itemManager.remove(this.game, idx);
-      this._refreshShopOverlay?.() || this.render();
-    });
-    row.appendChild(del);
+    // 삭제 — 중요 아이템(key)은 분실 방지를 위해 삭제도 막음
+    if (item.type !== "key") {
+      const del = document.createElement("button");
+      del.className = "inv-btn del";
+      del.textContent = "❌";
+      del.addEventListener("click", () => {
+        this.game.itemManager.remove(this.game, idx);
+        this._refreshShopOverlay?.() || this.render();
+      });
+      row.appendChild(del);
+    }
 
     c.appendChild(row);
   });
@@ -923,7 +1169,7 @@ class TownScene {
     // 직업 전용 무기 라벨
     const CLASS_LABEL = { sword:"⚔ 기사 전용", staff:"🔮 마법사 전용", bow:"🏹 궁수 전용" };
     // 내 직업이 쓸 수 있는 weaponClass
-    const myWeaponClass = { night:"sword", mage:"staff", archer:"bow" }[this.game.player?.type];
+    const myWeaponClass = { knight:"sword", night:"sword", mage:"staff", archer:"bow" }[this.game.player?.type];
 
     SHOP_ITEMS.forEach((item, idx) => {
       const btn = document.createElement("button");
@@ -1177,6 +1423,59 @@ class TownScene {
 
   // ── 동료 모달 ───────────────────────────────────
   _openPartyModal() {
+    const p = this.game.player;
+
+    // 아직 1번째 동료조차 없으면(첫 모집) — 기존 그대로, 슬롯 고민 없이 곧바로 동료 목록
+    if (!p.party) {
+      this._renderPartyCardList(1, [], false);
+      return;
+    }
+
+    // 이미 동료가 있으면 — 어느 슬롯을 바꿀지 먼저 물어본다
+    this._renderPartySlotPicker();
+  }
+
+  _renderPartySlotPicker() {
+    const modal = document.getElementById("tnPartyModal");
+    const cards = document.getElementById("tnPartyCards");
+    if (!modal || !cards) return;
+    const p = this.game.player;
+
+    ["townCharSlot1","townCharSlot2","townCharSlot3"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = "";
+    });
+
+    const slotLabel = (slotNum, key) => {
+      const mem = key ? PARTY_MEMBERS[key] : null;
+      return mem ? `${mem.icon} ${mem.name} (${mem.className})` : "비어있음";
+    };
+
+    const SLOTS = [
+      { num:1, key:p.party,  title:"1번째 동료",  sub:"일반 던전 동행" },
+      { num:2, key:p.party2, title:"2번째 동료",  sub:"일반·심연 던전 동행" },
+      { num:3, key:p.party3, title:"3번째 동료",  sub:"심연 던전 전용" },
+    ];
+
+    cards.innerHTML = `<p style="grid-column:1/-1;color:var(--text-dim);font-size:.78rem;margin-bottom:6px;">어느 동료를 바꾸시겠어요?</p>`;
+    SLOTS.forEach(slot => {
+      const btn = document.createElement("button");
+      btn.className = "class-card";
+      btn.innerHTML = `
+        <div class="class-name">${slot.title}</div>
+        <div class="class-desc" style="color:var(--gold2);font-size:.74rem;margin:4px 0;">${slotLabel(slot.num, slot.key)}</div>
+        <div class="class-desc" style="font-size:.66rem;">${slot.sub}</div>`;
+      btn.addEventListener("click", () => {
+        const excludeIds = SLOTS.filter(s => s.num !== slot.num && s.key).map(s => s.key);
+        this._renderPartyCardList(slot.num, excludeIds, true);
+      });
+      cards.appendChild(btn);
+    });
+
+    modal.style.display = "flex";
+  }
+
+  _renderPartyCardList(slotNum, excludeIds, fromPicker) {
     const modal = document.getElementById("tnPartyModal");
     const cards = document.getElementById("tnPartyCards");
     if (!modal || !cards) return;
@@ -1206,24 +1505,37 @@ class TownScene {
     };
 
     cards.innerHTML = "";
-    Object.entries(PARTY_MEMBERS).forEach(([key, mem]) => {
-      const btn = document.createElement("button");
-      btn.className = "class-card";
-      const portrait = partyPortMap[key] || "";
-      btn.innerHTML = `
-        ${portrait ? `<img src="${portrait}" style="width:56px;height:56px;object-fit:contain;border-radius:4px;margin-bottom:6px;" onerror="this.style.display='none'"/>` : `<div class="class-icon">${mem.icon}</div>`}
-        <div class="class-name">${mem.name}</div>
-        <div class="class-desc" style="color:var(--gold2);font-size:.72rem;margin-bottom:4px;">${mem.className}</div>
-        <div class="class-desc">HP ${mem.hp} / ATK ${mem.attack} / DEF ${mem.defense}</div>`;
-      btn.addEventListener("click", () => {
-        this.game.selectParty(key);
-        modal.style.display = "none";
-        this.render();
-        // selectParty 내부에서 합류 대화(join_xxx)가 즉시 표시되며,
-        // 슬롯1=플레이어, 슬롯3=동료가 선택 즉시 함께 나타남
+    if (fromPicker) {
+      const backBtn = document.createElement("button");
+      backBtn.className = "class-card";
+      backBtn.style.cssText = "grid-column:1/-1;padding:8px;";
+      backBtn.innerHTML = `<div class="class-name" style="font-size:.78rem;">← 슬롯 다시 고르기</div>`;
+      backBtn.addEventListener("click", () => this._renderPartySlotPicker());
+      cards.appendChild(backBtn);
+    }
+
+    Object.entries(PARTY_MEMBERS)
+      .filter(([key]) => !excludeIds.includes(key))
+      .forEach(([key, mem]) => {
+        const btn = document.createElement("button");
+        btn.className = "class-card";
+        const portrait = partyPortMap[key] || "";
+        btn.innerHTML = `
+          ${portrait ? `<img src="${portrait}" style="width:56px;height:56px;object-fit:contain;border-radius:4px;margin-bottom:6px;" onerror="this.style.display='none'"/>` : `<div class="class-icon">${mem.icon}</div>`}
+          <div class="class-name">${mem.name}</div>
+          <div class="class-desc" style="color:var(--gold2);font-size:.72rem;margin-bottom:4px;">${mem.className}</div>
+          <div class="class-desc">HP ${mem.hp} / ATK ${mem.attack} / DEF ${mem.defense}</div>`;
+        btn.addEventListener("click", () => {
+          if (slotNum === 1 && !fromPicker) {
+            this.game.selectParty(key);
+          } else {
+            this.game.selectPartySlot(slotNum, key);
+          }
+          modal.style.display = "none";
+          this.render();
+        });
+        cards.appendChild(btn);
       });
-      cards.appendChild(btn);
-    });
 
     modal.style.display = "flex";
   }
@@ -1385,6 +1697,12 @@ TownScene.prototype._renderBankSidebar = function() {
   set("tnSideDeposit",`예금: ${bank.deposit}G`);
   set("tnSideInterest",`이자: ${bank.interest}G`);
   set("tnPrincessAff", p.princessAffinity || 0);
+
+  // 왕국 번영도 (8단계) — 전 지역 평균 재건도
+  if (this.game.regionManager) {
+    this.game.regionManager.ensureState(p);
+    set("tnKingdomProsp", this.game.regionManager.kingdomProsperity(p));
+  }
 };
 
 // ─── 저장/불러오기 ──────────────────────────────────────────────
@@ -1524,6 +1842,118 @@ const NPC_DATA = {
       "저도 함께 투자할게요. 우리 같이 이 마을을 되살려 봐요! 화이팅! 🏗",
     ]},
 
+  // ── 광산도시 출발 전 — 공주의 사전 설명 (월드맵에서 광산도시 선택 시) ──
+  princess_brief_mine:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "광산도시 쪽 소식이 들어왔어요... 상황이 많이 안 좋은 것 같아요.",
+      "몬스터들의 습격으로 갱도 여러 곳이 무너졌고, 제련소도 멈춰버렸대요.",
+      "그곳에서 캐낸 광물로 나라 살림과 겨울 난방을 버텨왔는데, 지금은 그조차 끊겼다고 해요.",
+      "남아 있는 광부들이 어떻게든 버티고 있다고는 하는데... 용사님이 가주시면 정말 큰 힘이 될 거예요.",
+      "조심히 다녀오세요. 저는 여기서 계속 기다리고 있을게요.",
+    ]},
+
+  // ── 광산도시 도착 — 광부 두칸의 인사 + 투자 안내 ──
+  miner_chief:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "...누구요? 아, 성에서 보내주신 용사님이시군요!",
+      "보시다시피 갱도가 다 무너졌습니다. 제련소 불도 꺼진 지 오래고요.",
+      "여기서 캐낸 광물이 끊기니 마을 살림도, 겨울 난방도 다 막막해졌습니다.",
+      "용사님 덕분에 다시 시작할 수 있을 것 같습니다. 골드를 투자해주시면 갱도를 차근차근 복구해보겠습니다.",
+      "그리고... 안에 아직 몬스터들이 들끓고 있으니, 정리도 좀 부탁드립니다. 😓",
+    ]},
+
+  // ── 광산도시 — 던전 출발 전 1회성 응원 ──
+  miner_chief_send_off:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "정말로 들어가시는 겁니까... 부디 조심하십시오.",
+      "갱도 안은 저보다 용사님이 훨씬 잘 아실 테니, 길게 말 안 하겠습니다.",
+      "다녀오십시오. 여기서 무사히 돌아오시길 기다리고 있겠습니다! ⛏",
+    ]},
+
+  // ── 항구도시 출발 전 — 공주의 사전 설명 (월드맵에서 항구도시 선택 시) ──
+  princess_brief_harbor:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "이번엔 항구도시 소식이에요. 거기도... 사정이 심각해요.",
+      "해적들이 들이닥쳐서 항구를 통째로 약탈하고 불을 질렀대요. 배들도 거의 다 가라앉았고요.",
+      "항구가 막히니 다른 나라와의 교역도, 생필품 들어오는 길도 다 끊겼어요.",
+      "다행히 항구장님이 남은 사람들을 모아서 어떻게든 버티고 계신다고 해요.",
+      "해적들이 아직 근처에 숨어 있을지도 몰라요. 부디 조심하세요, 용사님.",
+    ]},
+
+  // ── 항구도시 도착 — 항구장 모리스의 인사 + 투자 안내 ──
+  harbor_master:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "오, 살아있는 사람이 또 오다니! 성에서 보내신 용사님이시군요.",
+      "해적 놈들이 다 태우고 부수고 갔습니다. 방파제도 무너지고, 배도 거의 남은 게 없어요.",
+      "교역이 끊기니 식량도, 약도 다 부족합니다. 이대로면 겨울을 못 넘길 것 같았는데...",
+      "용사님이 투자를 해주신다면, 방파제부터 차근차근 다시 세워보겠습니다.",
+      "참, 항구 안쪽에 해적 잔당들이 아직 숨어 있는 것 같으니 조심하십시오. 🏴‍☠️",
+    ]},
+
+  // ── 항구도시 — 던전 출발 전 1회성 응원 ──
+  harbor_master_send_off:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "벌써 안쪽으로 들어가시려고요? 거친 뱃사람들도 다 떠난 곳입니다, 정말 괜찮으시겠습니까.",
+      "용사님이라면 분명 해내실 거라 믿습니다. 항구의 운명이 거기 달려있군요.",
+      "무사히 돌아오십시오. 돌아오시면 따뜻한 거 한 그릇 대접하겠습니다! ⚓",
+    ]},
+
+  // ── 깊은 숲 출발 전 — 공주의 사전 설명 (월드맵에서 깊은 숲 선택 시) ──
+  princess_brief_forest:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "이번엔... 조금 다른 이야기예요. 깊은 숲에 사는 엘프들에 대한 거예요.",
+      "오래전, 그 숲 근처 인간 마을이 광산을 넓히려고 숲을 베어내다가 엘프들의 성소를 무너뜨렸대요.",
+      "그 일로 많은 엘프들이 목숨을 잃었고... 그 후로 엘프들은 인간을 아예 들이지 않게 됐어요.",
+      "그런데 지금 몬스터들이 그 약해진 결계를 뚫고 들어가서, 엘프들도 더는 버틸 수가 없는 상황이래요.",
+      "용사님이 가신다 해도 쉽게 마음을 열어주진 않을 거예요. 그래도... 부디 도와주세요.",
+    ]},
+
+  // ── 깊은 숲 도착 — 엘프 장로 실라의 인사 (경계심 가득) ──
+  elf_elder:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "...인간이 또 여기까지 왔군요. 무슨 볼일이죠?",
+      "그쪽 사정은 들었지만, 우리는 인간을 쉽게 믿지 않습니다. 한 번 잃은 것은 돌아오지 않으니까요.",
+      "다만... 지금 몬스터들 때문에 결계가 다 무너져가는 건 사실이에요. 이대로면 숲도, 우리도 끝입니다.",
+      "정말로 우리를 도울 마음이 있다면, 행동으로 보여주세요. 말은... 너무 많이 들었거든요.",
+      "결계를 되살리는 데에는 정령의 힘이 필요해요. 그게 곧 당신이 가져오는 도움이 되겠죠.",
+    ]},
+
+  // ── 깊은 숲 — 던전 출발 전 1회성 응원(경계심 섞인) ──
+  elf_elder_send_off:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "정말로 들어가겠다는 거군요... 아직 당신을 다 믿는 건 아니지만,",
+      "그래도... 행동으로 보여주겠다는 말은 거짓이 아닌 듯하네요. 조심해서 다녀오세요.",
+      "정령들이 당신을 지켜보고 있을 거예요. 🌿",
+    ]},
+
+  // ── 수도 출발 전 — 공주의 사전 설명 (월드맵에서 수도 선택 시) ──
+  princess_brief_capital:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "용사님... 이건 정말 심각한 얘기예요. 왕성에... 마왕의 부하들이 숨어들었어요.",
+      "근위대 대부분이 당했고, 백성들 일부가 인질로 잡혀 있다는 소식이 들어왔어요.",
+      "아버지께서도 지금 안전을 확인할 수가 없는 상황이에요... 저도 너무 두려워요.",
+      "근위대장 레오니스 님이 남은 병력으로 어떻게든 버티고 계신다고 해요. 그분이 용사님을 기다리고 있을 거예요.",
+      "부탁이에요... 인질들도, 그리고 아버지도 꼭 무사히 구해주세요.",
+    ]},
+
+  // ── 수도 도착 — 근위대장 레오니스의 다급한 인사 ──
+  royal_guard_captain:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "용사님! 드디어 오셨군요. 시간이 없습니다, 바로 본론부터 말씀드리겠습니다.",
+      "마왕의 부하들이 왕성 깊은 곳까지 잠입해서 백성들 여럿을 인질로 잡고 있습니다.",
+      "국왕 전하의 행방도 아직 파악이 안 됩니다... 무사하시길 바랄 뿐입니다.",
+      "병력을 추슬러 친위대를 재건하면서, 동시에 안쪽 구역을 탈환해야 합니다. 시간이 걸리겠지만 반드시 해내겠습니다.",
+      "용사님께서 직접 안으로 들어가 인질들을 구하고 그 잔당들을 정리해주셔야 합니다. 부탁드립니다.",
+    ]},
+
+  // ── 수도 — 던전 출발 전 1회성 응원 ──
+  royal_guard_captain_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "출발하시는 겁니까. 저희도 바깥에서 최선을 다해 길을 뚫어보겠습니다.",
+      "왕국의 운명이, 그리고 안에 갇힌 백성들의 목숨이 용사님께 달려있습니다.",
+      "맡겨주십시오. 부디 무사히 돌아오시길, 저희도 끝까지 자리를 지키겠습니다! 🛡",
+    ]},
+
   // ── 마을 번화가 달성 시 ──
   village_chief_invest_bustling:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
     dialogues:[
@@ -1547,6 +1977,423 @@ const NPC_DATA = {
       "이 은혜를 어찌 갚을까 생각했소. 그대에게 왕실의 인장으로 공작 작위를 내리지. 이제 우리는 한 가족이야! 👑",
       "그리고 내 딸 실비아가 그대를 신뢰한다 했소. 그것으로 이미 충분하오. 어서 마왕을 물리치고 이 왕국에 완전한 평화를 가져다 주기 바라오!",
     ]},
+
+  // ── 수도 재건 완료 컷신 ① — 마왕이 직접 나타남 (충격적인 진실의 시작) ──
+  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+    dialogues:[
+      "...여기까지 잘 해냈구나, 인간.",
+      "수도의 일도, 지역들의 일도... 전부 내 손바닥 위에서 벌어진 일이었다는 걸 알고 있나?",
+      "너희는 이미 늦었다. 전하께서는... 진실을 알게 되셨지.",
+      "내 부하들을 그렇게나 처치했으니, 직접 인사라도 해야 할 것 같아서 와봤다.",
+    ]},
+
+  // ── 수도 재건 완료 컷신 ② — 충격적인 진실: 마왕은 봉인의 관리자였다 ──
+  capital_ending_truth:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+    dialogues:[
+      "다만... 한 가지는 정정해야겠군. 너희가 '마왕'이라 부르며 두려워한 존재, 그게 바로 나라고 믿었겠지.",
+      "하지만 나는 그 이름의 진짜 주인이 아니다. 나는... 그저 그를 가둔 봉인을 관리하는 자일 뿐이야.",
+      "진짜 마왕 다르카스는 심연 가장 깊은 곳에 봉인되어 있다. 내가 그 문을 지키고 있었을 뿐이지.",
+    ]},
+
+  // ── 수도 재건 완료 컷신 ③ — 전투 직전 도발 ──
+  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+    dialogues:[
+      "그 봉인을 건드리고 싶다면... 먼저 나를 넘어서야 할 것이다.",
+      "이곳까지 온 너의 각오가 진심인지, 내가 직접 확인해보겠다!",
+    ]},
+
+  // ══ 전투(봉인의 관리자) 승리 후 — 아래부터 순서대로 재생 ══
+
+  // ── ④ 재회 (공주) ──
+  capital_ending_reunion:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "아버지...!",
+    ]},
+
+  // ── ⑤ 왕 구출 — 일부러 숨었다는 진실 (왕) ──
+  capital_ending_rescue:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "...그대가 여기까지 왔군.",
+      "미안하구나. 나는... 일부러 모습을 감췄다.",
+      "납치당한 것이 아니야. 알아야만 하는 진실이 있었고, 그것을 확인하기 위해 스스로 자리를 비운 것이었다.",
+    ]},
+
+  // ── ⑥ 진실 공개 (왕) ──
+  capital_ending_kingtruth:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "마왕은 단순한 침략자가 아니다.",
+      "심연의 봉인이... 점점 약해지고 있다.",
+      "그 봉인이 완전히 무너지면, 이 세계는 사라지게 될 것이다.",
+      "마왕은 바로 그 힘을 차지하려 하고 있는 것이다.",
+    ]},
+
+  // ── ⑦ 동료 반응 (파티에 있을 때만 등장) ──
+  capital_ending_companion_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
+    dialogues:["...그래서 지금까지의 재난이 다 그것 때문이었군."]},
+  capital_ending_companion_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
+    dialogues:["숲의 오염도... 그 때문이었군요."]},
+  capital_ending_companion_mage:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:["금지된 연구 기록에서... 비슷한 내용을 본 적이 있어요."]},
+
+  // ── ⑦.5 시민들이 광장에 모여듦 — 왕의 복귀를 직접 눈으로 확인 (작위 수여식 직전) ──
+  capital_ending_plaza:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "전하께서 무사히 돌아오셨다는 소식이 벌써 온 왕성에 퍼졌습니다.",
+      "보십시오, 광장에 백성들이 끝없이 모여들고 있습니다. 전부 직접 눈으로 확인하고 싶었던 거겠죠.",
+      "전하께서도 이 자리에서, 모두가 보는 앞에서 직접 용사님께 치하하시겠다고 하셨습니다.",
+    ]},
+
+  // ── ⑧ 작위 수여 — 왕국의 수호자 (왕) ──
+  capital_ending_title:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "용사여, 그대는 단순한 모험가가 아니다.",
+      "지금부터 그대를... 왕국의 수호자로 임명하겠다.",
+    ]},
+
+  // ── ⑨ 심연의 열쇠 + 엔딩 떡밥 (왕) ──
+  capital_ending_key:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "심연의 문은... 왕실의 열쇠로만 열린다. 이것을 가져가거라.",
+      "용사여... 마왕을 쓰러뜨린다고 해서, 모든 것이 끝나는 것은 아니다.",
+      "그 말이 무슨 뜻인지는... 그곳에 가면 알게 될 것이다. 부디 무사히 돌아오길 바란다.",
+    ]},
+
+  // ══════════════ 심연 메인 스토리 — 마왕 다르카스 ══════════════
+
+  // ── 보스룸 진입 직전 — 다르카스 등장, 전투 전 대사 ──
+  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral.png",
+    dialogues:[
+      "...드디어 여기까지 왔군. 내 부하들을 그렇게나 거두고도, 아직 멈추지 않다니.",
+      "내가 왜 마왕군을 일으켰는지... 알고 싶나? 간단하다. 이 봉인에서 벗어나려면 힘이 필요했을 뿐이야.",
+      "그 사천왕들도, 봉인의 관리자도... 전부 나를 위해 움직인 도구였을 뿐이지.",
+      "이제 너도 알았으니, 더는 망설일 이유가 없겠지. 자, 보여줘라 — 그 각오가 진심인지.",
+    ]},
+
+  // ── 패배 직후 — "나조차도 그릇일 뿐이었다" 떡밥 ──
+  darkas_post_defeat:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",
+    dialogues:[
+      "...크윽. 설마, 여기서 이렇게 끝나다니.",
+      "하지만... 너는 아직 모른다. 나조차도... 그저 그릇일 뿐이었다는 것을.",
+      "이 몸에 담겨 있던 건 내 힘이 아니었어. 훨씬 더 깊은 곳에서 흘러나온... 무언가였지.",
+      "그게 무엇인지, 어디서 왔는지... 그건 내가 사라진 뒤에야 비로소 드러나겠지.",
+      "...크하하. 부디 끝까지 가보아라, 용사여. 진짜는... 아직 시작도 안 했으니까.",
+    ]},
+
+  // ── 봉인 붕괴 — 다르카스의 몸이 무너지며 그 안에 갇혀 있던 진짜 존재가 풀려난다 ──
+  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+    dialogues:[
+      "...다르카스의 몸에서 빠져나온 그 기운이, 점점 커지고 있다.",
+      "이건... 단순한 잔재가 아니야. 무언가가 깨어나고 있다.",
+    ]},
+
+  // ── 진짜 존재 등장 — 공허의 군주 네메시스 ──
+  nemesis_appearance:{name:"???",nameColor:"#a83cff",portrait:"images/Nemesis_Lord_of_the_Void.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+    dialogues:[
+      "...드디어. 그 오랜 봉인이 풀렸구나.",
+      "나는 네메시스. 너희가 셀 수도 없을 만큼 오래전부터, 이 심연 가장 깊은 곳에 갇혀 있던 공허의 군주다.",
+      "그 가엾은 그릇은... 제 역할을 다했군. 자, 이제는 진짜를 상대해 보아라.",
+    ]},
+
+  // ── 다르카스의 마지막 말 — 전투 직전 ──
+  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+    dialogues:[
+      "...아직, 끝나지 않았다.",
+      "예전에도 한 번... 누군가 저것을 막으려 했었지. 그때는... 실패했다.",
+      "용사여, 이번에는 다를지도 모른다는 생각이 드는군. 어째서인지는 모르겠지만.",
+      "부디... 이번에는 성공해라...!",
+    ]},
+
+  // ── 네메시스 격파 이후 — 다르카스의 죽음 확인 + 세계의 완전한 재건 ──
+  nemesis_victory_epilogue:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",
+    dialogues:[
+      "...네메시스가 사라졌다. 정말로... 끝난 건가.",
+      "그 마지막 일격을 대신 받아낸 순간, 다르카스도... 결국 숨을 거두고 말았다.",
+      "그가 어떤 존재였는지는 끝까지 다 알 수 없었지만... 마지막 순간, 그는 분명 우리 편이었다.",
+      "이제 정말로... 세계가 완전히 평화를 되찾을 수 있을까.",
+    ]},
+
+  // ── 동료 후일담 (네메시스 승리 직후, 파티에 있을 때만) ──
+  ending_companion_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
+    dialogues:["...해냈군. 이제 돌아가서, 광산도시 사람들한테 자랑 좀 해야겠어. 더는 그 무게에 짓눌리지 않을 거야. 🛡"]},
+  ending_companion_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
+    dialogues:["기사로서 끝까지 책임을 다했군. 이제야 검을 내려놓고 발 뻗고 잘 수 있겠어. ⚔"]},
+  ending_companion_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
+    dialogues:["드디어 끝났네요... 숲으로 돌아가면, 장로님께 가장 먼저 이 소식을 전해드려야겠어요. 🏹"]},
+  ending_companion_mage:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:["금단의 비전이 결국 세상을 구하는 데 쓰였네요. 스승님도 분명 자랑스러워하실 거예요. 🔮"]},
+  ending_companion_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
+    dialogues:["부모님도... 어딘가에서 지켜보고 계셨을까요. 용서를 택한 게, 결국 옳은 길이었나 봐요. ✝"]},
+
+  // ── 동료 후일담 — 직업·직함 (위 한마디 반응 다음에 이어짐, 파티에 있을 때만) ──
+  ending_career_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
+    dialogues:["그러고 보니... 광산도시에서 길드장 자리를 맡아달라고 하더군. 다시는 누구도 잃지 않도록, 이번엔 내가 직접 지켜볼 생각이야. 🛡⛏"]},
+  ending_career_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
+    dialogues:["왕실에서 기사단 재건을 맡아달라고 부탁해왔어. 이번엔... 제대로 된 기사단을 만들어 보이겠어. ⚔👑"]},
+  ending_career_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
+    dialogues:["장로님과 왕실, 양쪽에서 부탁하셨어요. 엘프와 인간 사이를 잇는 외교관이 되어달라고요. 기쁘게 받아들였어요. 🏹🕊"]},
+  ending_career_mage:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:["왕립 마법학원의 새 마도원장으로 임명됐어요. 이제는 제가 다음 세대를 가르칠 차례네요. 🔮📚"]},
+  ending_career_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
+    dialogues:["왕실에서 대치유사로 모시겠다고 하셨어요. 이제 더 많은 사람들을 도울 수 있게 됐어요. ✝👑"]},
+
+  // ── 주인공의 결말 — 왕국 번영도 100%일 때만: 최고 훈장 + 재상 등극 ──
+  ending_protagonist_chancellor:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "용사여... 아니, 이제는 그렇게 불러서는 안 되겠군.",
+      "왕국 구석구석을 단 한 곳도 빠짐없이 되살리고, 세계를 위협하던 진짜 존재까지 무찌른 자에게 걸맞은 예우를 갖추겠다.",
+      "지금 이 순간부터, 그대에게 왕실 최고 훈장을 내리며... 재상의 자리에 임명하겠다.",
+      "이 왕국의 모든 것을, 짐은 안심하고 그대에게 맡길 수 있을 것 같군.",
+    ]},
+
+  // ── 주인공의 결말 — 왕국 번영도가 100%에 못 미칠 때: 더 소박한 결말 ──
+  ending_protagonist_modest:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "용사여, 그대가 이뤄낸 일은... 어느 것 하나 작지 않았다.",
+      "아직 왕국 곳곳에 손길이 필요한 곳이 남아있지만, 그것도 언젠가 그대의 발걸음이 닿으면 자연스레 풀릴 일이겠지.",
+      "지금은... 그저 그대에게 진심으로 감사를 전하고 싶군. 이 왕국은 그대를 영원히 기억할 것이다.",
+    ]},
+
+  // ── 귀환 — 주인공의 결심 ──
+  ending_return_resolve:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",
+    dialogues:["...이제 돌아가자. 모두에게 알려야 할 일들이, 그리고 물어봐야 할 진실이 남아있다."]},
+
+  // ── 왕의 세계관 진실 공개 (왕성, 마을 귀환 후) ──
+  ending_king_truth1:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "...정말로 해냈군. 네메시스라는 그 존재까지 물리쳤다는 보고를 받았을 때, 짐은 믿기지 않았다.",
+      "이제는 말해줄 수 있겠군. 짐이 알고 있던 진실을, 전부.",
+      "아주 오랜 옛날, 이 세계가 만들어질 무렵... 공허에서 흘러나온 존재가 있었다고 전해진다. 그것이 바로 네메시스였다.",
+      "고대의 영웅들이 목숨을 걸고 그것을 봉인했지만, 완전히 없앨 수는 없었지. 그래서 대신 '관리자'를 두어 그 봉인을 지키게 한 것이다.",
+    ]},
+  ending_king_truth2:{name:"왕 에드워드 3세",nameColor:"#FFD700",portrait:"images/King_Edward_III_SIDE.png",
+    dialogues:[
+      "다르카스는... 아마 그 역할을 짊어진 마지막 관리자였을 것이다. 그 역할 안에서 차츰 힘에 잠식되어, '마왕'이라는 존재로 변해갔겠지.",
+      "그리고 사천왕도, 마왕군도... 전부 그 오래된 책무의 그림자였던 셈이다.",
+      "그대가 무찌른 것은 단순한 악이 아니었다. 아주 오래전부터 이어져 온, 하나의 슬픈 책임이었던 것이다.",
+      "이제 그 봉인의 책무는... 완전히 끝났다. 그대가 끝낸 것이야.",
+    ]},
+
+  // ── 왕국 완전재건 선포 ──
+  ending_kingdom_rebuilt:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "용사님... 왕국 곳곳에서 소식이 들려와요. 시작마을, 광산도시, 항구도시, 깊은 숲, 수도... 어디 하나 빠짐없이 완전히 되살아났대요.",
+      "전부 용사님이 직접 발로 뛰며 이뤄낸 일이에요. 정말로, 정말로 고마워요.",
+      "이제 이 왕국에는... 더는 두려움이 없어요. 당신이 그렇게 만들어줬으니까요. 💕",
+    ]},
+
+  // ══════════════ 동료 개인 스토리 ══════════════
+
+  // ── 카인(탱커) — 광산도시: 무너진 갱도, 구하지 못한 동료 ──
+  tanker_story_conflict:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
+    dialogues:[
+      "...잠깐, 이 무너진 갱도. 예전에 내가 있던 곳과 똑같아.",
+      "그때도 이렇게 갱도가 무너졌어. 나는 살았는데... 같이 있던 동료들은 못 구했지.",
+      "아직도 그날 마지막으로 본 동료들 얼굴이 잊히질 않아.",
+      "...저기, 안쪽에서 무슨 소리가 들리지 않아? 설마, 아직 살아있는 사람이...?",
+    ]},
+  // ══════════════ 광산도시 — 완전 재건 통합 축제 이벤트 ══════════════
+
+  // ── 광부 축제 시작 (재건 100% + 투자 최종 단계 동시 달성 시) ──
+  miner_chief_festival_intro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",bgImage:"images/Gold_discovery_festival_in_the_mountains.png",
+    dialogues:[
+      "용사님! 들으셨습니까? 갱도도, 제련소도... 이제 정말로 전부 다 되살아났습니다!",
+      "광부들이 다 모여서 한바탕 잔치를 벌이자고 난리입니다. 오늘만큼은 곡괭이도 내려놓고 다 같이 즐겨야죠.",
+      "용사님이 아니었다면 이런 날은 꿈도 못 꿨을 겁니다. 자, 같이 가시죠! 🎉⛏",
+    ]},
+
+  tanker_story_resolution:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
+    dialogues:[
+      "...해냈다. 진짜로 해냈어. 무너진 갱도에서, 살아있는 사람을 구해냈어.",
+      "그때는 못 했던 일을, 이번엔 해냈다고. 너 덕분이야.",
+      "이번엔... 지킬 수 있었어.",
+      "이 방패, 이제 더 확실하게 쓸 수 있을 것 같아. 너도, 동료들도, 더는 잃지 않을 테니까. 🛡",
+    ]},
+
+  // ── 축제 마무리 (탱커 결말편 다음, 또는 동료 없을 때 곧바로) ──
+  mine_festival_outro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",bgImage:"images/Gold_discovery_festival_in_the_mountains.png",
+    dialogues:[
+      "광산도시는 이제 그 누구보다 단단하게 다시 섰습니다. 전부 용사님 덕분입니다.",
+      "이 마을 사람들은 평생 용사님을 잊지 못할 겁니다. 정말 감사합니다! ⛏✨",
+    ]},
+
+  // ══════════════ 항구도시 — 완전 재건 통합 축제 이벤트 ══════════════
+
+  // ── 항구 축제 시작 (재건 100% + 투자 최종 단계 동시 달성 시) ──
+  harbor_master_festival_intro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",bgImage:"images/Coastal_port_festival_celebration_in_full_swing.png",
+    dialogues:[
+      "용사님, 저것 좀 보십시오! 수평선 너머로 배들이 줄지어 들어오고 있습니다!",
+      "교역선이 돌아온다는 소식에 아이들이 부둣가로 뛰쳐나와 손을 흔들고 있어요. 이런 풍경은 정말 오랜만입니다.",
+      "당신은... 정말로 이 도시를 살렸어. 그 말 외에는 달리 표현할 방법이 없군요. 🚢🎉",
+    ]},
+
+  // ── 항구 축제 마무리 — 항해 허가증 수여 ──
+  harbor_festival_outro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",bgImage:"images/Coastal_port_festival_celebration_in_full_swing.png",
+    dialogues:[
+      "이 항구는 다시 세계와 이어졌습니다. 전부 용사님이 해내신 일입니다.",
+      "이걸 받으십시오 — 항해 허가증입니다. 이제 어느 바다로든 떠나실 수 있을 겁니다. ⚓📜",
+    ]},
+
+  // ══════════════ 깊은 숲 — 완전 재건 통합 축제 이벤트 ══════════════
+
+  // ── 결계 회복 직후 — 충격적인 진실: 그날의 "인간"은 사실 마족이었다 ──
+  elf_elder_festival_intro:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
+    dialogues:[
+      "...결계가 다시 살아났어요. 정말 오랜만에 느껴보는 따뜻한 기운이네요.",
+      "그런데 결계를 회복하는 동안, 정령들이 들려준 이야기가 있어요. 믿기 힘들겠지만... 들어주세요.",
+      "그 옛날 성소를 무너뜨린 건 인간이 아니었어요. 인간으로 변장한 마족이었던 거예요.",
+      "우리는 그 오랜 세월 동안, 진짜 원수를 엉뚱한 곳에서 찾고 있었던 거군요...",
+    ]},
+
+  // ── 동료(아리아) 결말편 다음 — 장로 실라의 축복 ──
+  elf_elder_blessing:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
+    dialogues:[
+      "당신을 의심했던 그 모든 순간이... 부끄러워지는군요. 용서를 구하고 싶어요.",
+      "이 숲과 우리 모두를 대신해, 당신에게 정령의 축복을 내리겠습니다.",
+      "어디를 가든, 그 축복이 당신과 함께하기를. 🌿✨",
+    ]},
+
+  // ── 아리아의 마지막 축복 — 축제 마무리 ──
+  archer_blessing_outro:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
+    dialogues:[
+      "장로님의 축복까지 받으셨네요. 이걸로... 정말 모든 게 끝난 것 같아요.",
+      "저도 한 번 더 말씀드릴게요. 함께해줘서, 정말 고마워요. 🏹💚",
+    ]},
+
+  // ── 카르나(딜러/기사) — 항구도시: 기사단 해체, 배신의 진실 ──
+  dealer_story_conflict:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
+    dialogues:[
+      "...저 사람, 낯이 익은데. 설마, 그때 기사단에 있던...",
+      "오래전에 해적 토벌에 나섰다가 실패해서 기사단이 해체됐어. 그때 살아남은 동료가 또 있을 줄은 몰랐군.",
+      "그 작전, 사실은 누군가 정보를 흘려서 실패한 거였어. 나는 그게 누군지... 짐작은 하고 있었지만 증거가 없었지.",
+      "이번엔 다를 거야. 배신자가 누군지, 끝까지 확인하고야 말겠어.",
+    ]},
+  dealer_story_resolution:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
+    dialogues:[
+      "...해적 선장을 처치하고서야 알았어. 배신자가 누구였는지, 전부 다.",
+      "오래 묵혀둔 의심이 풀리니까, 오히려 마음이 가벼워지는군.",
+      "이제야... 기사로서의 책임을 다한 것 같아.",
+      "다시 검을 든 의미를 찾은 기분이야. 앞으로도 잘 부탁한다. ⚔",
+    ]},
+
+  // ── 아리아(궁수) — 깊은 숲: 인간에게 가족을 잃은 과거 ──
+  archer_story_conflict:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "...인간을 데려오다니, 미쳤느냐! 우리가 무슨 일을 겪었는지 몰라서 이러는 게야?",
+      "그날 그 인간들이 성소를 부수면서 얼마나 많은 동족이 죽었는지, 너는 상상도 못 할 것이다.",
+    ]},
+  archer_story_conflict2:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
+    dialogues:[
+      "장로님, 그만하세요! ...이 사람은 그때 그 인간들과는 달라요.",
+      "저도 그날 가족을 잃었어요. 그 누구보다 인간을 미워할 이유가 있는 사람이 바로 저예요.",
+      "그런데도 이 사람이라면... 믿어보고 싶어요. 부탁이에요, 장로님.",
+    ]},
+  archer_story_resolution:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
+    dialogues:[
+      "성소가... 다시 빛을 되찾았어요. 정말 다행이에요.",
+      "장로님도 이제는 당신을 인정하셨어요. 엘프와 인간이 다시 함께할 수 있게 됐네요.",
+      "솔직히 말하면, 오랫동안 그날의 기억에 갇혀 있었어요. 분노로 버텨온 시간이었죠.",
+      "이제는... 과거를 놓아줄 수 있을 것 같아요. 고마워요, 정말로. 🏹",
+    ]},
+
+  // ── 엘린(마법사) — 수도: 금지된 연구로 추방, 사실은 누명 ──
+  mage_story_conflict:{name:"엘린의 옛 스승",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:[
+      "...엘린? 살아있었구나. 왕립 마법학원에서 추방된 그 아이가, 여기서 다시 만나다니.",
+      "금지된 연구를 했다는 죄목으로 쫓겨났었지. 그때 학회 전체가 그렇게 알고 있었다.",
+    ]},
+  mage_story_conflict2:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:[
+      "...사실대로 말씀드릴게요. 저는 금지된 연구를 한 게 아니었어요.",
+      "그 무렵 학원 지하에서 마왕의 흔적으로 보이는 마력 반응을 발견하고, 그걸 조사하고 있었을 뿐이에요.",
+      "그런데 그게 '금지된 연구'로 둔갑해서 누명을 쓰고 쫓겨난 거예요. 아무도 제 말을 들어주지 않았죠.",
+    ]},
+  mage_story_resolution:{name:"엘린의 옛 스승",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:[
+      "...그게 정말이었군. 우리가 잘못 판단했다. 미안하구나, 엘린.",
+      "왕립 마법사로서의 자격을 다시 인정하겠다. 그리고 이것은... 학원에 봉인되어 있던 최상위 공격 마법서다.",
+      "이제 떳떳하게 네 힘을 펼쳐 보여라.",
+    ]},
+  mage_story_resolution2:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:[
+      "드디어... 누명을 벗었어요. 그것도 최상위 마법서까지 함께요.",
+      "당신이 없었다면 평생 추방자로 살았을 거예요. 정말 고마워요.",
+      "이제 이 힘, 마왕을 무찌르는 데 제대로 써볼게요. 🔮",
+    ]},
+
+  // ── 리온(힐러) — 심연 진입 전: 부모를 죽인 마물과의 재회, 복수와 용서 ──
+  healer_story_conflict:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
+    dialogues:[
+      "...이 느낌, 잊을 수가 없어요. 제 부모님을 죽인 그 마물의 기운이에요.",
+      "어릴 때 마왕군의 습격으로 마을이 불탔어요. 저는 그날 부모님을 잃었죠.",
+      "그때부터 사람을 살리는 힐러가 되기로 했어요. 복수가 아니라, 살리는 쪽을 선택한 거예요.",
+      "그런데 지금... 막상 그 마물을 다시 마주하니 마음이 흔들려요. 복수할 기회가 눈앞에 있는데...",
+    ]},
+  healer_story_resolution:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
+    dialogues:[
+      "...결국 저는 용서하는 쪽을 택했어요. 그 마물을 죽이는 것보다, 더 많은 사람을 살리는 게 제 길이니까요.",
+      "상처는... 사라지지 않아요. 아마 평생 가겠죠.",
+      "하지만 상처는 사라지지 않아도, 앞으로 나아갈 수는 있어요.",
+      "이제 제 힘을 온전히 믿고 쓸 수 있을 것 같아요. 모두를 지킬게요. ✝",
+    ]},
+
+  // ══════════════ 마왕군 간부 격파 — 지역 재난 + 동료 사연의 진짜 원인 ══════════════
+
+  // ── 그라모스(광산도시) ──
+  general_gramos_defeat_with_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
+    dialogues:[
+      "...그라모스. 이 자가 갱도에 암흑광석을 뿌려서 일부러 붕괴를 일으킨 거였어.",
+      "그 말은... 그때 내 동료들이 죽은 것도, 전부 이 마왕군 간부가 벌인 일이었다는 거잖아.",
+      "오랫동안 내 잘못이라고 생각하며 살아왔는데... 처음부터 우리 잘못이 아니었어.",
+      "이제야 모든 게 이어지는군. 광산도시의 재난도, 내가 짊어졌던 죄책감도, 다 이 마왕군 때문이었어.",
+    ]},
+  general_gramos_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "마왕군 간부 그라모스... 이 자가 광산에 암흑광석을 뿌려 갱도를 무너뜨린 진짜 원인이었군.",
+      "광산도시의 재난이 단순한 사고가 아니라, 마왕군이 의도적으로 벌인 일이었다는 게 밝혀졌다.",
+    ]},
+
+  // ── 바르칸(항구도시) ──
+  general_barkan_defeat_with_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
+    dialogues:[
+      "...바르칸. 이 자가 뒤에서 해적단을 조종하고 있었다니.",
+      "그렇다면 그때 기사단을 무너뜨린 배신, 그 정보가 새어나간 것도... 이 자의 짓이었을 가능성이 커.",
+      "오랜 의심이 이제야 풀리는군. 우리 기사단의 실패도, 항구도시의 약탈도, 전부 같은 곳에서 시작된 거였어.",
+      "이걸로 확실해졌다. 더는 옛일에 휘둘리지 않겠어.",
+    ]},
+  general_barkan_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "마왕군 간부 바르칸... 해적단을 뒤에서 조종한 진짜 배후가 바로 이 자였다.",
+      "항구도시를 약탈한 해적들도, 결국 마왕군의 손에서 움직이고 있었던 것이었다.",
+    ]},
+
+  // ── 릴리스(깊은 숲) ──
+  general_lilith_defeat_with_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
+    dialogues:[
+      "...릴리스. 이 마왕군 간부가 정령들을 오염시켜서 결계를 약하게 만든 거였어요.",
+      "그렇다면... 그 옛날 성소가 무너지기 쉬웠던 것도, 이 자가 오랫동안 숲의 힘을 갉아먹고 있었기 때문일지도 몰라요.",
+      "인간들의 잘못만이 아니라, 처음부터 마왕군이 이 숲을 노리고 있었던 거예요.",
+      "장로님께도 이 사실을 꼭 알려야겠어요. 우리 모두... 같은 적을 상대하고 있었던 거니까요.",
+    ]},
+  general_lilith_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "마왕군 간부 릴리스... 정령들을 오염시켜 숲의 결계를 약화시킨 자가 바로 이 자였다.",
+      "깊은 숲의 위기도 결국 마왕군이 꾸민 일이었음이 드러났다.",
+    ]},
+
+  // ── 벨제론(수도) ──
+  general_belzeron_defeat_with_mage:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
+    dialogues:[
+      "...벨제론. 왕성에 잠입한 마왕군을 이끈 게 바로 이 자였군요.",
+      "그러고 보니... 제가 학원에서 발견했던 마력의 흔적, 그게 이 자의 기운이었을지도 몰라요.",
+      "제가 누명을 쓰고 추방당한 것도, 결국 이 자의 계획을 막으려다 벌어진 일이었던 거예요.",
+      "이제야 모든 게 설명되는군요. 그때부터 지금까지, 전부 하나로 이어져 있었어요.",
+    ]},
+  general_belzeron_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+    dialogues:[
+      "마왕군 간부 벨제론... 왕성에 잠입한 마왕군을 이끈 자가 바로 이 자였다.",
+      "수도의 위기 또한 마왕군이 오래전부터 계획해온 일이었다.",
+    ]},
+
   healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
     dialogues:["당신과 함께 여기까지 오다니 꿈만 같아요.","당신이 앞에 서 있으면 용기가 생겨요.","신성의 빛이 다하는 날까지 함께할게요.","마왕을 쓰러뜨리는 날 같이 맛집 가요! ✝"]},
   tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
@@ -1610,7 +2457,7 @@ const NPC_DATA = {
   levelup_10_mage_party:{name:"엘린",nameColor:"#cc88ff",portrait:"images/portrait_magician.png",
     dialogues:["Lv.10 달성! 이제 진짜 모험가라고 할 수 있겠어요! 🔮","마력 수치도 눈에 띄게 올랐어요. 제 분석이 맞았어요!"]},
   levelup_10_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
-    dialogues:["Lv.10. 이제 숲 던전 몬스터들은 상대가 되지 않겠군요. 🏹","조금씩 당신을 믿게 되고 있어요."]},
+    dialogues:["Lv.10. 이제 어지간한 몬스터들은 상대가 되지 않겠군요. 🏹","조금씩 당신을 믿게 되고 있어요."]},
   levelup_10_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
     dialogues:["Lv.10이라고! 이야, 꽤 하는데? ⚔","인정해줄게. 이 정도면 같이 다닐 만해!"]},
 
@@ -2077,6 +2924,17 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
   showSlotImg("townCharSlot3", npcBody, null, "delay1");
 
   let lineIdx=0,charIdx=0,typeTimer=null;
+
+  // 특정 스토리 대화는 전용 배경 이미지를 깔아 분위기를 더한다 (npc.bgImage 가 있을 때만)
+  document.getElementById("npcDialogueBg")?.remove();
+  if (npc.bgImage) {
+    const bg = document.createElement("div");
+    bg.id = "npcDialogueBg";
+    bg.style.cssText = `position:fixed;inset:0;z-index:7999;background:url('${npc.bgImage}') center/cover no-repeat;opacity:0;transition:opacity .6s ease;`;
+    document.body.appendChild(bg);
+    requestAnimationFrame(() => { bg.style.opacity = "1"; });
+  }
+
   const box=document.createElement("div"); box.id="npcDialogueBox";
   box.innerHTML=`<div class="npc-wrap"><div class="npc-namebar" style="color:${npc.nameColor||'#44dd88'}">${npc.name}</div><div class="npc-body"><img class="npc-portrait" src="${npc.portrait}" onerror="this.style.display='none'" alt="${npc.name}"/><div class="npc-textarea"><div class="npc-text" id="npcText"></div></div></div><div class="npc-footer"><span class="npc-progress" id="npcProg"></span><span class="npc-hint" id="npcHint">▼ 클릭하여 계속</span><button class="npc-closebtn" id="npcClose">✕ 닫기</button></div></div>`;
   document.body.appendChild(box);
@@ -2122,6 +2980,8 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
     clearTimeout(typeTimer);
     box.style.transition="opacity .25s";
     box.style.opacity="0";
+    const bgEl = document.getElementById("npcDialogueBg");
+    if (bgEl) { bgEl.style.opacity = "0"; setTimeout(() => bgEl.remove(), 650); }
     setTimeout(() => {
       box.remove();
       // 슬롯 복원
@@ -2249,7 +3109,7 @@ TownScene.prototype._renderGuideQuestModal = function() {
     { id:"party3",  icon:"👥", label:"동료 3명 모집",             desc:"전투 협력 체계 구축",            reward:"전투력 상승",  done: !!(p.party && p.party2 && p.party3) },
     { id:"bond75",  icon:"❤", label:"동료 호감도 75+ 달성",       desc:"유대 이벤트로 공격력 보너스",    reward:"공격력 +5",    done: Object.values(p.affinity||{}).some(v=>v>=75) },
     { id:"potions", icon:"💊", label:"회복 물약 3개 이상 보유",   desc:"장기전 생존 필수",               reward:"생존력 향상",  done: (p.inventory||[]).filter(i=>i.type==="potion").length >= 3 },
-    { id:"abyss",   icon:"⚫", label:"심연 던전 해금 (수호자 처치)", desc:"일반 던전 3층 수호자 처치 필요", reward:"마왕 도전 가능", done: !!p.abyssUnlocked },
+    { id:"abyss",   icon:"⚫", label:"심연 던전 해금 (수도 재건)", desc:"왕국 지도에서 수도를 완전히 재건해야 함", reward:"마왕 도전 가능", done: !!p.abyssUnlocked },
   ];
 
   // ── 일일 퀘스트 정의 ──
@@ -2424,3 +3284,4 @@ TownScene.prototype._renderTownCharacters = function() {
 window.TownScene = TownScene;
 window.getTownStage = getTownStage;
 window.applyBattleInterest = applyBattleInterest;
+window.NPC_DATA = NPC_DATA;
