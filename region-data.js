@@ -87,7 +87,7 @@ const REGIONS = [
     requires: "capital",
     dungeonType: "lavaCanyon",
     fourKing: "gramos_true",
-    bgImage: "images/lava cobbles.png",
+    bgImage: "images/lava_cobbles.png",
   },
   {
     id: "sunkenWreck",
@@ -100,7 +100,7 @@ const REGIONS = [
     requires: "lavaCanyon",
     dungeonType: "sunkenWreck",
     fourKing: "barkan_true",
-    bgImage: "images/Haunted shipwreck on a stormy shore.png",
+    bgImage: "images/Haunted_shipwreck_on_a_stormy_shore.png",
   },
   {
     id: "corruptedGrove",
@@ -113,7 +113,7 @@ const REGIONS = [
     requires: "sunkenWreck",
     dungeonType: "corruptedGrove",
     fourKing: "lilith_true",
-    bgImage: "images/Corrupted forest of forgotten ruins.png",
+    bgImage: "images/Corrupted_forest_of_forgotten_ruins.png",
   },
   {
     id: "royalDungeon",
@@ -126,7 +126,7 @@ const REGIONS = [
     requires: "corruptedGrove",
     dungeonType: "royalDungeon",
     fourKing: "belzeron_true",
-    bgImage: "images/Gothic dungeon with hanging cages.png",
+    bgImage: "images/Gothic_dungeon_with_hanging_cages.png",
   },
 ];
 
@@ -139,8 +139,8 @@ const REGION_BY_ID = REGIONS.reduce((m, r) => { m[r.id] = r; return m; }, {});
 // 새 지역에 투자 시스템을 추가하려면 이 객체에 항목만 추가하면 된다(코드 변경 불필요).
 const REGION_INVESTMENT = {
   mineTown: {
-    bgImage: "images/Grim mining village beneath rocky cliffs.png", // 재건 전 거점 배경
-    completedBgImage: "images/Gold discovery festival in the mountains.png", // 재건 완료 후 거점 배경
+    bgImage: "images/Grim_mining_village_beneath_rocky_cliffs.png", // 재건 전 거점 배경
+    completedBgImage: "images/Gold_discovery_festival_in_the_mountains.png", // 재건 완료 후 거점 배경
     npcId:     "miner_chief",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
     returnGreetingId: "miner_chief_welcome_back", // 재방문 시(매번) 짧은 환영 인사
     npcName:   "광부 두칸",
@@ -159,8 +159,8 @@ const REGION_INVESTMENT = {
     ],
   },
   harborTown: {
-    bgImage: "images/Mediterranean fortress by the sea.png", // 재건 전 거점 배경
-    completedBgImage: "images/Coastal port festival celebration in full swing.png", // 재건 완료 후 거점 배경
+    bgImage: "images/Mediterranean_fortress_by_the_sea.png", // 재건 전 거점 배경
+    completedBgImage: "images/Coastal_port_festival_celebration_in_full_swing.png", // 재건 완료 후 거점 배경
     npcId:     "harbor_master",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
     returnGreetingId: "harbor_master_welcome_back",
     npcName:   "항구장 모리스",
@@ -179,8 +179,8 @@ const REGION_INVESTMENT = {
     ],
   },
   forestVillage: {
-    bgImage: "images/Elven village amidst mist and ruin.png", // 재건 전 거점 배경
-    completedBgImage: "images/Elven festival in a verdant valley.png", // 재건 완료 후 거점 배경
+    bgImage: "images/Elven_village_amidst_mist_and_ruin.png", // 재건 전 거점 배경
+    completedBgImage: "images/Elven_festival_in_a_verdant_valley.png", // 재건 완료 후 거점 배경
     npcId:     "elf_elder",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
     returnGreetingId: "elf_elder_welcome_back",
     npcName:   "엘프 장로 실라",
@@ -199,7 +199,7 @@ const REGION_INVESTMENT = {
     ],
   },
   capital: {
-    bgImage: "images/Chained in darkness under a tyrants gaze.png", // 던전/거점 배경 — 엔딩 컷신과 동일한 이미지 재사용
+    bgImage: "images/Chained_in_darkness_under_a_tyrants_gaze.png", // 던전/거점 배경 — 엔딩 컷신과 동일한 이미지 재사용
     npcId:     "royal_guard_captain",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
     returnGreetingId: "royal_guard_captain_welcome_back",
     npcName:   "근위대장 레오니스",
@@ -222,7 +222,7 @@ const REGION_INVESTMENT = {
   // 거점 NPC는 근위대장 레오니스가 그대로 맡는다 — 수도를 구한 뒤
   // "진짜 사천왕"을 뿌리뽑기 위한 왕실 토벌 작전을 이끄는 설정으로 자연스럽게 이어진다.
   lavaCanyon: {
-    bgImage: "images/lava cobbles.png", // 재건 전 거점 배경
+    bgImage: "images/lava_cobbles.png", // 재건 전 거점 배경
     npcId:     "royal_guard_captain_lava",
     returnGreetingId: "royal_guard_captain_lava_welcome_back",
     npcName:   "근위대장 레오니스",
@@ -241,7 +241,7 @@ const REGION_INVESTMENT = {
     ],
   },
   sunkenWreck: {
-    bgImage: "images/Haunted shipwreck on a stormy shore.png", // 재건 전 거점 배경
+    bgImage: "images/Haunted_shipwreck_on_a_stormy_shore.png", // 재건 전 거점 배경
     npcId:     "royal_guard_captain_sunken",
     returnGreetingId: "royal_guard_captain_sunken_welcome_back",
     npcName:   "근위대장 레오니스",
@@ -260,7 +260,7 @@ const REGION_INVESTMENT = {
     ],
   },
   corruptedGrove: {
-    bgImage: "images/Corrupted forest of forgotten ruins.png", // 재건 전 거점 배경
+    bgImage: "images/Corrupted_forest_of_forgotten_ruins.png", // 재건 전 거점 배경
     npcId:     "royal_guard_captain_grove",
     returnGreetingId: "royal_guard_captain_grove_welcome_back",
     npcName:   "근위대장 레오니스",
@@ -279,7 +279,7 @@ const REGION_INVESTMENT = {
     ],
   },
   royalDungeon: {
-    bgImage: "images/Gothic dungeon with hanging cages.png", // 재건 전 거점 배경
+    bgImage: "images/Gothic_dungeon_with_hanging_cages.png", // 재건 전 거점 배경
     npcId:     "royal_guard_captain_dungeon",
     returnGreetingId: "royal_guard_captain_dungeon_welcome_back",
     npcName:   "근위대장 레오니스",

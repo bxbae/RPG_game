@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v47";
-const STATIC_CACHE  = "rpg-static-v47";
-const DYNAMIC_CACHE = "rpg-dynamic-v47";
+const CACHE_NAME    = "rpg-v50";
+const STATIC_CACHE  = "rpg-static-v50";
+const DYNAMIC_CACHE = "rpg-dynamic-v50";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -243,8 +243,10 @@ self.addEventListener("fetch", event => {
         caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone));
         return response;
       }).catch(() => {
-        // 완전 오프라인 + 캐시 없음 → 빈 응답
+        // 완전 오프라인 + 캐시 없음 → undefined를 반환하면 Response 변환 에러가 나므로
+        // 빈 404 Response를 명시적으로 반환한다.
         console.warn("[SW] 오프라인 fetch 실패:", request.url);
+        return new Response("", { status: 404, statusText: "Offline - resource not cached" });
       });
     })
   );

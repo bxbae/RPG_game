@@ -26,12 +26,29 @@ class WorldMapScene {
     this._injectCSS();
     container.innerHTML = this._buildHTML();
     this._bindEvents(container);
+    this._applyCardBackgrounds();
   }
 
   // 현재 플레이어 상태 기준으로 카드 목록 다시 그림
   refresh() {
     const c = this.game.containers?.worldmap;
-    if (c) { c.innerHTML = this._buildHTML(); this._bindEvents(c); }
+    if (c) { c.innerHTML = this._buildHTML(); this._bindEvents(c); this._applyCardBackgrounds(); }
+  }
+
+  // 지역 카드 배경 — 실제로 로드되는지 먼저 확인한 뒤 적용 (없으면 그냥 비워둠, 깨진 표시 없음)
+  _applyCardBackgrounds() {
+    const g  = this.game;
+    const rm = g.regionManager;
+    const regions = rm?.list(g.player) || [];
+    for (const r of regions) {
+      if (!r.bgImage) continue;
+      const layer = document.getElementById(`wmBg-${r.id}`);
+      if (!layer) continue;
+      const probe = new Image();
+      probe.onload  = () => { layer.style.backgroundImage = `url('${r.bgImage}')`; };
+      probe.onerror = () => console.warn(`[지역 카드 배경 로드 실패] "${r.bgImage}" 파일을 images/ 폴더에서 찾을 수 없습니다.`);
+      probe.src = r.bgImage;
+    }
   }
 
   _buildHTML() {
@@ -95,7 +112,7 @@ class WorldMapScene {
     const stateClass = locked ? "wm-card-locked" : (current ? "wm-card-current" : "wm-card-open");
     const clickable  = locked ? "" : `data-region="${r.id}" role="button" tabindex="0"`;
     const bgHTML = r.bgImage
-      ? `<div class="wm-card-bg" style="background-image:url('${r.bgImage}');"></div>`
+      ? `<div class="wm-card-bg" id="wmBg-${r.id}"></div>`
       : "";
 
     return `

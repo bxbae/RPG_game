@@ -2237,7 +2237,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ① — 마왕이 직접 나타남 (충격적인 진실의 시작) ──
-  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained in darkness under a tyrants gaze.png",
+  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
     dialogues:[
       "...여기까지 잘 해냈구나, 인간.",
       "수도의 일도, 지역들의 일도... 전부 내 손바닥 위에서 벌어진 일이었다는 걸 알고 있나?",
@@ -2246,7 +2246,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ② — 충격적인 진실: 마왕은 봉인의 관리자였다 ──
-  capital_ending_truth:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained in darkness under a tyrants gaze.png",
+  capital_ending_truth:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
     dialogues:[
       "다만... 한 가지는 정정해야겠군. 너희가 '마왕'이라 부르며 두려워한 존재, 그게 바로 나라고 믿었겠지.",
       "하지만 나는 그 이름의 진짜 주인이 아니다. 나는... 그저 그를 가둔 봉인을 관리하는 자일 뿐이야.",
@@ -2254,7 +2254,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ③ — 전투 직전 도발 ──
-  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained in darkness under a tyrants gaze.png",
+  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
     dialogues:[
       "그 봉인을 건드리고 싶다면... 먼저 나를 넘어서야 할 것이다.",
       "이곳까지 온 너의 각오가 진심인지, 내가 직접 확인해보겠다!",
@@ -2319,7 +2319,7 @@ const NPC_DATA = {
   // ══════════════ 심연 메인 스토리 — 마왕 다르카스 ══════════════
 
   // ── 보스룸 진입 직전 — 다르카스 등장, 전투 전 대사 ──
-  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes face looming dark god in cathedral.png",
+  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral.png",
     dialogues:[
       "...드디어 여기까지 왔군. 내 부하들을 그렇게나 거두고도, 아직 멈추지 않다니.",
       "내가 왜 마왕군을 일으켰는지... 알고 싶나? 간단하다. 이 봉인에서 벗어나려면 힘이 필요했을 뿐이야.",
@@ -2338,14 +2338,14 @@ const NPC_DATA = {
     ]},
 
   // ── 봉인 붕괴 — 다르카스의 몸이 무너지며 그 안에 갇혀 있던 진짜 존재가 풀려난다 ──
-  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Heroes face looming dark god in cathedral2.png",
+  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
     dialogues:[
       "...다르카스의 몸에서 빠져나온 그 기운이, 점점 커지고 있다.",
       "이건... 단순한 잔재가 아니야. 무언가가 깨어나고 있다.",
     ]},
 
   // ── 진짜 존재 등장 — 공허의 군주 네메시스 ──
-  nemesis_appearance:{name:"???",nameColor:"#a83cff",portrait:"images/Nemesis_Lord_of_the_Void.png",bgImage:"images/Heroes face looming dark god in cathedral2.png",
+  nemesis_appearance:{name:"???",nameColor:"#a83cff",portrait:"images/Nemesis_Lord_of_the_Void.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
     dialogues:[
       "...드디어. 그 오랜 봉인이 풀렸구나.",
       "나는 네메시스. 너희가 셀 수도 없을 만큼 오래전부터, 이 심연 가장 깊은 곳에 갇혀 있던 공허의 군주다.",
@@ -2353,7 +2353,7 @@ const NPC_DATA = {
     ]},
 
   // ── 다르카스의 마지막 말 — 전투 직전 ──
-  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes face looming dark god in cathedral2.png",
+  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
     dialogues:[
       "...아직, 끝나지 않았다.",
       "예전에도 한 번... 누군가 저것을 막으려 했었지. 그때는... 실패했다.",
@@ -2452,7 +2452,7 @@ const NPC_DATA = {
   // ══════════════ 광산도시 — 완전 재건 통합 축제 이벤트 ══════════════
 
   // ── 광부 축제 시작 (재건 100% + 투자 최종 단계 동시 달성 시) ──
-  miner_chief_festival_intro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",bgImage:"images/Gold discovery festival in the mountains.png",
+  miner_chief_festival_intro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",bgImage:"images/Gold_discovery_festival_in_the_mountains.png",
     dialogues:[
       "용사님! 들으셨습니까? 갱도도, 제련소도... 이제 정말로 전부 다 되살아났습니다!",
       "광부들이 다 모여서 한바탕 잔치를 벌이자고 난리입니다. 오늘만큼은 곡괭이도 내려놓고 다 같이 즐겨야죠.",
@@ -2468,7 +2468,7 @@ const NPC_DATA = {
     ]},
 
   // ── 축제 마무리 (탱커 결말편 다음, 또는 동료 없을 때 곧바로) ──
-  mine_festival_outro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",bgImage:"images/Gold discovery festival in the mountains.png",
+  mine_festival_outro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",bgImage:"images/Gold_discovery_festival_in_the_mountains.png",
     dialogues:[
       "광산도시는 이제 그 누구보다 단단하게 다시 섰습니다. 전부 용사님 덕분입니다.",
       "이 마을 사람들은 평생 용사님을 잊지 못할 겁니다. 정말 감사합니다! ⛏✨",
@@ -2477,7 +2477,7 @@ const NPC_DATA = {
   // ══════════════ 항구도시 — 완전 재건 통합 축제 이벤트 ══════════════
 
   // ── 항구 축제 시작 (재건 100% + 투자 최종 단계 동시 달성 시) ──
-  harbor_master_festival_intro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",bgImage:"images/Coastal port festival celebration in full swing.png",
+  harbor_master_festival_intro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",bgImage:"images/Coastal_port_festival_celebration_in_full_swing.png",
     dialogues:[
       "용사님, 저것 좀 보십시오! 수평선 너머로 배들이 줄지어 들어오고 있습니다!",
       "교역선이 돌아온다는 소식에 아이들이 부둣가로 뛰쳐나와 손을 흔들고 있어요. 이런 풍경은 정말 오랜만입니다.",
@@ -2485,7 +2485,7 @@ const NPC_DATA = {
     ]},
 
   // ── 항구 축제 마무리 — 항해 허가증 수여 ──
-  harbor_festival_outro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",bgImage:"images/Coastal port festival celebration in full swing.png",
+  harbor_festival_outro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",bgImage:"images/Coastal_port_festival_celebration_in_full_swing.png",
     dialogues:[
       "이 항구는 다시 세계와 이어졌습니다. 전부 용사님이 해내신 일입니다.",
       "이걸 받으십시오 — 항해 허가증입니다. 이제 어느 바다로든 떠나실 수 있을 겁니다. ⚓📜",
@@ -2494,7 +2494,7 @@ const NPC_DATA = {
   // ══════════════ 깊은 숲 — 완전 재건 통합 축제 이벤트 ══════════════
 
   // ── 결계 회복 직후 — 충격적인 진실: 그날의 "인간"은 사실 마족이었다 ──
-  elf_elder_festival_intro:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",bgImage:"images/Elven festival in a verdant valley.png",
+  elf_elder_festival_intro:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
     dialogues:[
       "...결계가 다시 살아났어요. 정말 오랜만에 느껴보는 따뜻한 기운이네요.",
       "그런데 결계를 회복하는 동안, 정령들이 들려준 이야기가 있어요. 믿기 힘들겠지만... 들어주세요.",
@@ -2503,7 +2503,7 @@ const NPC_DATA = {
     ]},
 
   // ── 동료(아리아) 결말편 다음 — 장로 실라의 축복 ──
-  elf_elder_blessing:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",bgImage:"images/Elven festival in a verdant valley.png",
+  elf_elder_blessing:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
     dialogues:[
       "당신을 의심했던 그 모든 순간이... 부끄러워지는군요. 용서를 구하고 싶어요.",
       "이 숲과 우리 모두를 대신해, 당신에게 정령의 축복을 내리겠습니다.",
@@ -2511,7 +2511,7 @@ const NPC_DATA = {
     ]},
 
   // ── 아리아의 마지막 축복 — 축제 마무리 ──
-  archer_blessing_outro:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",bgImage:"images/Elven festival in a verdant valley.png",
+  archer_blessing_outro:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
     dialogues:[
       "장로님의 축복까지 받으셨네요. 이걸로... 정말 모든 게 끝난 것 같아요.",
       "저도 한 번 더 말씀드릴게요. 함께해줘서, 정말 고마워요. 🏹💚",
@@ -3188,9 +3188,15 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
   if (npc.bgImage) {
     const bg = document.createElement("div");
     bg.id = "npcDialogueBg";
-    bg.style.cssText = `position:fixed;inset:0;z-index:7999;background:url('${npc.bgImage}') center/cover no-repeat;opacity:0;transition:opacity .6s ease;`;
+    bg.style.cssText = `position:fixed;inset:0;z-index:7999;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;transition:opacity .6s ease;`;
     document.body.appendChild(bg);
-    requestAnimationFrame(() => { bg.style.opacity = "1"; });
+    const probe = new Image();
+    probe.onload = () => {
+      bg.style.backgroundImage = `url('${npc.bgImage}')`;
+      requestAnimationFrame(() => { bg.style.opacity = "1"; });
+    };
+    probe.onerror = () => console.warn(`[대화 배경 로드 실패] "${npc.bgImage}" 파일을 images/ 폴더에서 찾을 수 없습니다.`);
+    probe.src = npc.bgImage;
   }
 
   const box=document.createElement("div"); box.id="npcDialogueBox";
