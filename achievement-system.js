@@ -11,7 +11,7 @@ const ACHIEVEMENTS = [
   { id:"kill_50",       cat:"전투", icon:"⚔",  title:"던전의 사냥꾼",      desc:"몬스터 50마리 처치",               cond: p => p.killCount >= 50,       reward:"골드 +500" },
   { id:"kill_100",      cat:"전투", icon:"🏆",  title:"백전노장",           desc:"몬스터 100마리 처치",              cond: p => p.killCount >= 100,      reward:"공격력 +5" },
   { id:"slay_guardian", cat:"전투", icon:"🛡",  title:"수호자의 적",        desc:"수호자를 처치하라",                cond: p => p.abyssUnlocked,         reward:"골드 +300" },
-  { id:"slay_demon",    cat:"전투", icon:"👹",  title:"마왕 처치",          desc:"마왕 다르카스를 쓰러뜨려라",       cond: p => p.abyssUnlocked,         reward:"공격력 +10" },
+  { id:"slay_demon",    cat:"전투", icon:"👹",  title:"마왕 처치",          desc:"마왕 다르카스를 쓰러뜨려라",       cond: p => !!p.darkasDefeated,      reward:"공격력 +10" },
   { id:"no_heal_win",   cat:"전투", icon:"💪",  title:"불굴의 용사",        desc:"회복 없이 보스를 처치하라",        cond: p => p._noHealBoss,           reward:"HP +30" },
   { id:"critical_10",   cat:"전투", icon:"💥",  title:"치명적 타격",        desc:"치명타를 10회 발생시켜라",         cond: p => (p._critCount||0) >= 10, reward:"치명타율 +3%" },
 
@@ -54,6 +54,19 @@ const ACHIEVEMENTS = [
   { id:"trap_first_clear",cat:"미니게임", icon:"🕳",  title:"함정 해체사",       desc:"함정의 방을 처음 클리어하라",         cond: p => (p._trapRoomClears||0) >= 1, reward:"골드 +150" },
   { id:"trap_clear_5",    cat:"미니게임", icon:"🧭",  title:"유적 탐사가",       desc:"함정의 방을 5번 클리어하라",          cond: p => (p._trapRoomClears||0) >= 5, reward:"공격력 +5" },
   { id:"trap_abyss_clear",cat:"미니게임", icon:"💀",  title:"심연의 정복자",     desc:"심연 던전에서 함정의 방을 클리어하라", cond: p => p._trapAbyssClear === true,  reward:"HP +50" },
+
+  // ── 왕국 ──
+  { id:"region_complete_1", cat:"왕국", icon:"🏗",  title:"첫 재건",            desc:"지역 하나를 완전히 재건하라",         cond: p => Object.entries(p.regions||{}).filter(([id,r])=>id!=="starterVillage"&&r.completed).length >= 1, reward:"골드 +300" },
+  { id:"region_complete_all",cat:"왕국", icon:"👑", title:"왕국의 재건자",      desc:"왕국 번영도 100% 달성",              cond: p => (window.rpgGame?.regionManager?.kingdomProsperity(p) ?? 0) >= 100, reward:"공격력 +15, HP +100" },
+  { id:"companion_story_1", cat:"왕국", icon:"💝",  title:"마음을 나누다",      desc:"동료의 개인 사연을 하나 해결하라",     cond: p => Object.values(p.companionStory||{}).some(s=>s.done), reward:"호감도 +10" },
+  { id:"companion_story_all",cat:"왕국", icon:"🌈", title:"모두의 이야기",      desc:"모든 동료의 개인 사연을 해결하라",     cond: p => ["tanker","dealer","archer","mage_party","healer"].every(k => p.companionStory?.[k]?.done), reward:"전 동료 호감도 +10" },
+  { id:"title_guardian",    cat:"왕국", icon:"🛡",  title:"왕국의 수호자",      desc:"왕국의 수호자 칭호를 받아라",         cond: p => !!p.guardianTitle, reward:"방어력 +10" },
+  { id:"title_chancellor",  cat:"왕국", icon:"⚜",  title:"재상",               desc:"진엔딩에서 재상 칭호를 받아라",       cond: p => !!p.chancellorTitle, reward:"공격력 +10, 방어력 +10" },
+  { id:"sacheonwang_all",   cat:"왕국", icon:"👑",  title:"진짜 사천왕 토벌자",  desc:"사천왕 진짜 본체 넷을 모두 쓰러뜨려라", cond: p => ["lavaCanyon","sunkenWreck","corruptedGrove","royalDungeon"].every(id => p.regions?.[id]?.completed), reward:"공격력 +20, HP +150" },
+
+  // ── 심연 ──
+  { id:"slay_nemesis", cat:"심연", icon:"🌌",  title:"공허를 가른 자",      desc:"공허의 군주 네메시스를 쓰러뜨려라",    cond: p => !!p.nemesisDefeated, reward:"공격력 +20, HP +150" },
+  { id:"true_ending",  cat:"심연", icon:"✨",  title:"진실된 결말",         desc:"진엔딩을 완성하라",                  cond: p => !!p.nemesisDefeated && !!p.darkasDefeated, reward:"칭호 해금" },
 ];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -185,6 +198,8 @@ class AchievementManager {
       "동료":    "#ff77aa",
       "성장":    "#e8b830",
       "미니게임": "#bb66ff",
+      "왕국":    "#ffd700",
+      "심연":    "#a83cff",
     };
 
     return `

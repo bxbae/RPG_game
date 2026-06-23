@@ -41,6 +41,7 @@ class RegionHubScene {
     this._injectCSS();
     container.innerHTML = this._buildHTML(region);
     this._bindEvents(container, region);
+    this._applyHubBackground();
 
     // 첫 도착이면 NPC 인사 대사를 잠시 후 재생
     const arrivedKey = `_arrived_${this.regionId}`;
@@ -62,7 +63,35 @@ class RegionHubScene {
       if (cfg?.npcId) {
         setTimeout(() => { if (!this._destroyed) this.showNpcDialogue(cfg.npcId); }, 500);
       }
+    } else {
+      // 재방문 — 매번 짧게 반겨주는 인사 (동료 갈등편이 우선이면 위에서 이미 return 됨)
+      const cfg = rm.getInvestConfig(this.regionId);
+      if (cfg?.returnGreetingId) {
+        setTimeout(() => { if (!this._destroyed) this.showNpcDialogue(cfg.returnGreetingId); }, 400);
+      }
     }
+  }
+
+  // ── 거점 배경 — 실제로 로드되는지 먼저 확인한 뒤 적용 (검정 화면 방지) ──
+  _applyHubBackground() {
+    const layer = document.getElementById("rhBgLayer");
+    if (!layer) return;
+    const primaryImg  = this._pendingBgImage;
+    const fallbackImg = this._pendingFallbackBgImage;
+    if (!primaryImg) return;
+
+    const probe = new Image();
+    probe.onload = () => { layer.style.backgroundImage = `url('${primaryImg}')`; };
+    probe.onerror = () => {
+      console.warn(`[배경 로드 실패] "${primaryImg}" 파일을 images/ 폴더에서 찾을 수 없습니다. 파일명(띄어쓰기 포함)이 정확한지 확인해주세요.`);
+      if (fallbackImg && fallbackImg !== primaryImg) {
+        const probe2 = new Image();
+        probe2.onload = () => { layer.style.backgroundImage = `url('${fallbackImg}')`; };
+        probe2.onerror = () => console.warn(`[배경 로드 실패] "${fallbackImg}" 파일도 찾을 수 없습니다.`);
+        probe2.src = fallbackImg;
+      }
+    };
+    probe.src = primaryImg;
   }
 
   // 이 지역에 연결된 동료 스토리가 지금 트리거 가능한지 확인 (파티에 실제로 있어야 함)
@@ -105,6 +134,7 @@ class RegionHubScene {
     if (!region) return;
     c.innerHTML = this._buildHTML(region);
     this._bindEvents(c, region);
+    this._applyHubBackground();
   }
 
   _buildHTML(region) {
@@ -141,10 +171,19 @@ class RegionHubScene {
         </div>`;
     }
 
-    const bgImage = region.completed ? (cfg?.completedBgImage || cfg?.bgImage) : cfg?.bgImage;
+    const investDone = rm.isFullyInvested?.(g.player, this.regionId);
+    const bgImage = investDone ? (cfg?.completedBgImage || cfg?.bgImage) : cfg?.bgImage;
+    this._pendingBgImage = bgImage || null; // mount()에서 실제 로드 가능 여부 확인 후 적용
+    this._pendingFallbackBgImage = investDone ? (cfg?.bgImage || null) : null; // 완료 이미지가 깨졌을 때만 재시도
     const bgHTML = bgImage
-      ? `<div class="rh-bg" style="background-image:url('${bgImage}');"></div>`
+      ? `<div class="rh-bg" id="rhBgLayer"></div>`
       : "";
+
+    const RECON_GAIN = 35; // game.js의 RECONSTRUCTION_GAIN과 동일 — 1회 클리어당 재건도 증가량
+    const remainingClears = region.completed ? 0 : Math.max(1, Math.ceil((100 - region.prosperity) / RECON_GAIN));
+    const clearsHint = region.completed
+      ? ""
+      : ` <span class="rh-clears-hint">(던전 ${remainingClears}번 더 클리어하면 완료!)</span>`;
 
     return `
       <div class="rh-root">
@@ -153,7 +192,7 @@ class RegionHubScene {
           <button class="rh-back" id="rhBack">← 왕국 지도</button>
           <div class="rh-title-wrap">
             <h1 class="rh-title">${region.icon || "📍"} ${region.name}</h1>
-            <p class="rh-subtitle">재건도 ${region.prosperity}% ${region.completed ? "· 재건 완료" : ""}</p>
+            <p class="rh-subtitle">재건도 ${region.prosperity}% ${region.completed ? "· 재건 완료" : ""}${clearsHint}</p>
           </div>
         </header>
 
@@ -256,6 +295,7 @@ class RegionHubScene {
       .rh-back:hover { filter:brightness(1.3); border-color:var(--gold,#c8980e); }
       .rh-title { margin:0; font-size:1.4rem; font-weight:800; color:var(--gold2,#e8b830); }
       .rh-subtitle { margin:2px 0 0; font-size:.74rem; color:var(--text-dim,#786050); }
+      .rh-clears-hint { color:#e8c060; font-weight:600; }
 
       .rh-body { max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
 

@@ -493,6 +493,7 @@ class TownScene {
     <button class="tn-navbtn" id="tn-inn">🏨 여관</button>
     <button class="tn-navbtn tn-gold" id="tn-bank">🏦 은행</button>
     <button class="tn-navbtn" id="tn-bond">💞 유대</button>
+    <button class="tn-navbtn" id="tn-achievement" style="border-color:#e8b830;color:#e8b830;">🏆 업적</button>
     <span class="tn-divider"></span>
     <button class="tn-navbtn" id="tn-shop-toggle">🛒 상점/인벤</button>
     <button class="tn-navbtn tn-blue" id="tn-save">💾 저장</button>
@@ -773,6 +774,15 @@ class TownScene {
   </div>
 </div>
 
+<!-- 업적 모달 -->
+<div id="tnAchievementModal" class="skill-modal" style="display:none;z-index:8100;">
+  <div class="skill-box" style="max-width:520px;">
+    <h2>🏆 업적</h2>
+    <div id="tnAchievementList"></div>
+    <button id="tnCloseAchievement">닫기</button>
+  </div>
+</div>
+
 <!-- 여관 모달 -->
 <div id="tnInnModal" class="skill-modal" style="display:none;">
   <div class="skill-box" style="max-width:380px;text-align:center;">
@@ -855,6 +865,8 @@ class TownScene {
     q("tn-inn")    ?.addEventListener("click", () => this._openInnModal());
     q("tn-bank")   ?.addEventListener("click", () => this._openBankScreen());
     q("tn-bond")   ?.addEventListener("click", () => g.showPartyStory());
+    q("tn-achievement") ?.addEventListener("click", () => this._openAchievementModal());
+    q("tnCloseAchievement") ?.addEventListener("click", () => q("tnAchievementModal") && (q("tnAchievementModal").style.display = "none"));
     q("tn-guide")  ?.addEventListener("click", () => this._openGuideQuestModal());
     q("tn-princess") ?.addEventListener("click", () => this._talkToPrincess());
     q("guideQuestClose")?.addEventListener("click", () => {
@@ -1421,6 +1433,18 @@ class TownScene {
     }
   }
 
+  // ── 업적 모달 ───────────────────────────────────
+  _openAchievementModal() {
+    const modal = document.getElementById("tnAchievementModal");
+    const list  = document.getElementById("tnAchievementList");
+    if (!modal || !list) return;
+
+    // 열릴 때마다 최신 달성 상태로 재확인 (놓친 업적이 있다면 이 시점에 바로 잡아줌)
+    this.game.achievementManager?.check?.(this.game);
+    list.innerHTML = this.game.achievementManager?.renderUI?.(this.game.player) || "업적 정보를 불러올 수 없습니다.";
+    modal.style.display = "flex";
+  }
+
   // ── 동료 모달 ───────────────────────────────────
   _openPartyModal() {
     const p = this.game.player;
@@ -1853,7 +1877,7 @@ const NPC_DATA = {
     ]},
 
   // ── 광산도시 도착 — 광부 두칸의 인사 + 투자 안내 ──
-  miner_chief:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",
+  miner_chief:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",
     dialogues:[
       "...누구요? 아, 성에서 보내주신 용사님이시군요!",
       "보시다시피 갱도가 다 무너졌습니다. 제련소 불도 꺼진 지 오래고요.",
@@ -1863,11 +1887,17 @@ const NPC_DATA = {
     ]},
 
   // ── 광산도시 — 던전 출발 전 1회성 응원 ──
-  miner_chief_send_off:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",
+  miner_chief_send_off:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",
     dialogues:[
       "정말로 들어가시는 겁니까... 부디 조심하십시오.",
       "갱도 안은 저보다 용사님이 훨씬 잘 아실 테니, 길게 말 안 하겠습니다.",
       "다녀오십시오. 여기서 무사히 돌아오시길 기다리고 있겠습니다! ⛏",
+    ]},
+
+  // ── 광산도시 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  miner_chief_welcome_back:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내세요! ⛏",
     ]},
 
   // ── 항구도시 출발 전 — 공주의 사전 설명 (월드맵에서 항구도시 선택 시) ──
@@ -1881,7 +1911,7 @@ const NPC_DATA = {
     ]},
 
   // ── 항구도시 도착 — 항구장 모리스의 인사 + 투자 안내 ──
-  harbor_master:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",
+  harbor_master:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",
     dialogues:[
       "오, 살아있는 사람이 또 오다니! 성에서 보내신 용사님이시군요.",
       "해적 놈들이 다 태우고 부수고 갔습니다. 방파제도 무너지고, 배도 거의 남은 게 없어요.",
@@ -1891,11 +1921,17 @@ const NPC_DATA = {
     ]},
 
   // ── 항구도시 — 던전 출발 전 1회성 응원 ──
-  harbor_master_send_off:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",
+  harbor_master_send_off:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",
     dialogues:[
       "벌써 안쪽으로 들어가시려고요? 거친 뱃사람들도 다 떠난 곳입니다, 정말 괜찮으시겠습니까.",
       "용사님이라면 분명 해내실 거라 믿습니다. 항구의 운명이 거기 달려있군요.",
       "무사히 돌아오십시오. 돌아오시면 따뜻한 거 한 그릇 대접하겠습니다! ⚓",
+    ]},
+
+  // ── 항구도시 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  harbor_master_welcome_back:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내세요! ⚓",
     ]},
 
   // ── 깊은 숲 출발 전 — 공주의 사전 설명 (월드맵에서 깊은 숲 선택 시) ──
@@ -1909,7 +1945,7 @@ const NPC_DATA = {
     ]},
 
   // ── 깊은 숲 도착 — 엘프 장로 실라의 인사 (경계심 가득) ──
-  elf_elder:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",
+  elf_elder:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",
     dialogues:[
       "...인간이 또 여기까지 왔군요. 무슨 볼일이죠?",
       "그쪽 사정은 들었지만, 우리는 인간을 쉽게 믿지 않습니다. 한 번 잃은 것은 돌아오지 않으니까요.",
@@ -1919,11 +1955,17 @@ const NPC_DATA = {
     ]},
 
   // ── 깊은 숲 — 던전 출발 전 1회성 응원(경계심 섞인) ──
-  elf_elder_send_off:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",
+  elf_elder_send_off:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",
     dialogues:[
       "정말로 들어가겠다는 거군요... 아직 당신을 다 믿는 건 아니지만,",
       "그래도... 행동으로 보여주겠다는 말은 거짓이 아닌 듯하네요. 조심해서 다녀오세요.",
       "정령들이 당신을 지켜보고 있을 거예요. 🌿",
+    ]},
+
+  // ── 깊은 숲 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  elf_elder_welcome_back:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내세요. 🌿",
     ]},
 
   // ── 수도 출발 전 — 공주의 사전 설명 (월드맵에서 수도 선택 시) ──
@@ -1936,8 +1978,218 @@ const NPC_DATA = {
       "부탁이에요... 인질들도, 그리고 아버지도 꼭 무사히 구해주세요.",
     ]},
 
+  // ══════════════════════ 사천왕 진짜 영역 — 용암 협곡 (그라모스) ══════════════════════
+
+  // ── 용암 협곡 출발 전 — 공주의 사전 설명 ──
+  princess_brief_lava:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "용사님, 왕국이 다시 평화로워졌다고 생각했는데... 레오니스 님이 또 다른 소식을 가져오셨어요.",
+      "광산도시에서 처치했던 그라모스... 그게 사실은 진짜가 아니었다는 거예요.",
+      "분신, 혹은 그림자 같은 존재였다고 해요. 진짜 그라모스는 용암 협곡 깊은 곳에 여전히 살아있대요.",
+      "더 강하고, 더 위험하다고 들었어요. 이번엔 정말로 끝을 봐야 할 것 같아요.",
+      "레오니스 님이 협곡 입구에서 기다리고 계세요. 부디... 조심하세요.",
+    ]},
+
+  // ── 용암 협곡 거점 도착 인사 ──
+  royal_guard_captain_lava:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "용사님, 와주셨군요. 믿기 힘든 얘기지만... 들어주십시오.",
+      "광산도시에서 쓰러뜨린 그라모스, 그건 진짜가 아니었습니다. 정찰병들이 확인했습니다.",
+      "이 협곡 가장 깊은 곳에, 그라모스의 진짜 본체가 숨어 있습니다. 분신보다 훨씬 강할 겁니다.",
+      "왕실의 이름으로 토벌대를 꾸려 협곡에 거점을 마련하겠습니다. 용사님께 다시 한번 부탁드립니다.",
+      "이번엔 확실하게 끝을 내야 합니다. 진짜 그라모스를 말입니다.",
+    ]},
+
+  // ── 용암 협곡 — 던전 출발 전 1회성 응원 ──
+  royal_guard_captain_lava_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "협곡 깊은 곳의 열기는 보통이 아닙니다. 정찰대도 가까스로 살아 돌아왔습니다.",
+      "하지만 용사님이라면 분명 해내실 겁니다. 이번엔 가짜가 아닌, 진짜를 상대하시는 겁니다.",
+      "무사히 돌아오십시오. 왕국 전체가 용사님께 빚을 지고 있다는 걸 잊지 마십시오.",
+    ]},
+
+  // ── 용암 협곡 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  royal_guard_captain_lava_welcome_back:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내십시오! 🌋",
+    ]},
+
+  // ── 그라모스 진짜 본체 — 전투 직전 반전 대사 ──
+  gramos_true_pre_fight:{name:"???",nameColor:"#ff6622",portrait:"images/sd_Dungeon_Guardian.png",
+    dialogues:[
+      "...왔군. 광산에서 네가 처치한 건, 내가 떼어낸 분신에 불과했다.",
+      "그 정도 그릇으로 진짜 나를 상대할 수 있다고 생각했나? 우습군.",
+      "여기서, 진짜 그라모스의 힘을 똑똑히 새겨주겠다.",
+    ]},
+
+  // ── 그라모스 진짜 본체 격파 후 — 축제 시작 (투자 완료 + 격파 모두 끝났을 때) ──
+  royal_guard_captain_lava_festival_intro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "...해내셨군요. 진짜 그라모스의 기운이 완전히 사라졌습니다. 정찰대가 확인했습니다.",
+      "분신이 아닌 본체를 직접 쓰러뜨리신 겁니다. 이건 정말... 역사에 남을 일입니다.",
+      "협곡의 열기도 점점 가라앉고 있습니다. 이제 이곳도 안전한 땅이 될 겁니다.",
+    ]},
+
+  lava_festival_outro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "용암 협곡은 이제 완전히 평정되었습니다. 다음 목표로 넘어가야 할 것 같습니다.",
+      "아직 세 곳이 더 남았습니다만... 용사님이라면 분명 해내실 겁니다. ⚔🌋",
+    ]},
+
+  // ══════════════════════ 사천왕 진짜 영역 — 심해 폐선 (바르칸) ══════════════════════
+
+  princess_brief_sunken:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "그라모스도 분신이었다니... 그렇다면 다른 간부들도 마찬가지일까요?",
+      "레오니스 님 말로는, 항구도시에서 처치한 바르칸도 똑같은 경우라고 해요.",
+      "진짜 바르칸은 가라앉은 함대의 잔해 속에 숨어 있대요. 심해 폐선이라 불리는 곳이요.",
+      "물 속 깊은 곳이라 위험이 다를 거예요. 부디 몸 조심하세요.",
+    ]},
+
+  royal_guard_captain_sunken:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "그라모스를 처치하시자마자 바로 다음 소식이 들어왔습니다. 항구도시의 바르칸도 분신이었습니다.",
+      "진짜 바르칸은 가라앉은 함대의 잔해, 심해 폐선 깊은 곳에 몸을 숨기고 있다고 합니다.",
+      "잠수 장비부터 갖춰야 할 것 같습니다. 왕실의 지원을 받아 준비하겠습니다.",
+      "이번에도 부탁드립니다, 용사님.",
+    ]},
+
+  royal_guard_captain_sunken_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "폐선 안쪽은 수압도 상당하고, 시야도 거의 없다고 들었습니다.",
+      "그래도 용사님이라면... 그라모스도 쓰러뜨리셨으니, 바르칸도 분명 해내실 겁니다.",
+      "무사히 돌아오십시오. ⚓",
+    ]},
+
+  // ── 심해 폐선 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  royal_guard_captain_sunken_welcome_back:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내십시오! ⚓",
+    ]},
+
+  barkan_true_pre_fight:{name:"???",nameColor:"#2090d0",portrait:"images/sd_Dungeon_Guardian.png",
+    dialogues:[
+      "...항구에서 죽은 건 내 그림자였을 뿐이다. 진짜 나는 이 바다 밑에서 줄곧 너를 지켜보고 있었지.",
+      "분신 하나 처치했다고 의기양양했나? 진짜 폭풍이 어떤 건지 보여주마.",
+    ]},
+
+  royal_guard_captain_sunken_festival_intro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "...해냈군요! 진짜 바르칸이 사라진 게 폐선 전체에서 느껴질 정도입니다.",
+      "이걸로 둘째 본체까지 끝났습니다. 정말 대단하십니다, 용사님.",
+    ]},
+
+  sunken_festival_outro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "심해 폐선도 완전히 정리됐습니다. 이제 둘 남았군요.",
+      "이대로라면 사천왕 전체를 진짜로 끝낼 수 있을 것 같습니다. ⚓🚢",
+    ]},
+
+  // ══════════════════════ 사천왕 진짜 영역 — 오염된 정령숲 (릴리스) ══════════════════════
+
+  princess_brief_grove:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "그라모스, 바르칸... 둘 다 분신이었다면, 릴리스도 마찬가지겠죠.",
+      "깊은 숲에서 처치한 건 역시 그림자였대요. 진짜 릴리스는 정령숲 가장 오염된 핵심부에 있다고 해요.",
+      "실라 님과 아리아가 그렇게 애써서 정화한 곳인데... 그 아래에 더 깊은 오염이 남아있었다니.",
+      "이번에도 부탁드려요, 용사님.",
+    ]},
+
+  royal_guard_captain_grove:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "바르칸에 이어 릴리스도 같은 경우로 확인됐습니다. 정령숲 가장 깊은 핵심부에 진짜가 있습니다.",
+      "정화 제단을 세워서 접근로를 마련하겠습니다. 시간이 좀 걸리겠지만, 반드시 길을 열겠습니다.",
+      "실라 님과 아리아 님이 애써 되살린 땅인데, 또 이런 일이 생겨서 유감입니다.",
+      "용사님, 이번에도 함께해주십시오.",
+    ]},
+
+  royal_guard_captain_grove_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "이 안쪽은 오염이 짙어서, 정신이 흐려질 수도 있다고 들었습니다. 조심하셔야 합니다.",
+      "그래도 용사님이라면 이겨내실 겁니다. 두 본체를 이미 쓰러뜨리셨으니까요.",
+      "무사히 다녀오십시오. 🌿",
+    ]},
+
+  // ── 오염된 정령숲 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  royal_guard_captain_grove_welcome_back:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내십시오! 🌿",
+    ]},
+
+  lilith_true_pre_fight:{name:"???",nameColor:"#a060e0",portrait:"images/sd_Dungeon_Guardian.png",
+    dialogues:[
+      "...깊은 숲에서 죽은 건 내 일부였을 뿐, 진짜 나는 이 오염의 핵심에서 줄곧 자라나고 있었다.",
+      "정령들의 힘을 뒤틀어 키운 이 힘, 분신 따위와는 비교할 수 없지.",
+      "이곳에서 영원히 잠들게 해주마.",
+    ]},
+
+  royal_guard_captain_grove_festival_intro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "...진짜 릴리스의 기운이 완전히 사라졌습니다! 오염의 핵심부가 정화되고 있다는 보고입니다.",
+      "셋째 본체까지 끝내셨습니다. 이제 정말 마지막 하나입니다.",
+    ]},
+
+  grove_festival_outro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "오염된 정령숲도 이제 완전히 정화됐습니다. 정말 마지막 한 곳만 남았습니다.",
+      "왕성 지하 감옥, 벨제론의 진짜 본체입니다. 마지막까지 함께해주십시오. 🌿🕸",
+    ]},
+
+  // ══════════════════════ 사천왕 진짜 영역 — 왕성 지하 감옥 (벨제론) ══════════════════════
+
+  princess_brief_dungeon:{name:"공주 실비아",nameColor:"#ffaacc",portrait:"images/Silvia_front.png",
+    dialogues:[
+      "마지막... 벨제론이군요. 그것도 분신이었다는 게 믿기지 않지만, 이젠 놀랍지도 않아요.",
+      "진짜 벨제론은... 다름 아닌 왕성 깊은 곳, 빛이 닿지 않는 지하 감옥에 숨어 있었대요.",
+      "우리가 구했던 그 왕성 바로 아래에 말이에요. 정말 소름이 끼치는 얘기예요.",
+      "용사님, 이게 정말 마지막이에요. 부디 무사히 끝내주세요.",
+    ]},
+
+  royal_guard_captain_dungeon:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "마지막 본체입니다. 벨제론의 진짜는... 왕성 지하, 우리가 미처 살피지 못한 감옥 깊은 곳에 있었습니다.",
+      "수도를 되찾았다고 안심하고 있었는데, 정작 가장 가까운 곳에 숨어 있었다니 부끄럽습니다.",
+      "지금 통로를 열고 봉인을 해제하는 작업을 진행 중입니다. 곧 길이 열릴 겁니다.",
+      "용사님, 이게 사천왕의 진짜 마지막입니다. 끝까지 함께 가주십시오.",
+    ]},
+
+  royal_guard_captain_dungeon_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "이 지하 감옥은... 왕성의 가장 어두운 곳입니다. 빛조차 닿지 않는다고 합니다.",
+      "하지만 용사님은 이미 셋을 쓰러뜨리셨습니다. 마지막 하나도 분명 해내실 겁니다.",
+      "왕국의 모든 이들이 용사님을 믿고 있습니다. 무사히 돌아오십시오. ⛓",
+    ]},
+
+  // ── 왕성 지하 감옥 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  royal_guard_captain_dungeon_welcome_back:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내십시오! ⛓",
+    ]},
+
+  belzeron_true_pre_fight:{name:"???",nameColor:"#a83cff",portrait:"images/sd_Dungeon_Guardian.png",
+    dialogues:[
+      "...왕성에서 죽은 건 분신이었다. 진짜 나는 줄곧 이 감옥에서, 너희가 자만하는 모습을 지켜보고 있었지.",
+      "그라모스, 바르칸, 릴리스... 동료들이 차례로 쓰러지는 걸 봤다. 하지만 나는 다르다.",
+      "사천왕의 마지막, 그리고 가장 강한 본체다. 여기서 끝을 보자.",
+    ]},
+
+  royal_guard_captain_dungeon_festival_intro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "...벨제론의 진짜 본체가 사라졌습니다! 왕성 지하 전체가 떨림을 멈췄다는 보고가 들어왔습니다.",
+      "정말로... 해내셨군요. 사천왕의 마지막 본체까지 전부.",
+    ]},
+
+  // ── 4지역 전부 완료 — 사천왕 진짜 전멸 선언 (마지막 지역의 outro) ──
+  sacheonwang_all_defeated_outro:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "그라모스, 바르칸, 릴리스, 벨제론... 사천왕의 진짜 본체 넷 모두가 사라졌습니다.",
+      "왕국 곳곳에 남아있던 분신들의 흔적도 더 이상 힘을 받지 못하고 있다는 보고가 속속 들어오고 있습니다.",
+      "이건 단순한 승리가 아닙니다. 마왕군의 진짜 핵심을 완전히 뿌리뽑은 겁니다.",
+      "용사님, 왕국의 이름으로 진심으로 감사드립니다. 이제 진짜 평화가 시작될 것 같습니다. 👑⚔",
+    ]},
+
   // ── 수도 도착 — 근위대장 레오니스의 다급한 인사 ──
-  royal_guard_captain:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/sd_merchant.png",
+  royal_guard_captain:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
     dialogues:[
       "용사님! 드디어 오셨군요. 시간이 없습니다, 바로 본론부터 말씀드리겠습니다.",
       "마왕의 부하들이 왕성 깊은 곳까지 잠입해서 백성들 여럿을 인질로 잡고 있습니다.",
@@ -1947,11 +2199,17 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 — 던전 출발 전 1회성 응원 ──
-  royal_guard_captain_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/sd_merchant.png",
+  royal_guard_captain_send_off:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
     dialogues:[
       "출발하시는 겁니까. 저희도 바깥에서 최선을 다해 길을 뚫어보겠습니다.",
       "왕국의 운명이, 그리고 안에 갇힌 백성들의 목숨이 용사님께 달려있습니다.",
       "맡겨주십시오. 부디 무사히 돌아오시길, 저희도 끝까지 자리를 지키겠습니다! 🛡",
+    ]},
+
+  // ── 수도 — 거점 재방문 시 (매번) 짧은 환영 인사 ──
+  royal_guard_captain_welcome_back:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
+    dialogues:[
+      "다시 오셨군요! 돌아와주셔서 감사합니다. 힘내십시오! 🛡",
     ]},
 
   // ── 마을 번화가 달성 시 ──
@@ -1979,7 +2237,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ① — 마왕이 직접 나타남 (충격적인 진실의 시작) ──
-  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained in darkness under a tyrants gaze.png",
     dialogues:[
       "...여기까지 잘 해냈구나, 인간.",
       "수도의 일도, 지역들의 일도... 전부 내 손바닥 위에서 벌어진 일이었다는 걸 알고 있나?",
@@ -1988,7 +2246,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ② — 충격적인 진실: 마왕은 봉인의 관리자였다 ──
-  capital_ending_truth:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+  capital_ending_truth:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained in darkness under a tyrants gaze.png",
     dialogues:[
       "다만... 한 가지는 정정해야겠군. 너희가 '마왕'이라 부르며 두려워한 존재, 그게 바로 나라고 믿었겠지.",
       "하지만 나는 그 이름의 진짜 주인이 아니다. 나는... 그저 그를 가둔 봉인을 관리하는 자일 뿐이야.",
@@ -1996,7 +2254,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ③ — 전투 직전 도발 ──
-  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained in darkness under a tyrants gaze.png",
     dialogues:[
       "그 봉인을 건드리고 싶다면... 먼저 나를 넘어서야 할 것이다.",
       "이곳까지 온 너의 각오가 진심인지, 내가 직접 확인해보겠다!",
@@ -2036,7 +2294,7 @@ const NPC_DATA = {
     dialogues:["금지된 연구 기록에서... 비슷한 내용을 본 적이 있어요."]},
 
   // ── ⑦.5 시민들이 광장에 모여듦 — 왕의 복귀를 직접 눈으로 확인 (작위 수여식 직전) ──
-  capital_ending_plaza:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/sd_merchant.png",
+  capital_ending_plaza:{name:"근위대장 레오니스",nameColor:"#ffd700",portrait:"images/Leonis the loyal knight boss.png",
     dialogues:[
       "전하께서 무사히 돌아오셨다는 소식이 벌써 온 왕성에 퍼졌습니다.",
       "보십시오, 광장에 백성들이 끝없이 모여들고 있습니다. 전부 직접 눈으로 확인하고 싶었던 거겠죠.",
@@ -2061,7 +2319,7 @@ const NPC_DATA = {
   // ══════════════ 심연 메인 스토리 — 마왕 다르카스 ══════════════
 
   // ── 보스룸 진입 직전 — 다르카스 등장, 전투 전 대사 ──
-  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral.png",
+  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes face looming dark god in cathedral.png",
     dialogues:[
       "...드디어 여기까지 왔군. 내 부하들을 그렇게나 거두고도, 아직 멈추지 않다니.",
       "내가 왜 마왕군을 일으켰는지... 알고 싶나? 간단하다. 이 봉인에서 벗어나려면 힘이 필요했을 뿐이야.",
@@ -2080,14 +2338,14 @@ const NPC_DATA = {
     ]},
 
   // ── 봉인 붕괴 — 다르카스의 몸이 무너지며 그 안에 갇혀 있던 진짜 존재가 풀려난다 ──
-  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Heroes face looming dark god in cathedral2.png",
     dialogues:[
       "...다르카스의 몸에서 빠져나온 그 기운이, 점점 커지고 있다.",
       "이건... 단순한 잔재가 아니야. 무언가가 깨어나고 있다.",
     ]},
 
   // ── 진짜 존재 등장 — 공허의 군주 네메시스 ──
-  nemesis_appearance:{name:"???",nameColor:"#a83cff",portrait:"images/Nemesis_Lord_of_the_Void.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+  nemesis_appearance:{name:"???",nameColor:"#a83cff",portrait:"images/Nemesis_Lord_of_the_Void.png",bgImage:"images/Heroes face looming dark god in cathedral2.png",
     dialogues:[
       "...드디어. 그 오랜 봉인이 풀렸구나.",
       "나는 네메시스. 너희가 셀 수도 없을 만큼 오래전부터, 이 심연 가장 깊은 곳에 갇혀 있던 공허의 군주다.",
@@ -2095,7 +2353,7 @@ const NPC_DATA = {
     ]},
 
   // ── 다르카스의 마지막 말 — 전투 직전 ──
-  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes face looming dark god in cathedral2.png",
     dialogues:[
       "...아직, 끝나지 않았다.",
       "예전에도 한 번... 누군가 저것을 막으려 했었지. 그때는... 실패했다.",
@@ -2194,7 +2452,7 @@ const NPC_DATA = {
   // ══════════════ 광산도시 — 완전 재건 통합 축제 이벤트 ══════════════
 
   // ── 광부 축제 시작 (재건 100% + 투자 최종 단계 동시 달성 시) ──
-  miner_chief_festival_intro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",bgImage:"images/Gold_discovery_festival_in_the_mountains.png",
+  miner_chief_festival_intro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",bgImage:"images/Gold discovery festival in the mountains.png",
     dialogues:[
       "용사님! 들으셨습니까? 갱도도, 제련소도... 이제 정말로 전부 다 되살아났습니다!",
       "광부들이 다 모여서 한바탕 잔치를 벌이자고 난리입니다. 오늘만큼은 곡괭이도 내려놓고 다 같이 즐겨야죠.",
@@ -2210,7 +2468,7 @@ const NPC_DATA = {
     ]},
 
   // ── 축제 마무리 (탱커 결말편 다음, 또는 동료 없을 때 곧바로) ──
-  mine_festival_outro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/sd_merchant.png",bgImage:"images/Gold_discovery_festival_in_the_mountains.png",
+  mine_festival_outro:{name:"광부 두칸",nameColor:"#e8a850",portrait:"images/Chibi miner character dukhan.png",bgImage:"images/Gold discovery festival in the mountains.png",
     dialogues:[
       "광산도시는 이제 그 누구보다 단단하게 다시 섰습니다. 전부 용사님 덕분입니다.",
       "이 마을 사람들은 평생 용사님을 잊지 못할 겁니다. 정말 감사합니다! ⛏✨",
@@ -2219,7 +2477,7 @@ const NPC_DATA = {
   // ══════════════ 항구도시 — 완전 재건 통합 축제 이벤트 ══════════════
 
   // ── 항구 축제 시작 (재건 100% + 투자 최종 단계 동시 달성 시) ──
-  harbor_master_festival_intro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",bgImage:"images/Coastal_port_festival_celebration_in_full_swing.png",
+  harbor_master_festival_intro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",bgImage:"images/Coastal port festival celebration in full swing.png",
     dialogues:[
       "용사님, 저것 좀 보십시오! 수평선 너머로 배들이 줄지어 들어오고 있습니다!",
       "교역선이 돌아온다는 소식에 아이들이 부둣가로 뛰쳐나와 손을 흔들고 있어요. 이런 풍경은 정말 오랜만입니다.",
@@ -2227,7 +2485,7 @@ const NPC_DATA = {
     ]},
 
   // ── 항구 축제 마무리 — 항해 허가증 수여 ──
-  harbor_festival_outro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/sd_merchant.png",bgImage:"images/Coastal_port_festival_celebration_in_full_swing.png",
+  harbor_festival_outro:{name:"항구장 모리스",nameColor:"#5ad0e8",portrait:"images/Chibi character morris.png",bgImage:"images/Coastal port festival celebration in full swing.png",
     dialogues:[
       "이 항구는 다시 세계와 이어졌습니다. 전부 용사님이 해내신 일입니다.",
       "이걸 받으십시오 — 항해 허가증입니다. 이제 어느 바다로든 떠나실 수 있을 겁니다. ⚓📜",
@@ -2236,7 +2494,7 @@ const NPC_DATA = {
   // ══════════════ 깊은 숲 — 완전 재건 통합 축제 이벤트 ══════════════
 
   // ── 결계 회복 직후 — 충격적인 진실: 그날의 "인간"은 사실 마족이었다 ──
-  elf_elder_festival_intro:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
+  elf_elder_festival_intro:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",bgImage:"images/Elven festival in a verdant valley.png",
     dialogues:[
       "...결계가 다시 살아났어요. 정말 오랜만에 느껴보는 따뜻한 기운이네요.",
       "그런데 결계를 회복하는 동안, 정령들이 들려준 이야기가 있어요. 믿기 힘들겠지만... 들어주세요.",
@@ -2245,7 +2503,7 @@ const NPC_DATA = {
     ]},
 
   // ── 동료(아리아) 결말편 다음 — 장로 실라의 축복 ──
-  elf_elder_blessing:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
+  elf_elder_blessing:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",bgImage:"images/Elven festival in a verdant valley.png",
     dialogues:[
       "당신을 의심했던 그 모든 순간이... 부끄러워지는군요. 용서를 구하고 싶어요.",
       "이 숲과 우리 모두를 대신해, 당신에게 정령의 축복을 내리겠습니다.",
@@ -2253,7 +2511,7 @@ const NPC_DATA = {
     ]},
 
   // ── 아리아의 마지막 축복 — 축제 마무리 ──
-  archer_blessing_outro:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",bgImage:"images/Elven_festival_in_a_verdant_valley.png",
+  archer_blessing_outro:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",bgImage:"images/Elven festival in a verdant valley.png",
     dialogues:[
       "장로님의 축복까지 받으셨네요. 이걸로... 정말 모든 게 끝난 것 같아요.",
       "저도 한 번 더 말씀드릴게요. 함께해줘서, 정말 고마워요. 🏹💚",
@@ -2276,7 +2534,7 @@ const NPC_DATA = {
     ]},
 
   // ── 아리아(궁수) — 깊은 숲: 인간에게 가족을 잃은 과거 ──
-  archer_story_conflict:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/sd_merchant.png",
+  archer_story_conflict:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",
     dialogues:[
       "...인간을 데려오다니, 미쳤느냐! 우리가 무슨 일을 겪었는지 몰라서 이러는 게야?",
       "그날 그 인간들이 성소를 부수면서 얼마나 많은 동족이 죽었는지, 너는 상상도 못 할 것이다.",
@@ -2346,7 +2604,7 @@ const NPC_DATA = {
       "오랫동안 내 잘못이라고 생각하며 살아왔는데... 처음부터 우리 잘못이 아니었어.",
       "이제야 모든 게 이어지는군. 광산도시의 재난도, 내가 짊어졌던 죄책감도, 다 이 마왕군 때문이었어.",
     ]},
-  general_gramos_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+  general_gramos_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/Hero.png",
     dialogues:[
       "마왕군 간부 그라모스... 이 자가 광산에 암흑광석을 뿌려 갱도를 무너뜨린 진짜 원인이었군.",
       "광산도시의 재난이 단순한 사고가 아니라, 마왕군이 의도적으로 벌인 일이었다는 게 밝혀졌다.",
@@ -2360,7 +2618,7 @@ const NPC_DATA = {
       "오랜 의심이 이제야 풀리는군. 우리 기사단의 실패도, 항구도시의 약탈도, 전부 같은 곳에서 시작된 거였어.",
       "이걸로 확실해졌다. 더는 옛일에 휘둘리지 않겠어.",
     ]},
-  general_barkan_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+  general_barkan_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/Hero.png",
     dialogues:[
       "마왕군 간부 바르칸... 해적단을 뒤에서 조종한 진짜 배후가 바로 이 자였다.",
       "항구도시를 약탈한 해적들도, 결국 마왕군의 손에서 움직이고 있었던 것이었다.",
@@ -2374,7 +2632,7 @@ const NPC_DATA = {
       "인간들의 잘못만이 아니라, 처음부터 마왕군이 이 숲을 노리고 있었던 거예요.",
       "장로님께도 이 사실을 꼭 알려야겠어요. 우리 모두... 같은 적을 상대하고 있었던 거니까요.",
     ]},
-  general_lilith_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+  general_lilith_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/Hero.png",
     dialogues:[
       "마왕군 간부 릴리스... 정령들을 오염시켜 숲의 결계를 약화시킨 자가 바로 이 자였다.",
       "깊은 숲의 위기도 결국 마왕군이 꾸민 일이었음이 드러났다.",
@@ -2388,7 +2646,7 @@ const NPC_DATA = {
       "제가 누명을 쓰고 추방당한 것도, 결국 이 자의 계획을 막으려다 벌어진 일이었던 거예요.",
       "이제야 모든 게 설명되는군요. 그때부터 지금까지, 전부 하나로 이어져 있었어요.",
     ]},
-  general_belzeron_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/sd_merchant.png",
+  general_belzeron_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/Hero.png",
     dialogues:[
       "마왕군 간부 벨제론... 왕성에 잠입한 마왕군을 이끈 자가 바로 이 자였다.",
       "수도의 위기 또한 마왕군이 오래전부터 계획해온 일이었다.",
@@ -2518,7 +2776,7 @@ const NPC_DATA = {
       "슬라임 5마리만 처치해 주시면 사례금을 드릴게요. 성 밖 사냥터에 많이 있답니다. 부탁드려요!",
     ]},
 
-  qaccept_q_goblin:{name:"마을 주민 마르타",nameColor:"#ddbb88",portrait:"images/sd_merchant.png",
+  qaccept_q_goblin:{name:"마을 주민 마르타",nameColor:"#ddbb88",portrait:"images/Marta a village resident.png",
     dialogues:[
       "용사님! 저 마르타라고 해요. 제발 좀 도와주세요! 😢",
       "숲 근처 우리 밭에 고블린들이 떼로 몰려와서 작물을 다 망쳐놓고 있어요.",
@@ -2532,7 +2790,7 @@ const NPC_DATA = {
       "해골 기사 3구만 격멸해 주시오. 왕국 안전을 위해 꼭 부탁드리오! 보상은 충분히 드리겠소. 🗡",
     ]},
 
-  qaccept_q_orc:{name:"농부 티모",nameColor:"#99cc77",portrait:"images/sd_merchant.png",
+  qaccept_q_orc:{name:"농부 티모",nameColor:"#99cc77",portrait:"images/Farmer Teemo.png",
     dialogues:[
       "헉헉... 용사님! 저 좀 도와주세요. 밭에서 달려왔어요. 🌾",
       "오크 전사들이 우리 농장을 짓밟고 있어요! 몇 달 동안 키운 농작물이 다 망가지고 있다고요!",
@@ -2562,7 +2820,7 @@ const NPC_DATA = {
       "또 도움이 필요하면 언제든 찾아와 주세요. 용사님 덕분에 가게가 살았어요! 💰",
     ]},
 
-  qcomplete_q_goblin:{name:"마을 주민 마르타",nameColor:"#ddbb88",portrait:"images/sd_merchant.png",
+  qcomplete_q_goblin:{name:"마을 주민 마르타",nameColor:"#ddbb88",portrait:"images/Marta a village resident.png",
     dialogues:[
       "용사님! 오셨군요! 밭에 가봤더니 고블린들이 하나도 없었어요! 🥹",
       "덕분에 남은 작물이라도 수확할 수 있었어요. 올 겨울은 버틸 수 있을 것 같아요.",
@@ -2576,7 +2834,7 @@ const NPC_DATA = {
       "보상은 약속대로 드리겠소. 왕국을 위해 수고했소, 용사!",
     ]},
 
-  qcomplete_q_orc:{name:"농부 티모",nameColor:"#99cc77",portrait:"images/sd_merchant.png",
+  qcomplete_q_orc:{name:"농부 티모",nameColor:"#99cc77",portrait:"images/Farmer Teemo.png",
     dialogues:[
       "용사님!! 오크들이 다 사라졌어요! 밭이 다시 조용해졌다고요! 🌾",
       "정말 감사해요. 수확물 일부를 사례금으로 준비했어요. 많이 드리지 못해서 죄송해요...",
@@ -2854,15 +3112,15 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
     levelup_max_dealer:    "images/sd_knight.png",
     // 퀘스트 의뢰인
     qaccept_q_slime:      "images/sd_merchant.png",
-    qaccept_q_goblin:     "images/sd_merchant.png",
+    qaccept_q_goblin:     "images/Marta a village resident.png",
     qaccept_q_skeleton:   "images/portrait_Knight.png",
-    qaccept_q_orc:        "images/sd_merchant.png",
+    qaccept_q_orc:        "images/Farmer Teemo.png",
     qaccept_q_orc2:       "images/Silvia_front.png",
     qaccept_q_guardian:   "images/King_Edward_III_SIDE.png",
     qcomplete_q_slime:    "images/sd_merchant.png",
-    qcomplete_q_goblin:   "images/sd_merchant.png",
+    qcomplete_q_goblin:   "images/Marta a village resident.png",
     qcomplete_q_skeleton: "images/portrait_Knight.png",
-    qcomplete_q_orc:      "images/sd_merchant.png",
+    qcomplete_q_orc:      "images/Farmer Teemo.png",
     qcomplete_q_orc2:     "images/Silvia_front.png",
     qcomplete_q_guardian: "images/King_Edward_III_SIDE.png",
     // 공주 알현/마일스톤

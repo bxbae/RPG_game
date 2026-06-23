@@ -55,6 +55,107 @@
 <div id="narrativeBox"><div id="narrativeText"></div></div>
 <div id="flashWhite"></div>
 
+<!-- ── 음량 설정 버튼 + 패널 (모든 화면에서 항상 표시) ── -->
+<button id="volumeToggleBtn" title="음량 설정" style="
+  position:fixed;top:10px;right:10px;z-index:9500;
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(20,10,16,.85);border:1px solid #4a2e38;
+  color:var(--gold2,#e8c060);font-size:1.05rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:.15s;box-shadow:0 2px 10px rgba(0,0,0,.5);">🔊</button>
+
+<div id="volumePanel" style="
+  display:none;position:fixed;top:54px;right:10px;z-index:9500;
+  width:220px;background:rgba(14,8,12,.97);border:1px solid #4a2e38;
+  border-radius:8px;padding:14px 16px;box-shadow:0 4px 20px rgba(0,0,0,.7);
+  font-family:'Noto Serif KR',serif;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:.78rem;font-weight:700;color:var(--gold2,#e8c060);">🔊 음량 설정</span>
+    <button id="volumeMuteBtn" style="
+      background:transparent;border:1px solid #4a2e38;border-radius:4px;
+      color:var(--text,#d8c8b0);font-size:.68rem;padding:3px 9px;cursor:pointer;">🔇 전체 음소거</button>
+  </div>
+
+  <label style="display:block;font-size:.68rem;color:var(--text-dim,#9a8a78);margin-bottom:3px;">
+    배경음악 <span id="bgmVolVal"></span>
+  </label>
+  <input type="range" id="bgmVolSlider" min="0" max="100" step="1" style="width:100%;margin-bottom:12px;accent-color:#e8c060;">
+
+  <label style="display:block;font-size:.68rem;color:var(--text-dim,#9a8a78);margin-bottom:3px;">
+    효과음 <span id="sfxVolVal"></span>
+  </label>
+  <input type="range" id="sfxVolSlider" min="0" max="100" step="1" style="width:100%;accent-color:#e8c060;">
+</div>
+
+<script>
+(function() {
+  function refreshVolumeUI() {
+    const mgr = window.audioMgr;
+    if (!mgr) return;
+    const bgmSlider = document.getElementById("bgmVolSlider");
+    const sfxSlider = document.getElementById("sfxVolSlider");
+    const bgmVal    = document.getElementById("bgmVolVal");
+    const sfxVal    = document.getElementById("sfxVolVal");
+    const muteBtn   = document.getElementById("volumeMuteBtn");
+    const toggleBtn = document.getElementById("volumeToggleBtn");
+    if (bgmSlider) bgmSlider.value = Math.round((mgr._bgmVol ?? 0.35) * 100);
+    if (sfxSlider) sfxSlider.value = Math.round((mgr._sfxVol ?? 0.55) * 100);
+    if (bgmVal) bgmVal.textContent = bgmSlider.value + "%";
+    if (sfxVal) sfxVal.textContent = sfxSlider.value + "%";
+    if (muteBtn) {
+      muteBtn.textContent = mgr._muted ? "🔈 음소거 해제" : "🔇 전체 음소거";
+      muteBtn.style.color = mgr._muted ? "#ff8866" : "var(--text,#d8c8b0)";
+      muteBtn.style.borderColor = mgr._muted ? "#aa5544" : "#4a2e38";
+    }
+    if (toggleBtn) toggleBtn.textContent = mgr._muted ? "🔇" : "🔊";
+  }
+
+  function initVolumeControls() {
+    const toggleBtn = document.getElementById("volumeToggleBtn");
+    const panel      = document.getElementById("volumePanel");
+    const bgmSlider  = document.getElementById("bgmVolSlider");
+    const sfxSlider  = document.getElementById("sfxVolSlider");
+    const muteBtn    = document.getElementById("volumeMuteBtn");
+
+    toggleBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = panel.style.display === "block";
+      panel.style.display = isOpen ? "none" : "block";
+      if (!isOpen) refreshVolumeUI();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (panel && panel.style.display === "block"
+          && !panel.contains(e.target) && e.target !== toggleBtn) {
+        panel.style.display = "none";
+      }
+    });
+
+    bgmSlider?.addEventListener("input", (e) => {
+      window.audioMgr?.setBgmVol?.(e.target.value / 100);
+      document.getElementById("bgmVolVal").textContent = e.target.value + "%";
+    });
+    sfxSlider?.addEventListener("input", (e) => {
+      window.audioMgr?.setSfxVol?.(e.target.value / 100);
+      document.getElementById("sfxVolVal").textContent = e.target.value + "%";
+      window.audioMgr?.playSfx?.("sword"); // 슬라이더 조절 중 효과음 미리듣기
+    });
+    muteBtn?.addEventListener("click", () => {
+      window.audioMgr?.toggleMute?.();
+      refreshVolumeUI();
+    });
+
+    refreshVolumeUI();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initVolumeControls);
+  } else {
+    initVolumeControls();
+  }
+})();
+</script>
+
 <!-- ── 스크립트 로딩 순서 ── -->
 <script src="models.js"></script>
 <script src="region-data.js"></script>
@@ -70,6 +171,7 @@
 <script src="region-hub-scene.js"></script>
 <script src="card-game.js"></script>
 <script src="dialogue-scene.js"></script>
+<script src="opening-scene.js"></script>
 <script src="game.js"></script>
 
 <!-- 컷신 이미지 경로 자동 보정 -->

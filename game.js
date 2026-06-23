@@ -241,10 +241,18 @@ class Game {
     this.regionManager?.ensureState(this.player);
     this.currentMonster = null;
     this._toTown();
-    // [ARCH 03] 신규 게임 오프닝 씬 재생 (scenes.js가 로드된 경우)
-    this.playScene("opening_1");
-    if (!window.SCENE_MAP?.opening_1) {
-      // scenes.js 없을 때 기존 내러티브 폴백
+
+    // 신규 게임 오프닝 시네마 — 마을 화면은 이미 뒤에 준비되어 있고,
+    // 불투명한 오프닝 오버레이가 그 위를 덮은 채 재생되다가 끝나면 자연스럽게 사라진다.
+    if (window.openingScene) {
+      const PLAYER_CLASS_NAMES = { knight:"기사", mage:"마법사", archer:"궁수", tanker:"탱커", healer:"힐러" };
+      const className = PLAYER_CLASS_NAMES[type] || "용사";
+      this._openingActive = true;
+      window.openingScene.play(className, () => {
+        this._openingActive = false;
+        this.achievementManager?.check?.(this); // 오프닝이 끝난 뒤 한 번 정식으로 확인
+      });
+    } else {
       this.showNarrative(`${this.player.name}이(가) 마을에 도착했다.\n마왕의 위협으로 마을 사람들은 두려움에 떨고 있다...`, 4000);
     }
   }
@@ -273,6 +281,10 @@ class Game {
     const p = this.player;
     p.storyPhase       = "town";
     this.currentMonster = null;
+
+    // 업적 체크 — 마을로 돌아올 때마다 한 번씩 더 확인 (전투 외 조건들의 안전망)
+    // 오프닝 시네마가 재생 중이면 건너뛴다 (아직 마을을 보지도 않은 상태이므로)
+    if (!this._openingActive) this.achievementManager?.check?.(this);
 
     // 전투 후 귀환 여부 기록 (TownScene에서 NPC 대화 분기에 사용)
     this._returnedFromBattle = !!(this._hadBattle);
@@ -370,7 +382,7 @@ class Game {
           let clearTicks = 0;
           const waitDialogueClear = setInterval(() => {
             if (this.currentScene !== "town") { clearInterval(waitDialogueClear); return; } // 화면 전환 시 취소
-            if (this._introChainActive || document.getElementById("npcDialogueBox")) {
+            if (this._introChainActive || this._openingActive || document.getElementById("npcDialogueBox") || document.getElementById("openingOverlay")) {
               clearTicks = 0;
               return;
             }
@@ -987,7 +999,7 @@ class Game {
 
   _buildDungeonUI() {
     return `
-<div class="dungeon-layout">
+<div class="dungeon-layout" id="dungeonLayout">
   <!-- 탐험 캔버스 -->
   <div class="dungeon-canvas-wrap" id="dungeonCanvasWrap">
     <canvas id="dungeonCanvas" width="720" height="480"></canvas>
@@ -1888,7 +1900,15 @@ class Game {
       p.partyHp = p.partyMaxHp;
       p._partyKnockedOut = false; // [BALANCE 04] 여관 숙박 = 동료 완전 회복
     }
-    p.cooldowns = { jobSkill:0, partyUltimate:0, heal:0 };
+    if (p.party2) {
+      p.party2Hp = p.party2MaxHp;
+      p._party2KnockedOut = false;
+    }
+    if (p.party3) {
+      p.party3Hp = p.party3MaxHp;
+      p._party3KnockedOut = false;
+    }
+    p.cooldowns = { jobSkill:0, partyUltimate:0, party2Ultimate:0, party3Ultimate:0, heal:0 };
     this.save();
     this.showNarrative(`🏨 여관에서 쉬었다!\nHP 완전 회복 (-${cost}G)\n💾 저장 완료`, 3000);
     this.townScene?.render();

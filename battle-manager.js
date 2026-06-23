@@ -136,6 +136,7 @@ class BattleManager {
       game.log(`💫 기절! 행동 불가 (남은 ${p.status.stun}턴)`);
       this._emit("statusUpdate");
       this._counter(game);
+      this._tickCooldowns(game); // 기절 중에도 궁극기 등 쿨다운은 정상적으로 흘러야 함
       this._emit("render");
       this._flushUI(game);
       return;
@@ -753,7 +754,11 @@ class BattleManager {
     const qResult = game.questManager.onKill(game, monsterName);
 
     // 지역 던전(광산도시 등) 최종 보스 = 마왕군 간부. 일반 던전은 기존 수호자 그대로.
-    const REGION_BOSS_IDS = new Set(["general_gramos", "general_barkan", "general_lilith", "general_belzeron"]);
+    // 사천왕 진짜 본체(그라모스 등)도 동일하게 지역 재건도에 반영되어야 한다.
+    const REGION_BOSS_IDS = new Set([
+      "general_gramos", "general_barkan", "general_lilith", "general_belzeron",
+      "gramos_true", "barkan_true", "lilith_true", "belzeron_true",
+    ]);
     const isRegionBoss = REGION_BOSS_IDS.has(m.id);
 
     // 수호자 처치 (일반 던전) → 자동저장 훅 (심연 해금은 더 이상 여기서 하지 않음 —
@@ -838,6 +843,9 @@ class BattleManager {
       color: qResult.cleared ? "#e8b830" : "#88ddff",
     });
     this._flushUI(game);
+
+    // 업적 체크 — 이 시점이면 골드/경험치/호감도/킬카운트가 모두 반영된 뒤라 안전함
+    game.achievementManager?.check?.(game);
 
     // 마왕 처치
     if (m.isFinal) { game.onFinalBossDefeated(); return; }

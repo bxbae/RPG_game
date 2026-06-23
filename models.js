@@ -70,6 +70,14 @@ const MONSTERS = [
   { id:"general_barkan", name:"마왕군 간부 바르칸",   baseHp:500, baseAtk:25, img:"images/sd_Dungeon_Guardian.png", expRate:250, goldRate:230, isBoss:true },
   { id:"general_lilith", name:"마왕군 간부 릴리스",   baseHp:520, baseAtk:26, img:"images/sd_Dungeon_Guardian.png", expRate:260, goldRate:240, isBoss:true },
   { id:"general_belzeron", name:"마왕군 간부 벨제론", baseHp:560, baseAtk:28, img:"images/sd_Dungeon_Guardian.png", expRate:280, goldRate:260, isBoss:true },
+
+  // ── 사천왕 진짜 본체 — 수도 완료 후 해금되는 4개 지역의 진 최종보스 ──
+  // 마을·항구·숲·수도에서 쓰러뜨린 건 전부 분신이었다는 반전. 진짜 본체는 훨씬 강하다.
+  { id:"gramos_true",    name:"사천왕 그라모스 (진짜 본체)",   baseHp:780, baseAtk:33, img:"images/sd_Dungeon_Guardian.png", expRate:340, goldRate:380, isBoss:true },
+  { id:"barkan_true",    name:"사천왕 바르칸 (진짜 본체)",     baseHp:830, baseAtk:35, img:"images/sd_Dungeon_Guardian.png", expRate:360, goldRate:400, isBoss:true },
+  { id:"lilith_true",    name:"사천왕 릴리스 (진짜 본체)",     baseHp:880, baseAtk:37, img:"images/sd_Dungeon_Guardian.png", expRate:380, goldRate:420, isBoss:true },
+  { id:"belzeron_true",  name:"사천왕 벨제론 (진짜 본체)",     baseHp:950, baseAtk:40, img:"images/sd_Dungeon_Guardian.png", expRate:400, goldRate:450, isBoss:true },
+
   { id:"demon",       name:"마왕 다르카스",baseHp:800, baseAtk:28, img:"images/sd_Demon.png",        expRate:300, goldRate:500, isBoss:true, isFinal:true },
   // ── 진짜 최종보스 — 공허의 군주 네메시스 ──
   // 다르카스가 처치된 직후, 그의 몸에 갈무리되어 있던 봉인이 무너지며 등장하는

@@ -316,30 +316,59 @@ class DungeonScene {
     this._startWalkAnim(); // 걷기 애니메이션 시작
   }
 
-  // ── 지역 분위기 배경 — 재건 전/후 이미지를 던전 캔버스 주변(여백)에 표시 ──
+  // ── 지역 분위기 배경 — 던전 화면 전체 뒤편에 깔되, 캔버스는 그대로 불투명 유지 ──
+  // (캔버스 여백만 쓰던 예전 방식은 창 크기/비율에 따라 여백이 거의 안 보이는 경우가 있었음 —
+  //  이제 우측 패널까지 포함한 전체 레이아웃 뒤에 깔아서, 화면 크기와 무관하게 항상 보이게 함)
+  //
+  // 이미지가 실제로 로드되는지 먼저 확인한 뒤 적용한다 — 파일명이 틀렸거나
+  // images/ 폴더에 파일이 없으면 그냥 까맣게 비는 대신, 재건 전 이미지로 한 번 더
+  // 시도하고, 그것도 없으면 콘솔에 정확한 파일명을 남겨 바로 확인할 수 있게 한다.
   _applyDungeonBackground() {
-    const wrap = document.getElementById("dungeonCanvasWrap");
-    if (!wrap) return;
+    const layout = document.getElementById("dungeonLayout");
+    const wrap   = document.getElementById("dungeonCanvasWrap");
+    if (!layout || !wrap) return;
+
+    // 캔버스 여백에 깔던 예전 배경은 깨끗이 비움 (레이아웃 전체로 옮겼으므로 중복 방지)
+    wrap.style.backgroundImage = "none";
 
     const regionId = this.game._activeRegion;
     const rm = this.game.regionManager;
     const cfg = regionId ? rm?.getInvestConfig?.(regionId) : null;
 
     if (!cfg) {
-      wrap.style.backgroundImage = "none";
+      layout.style.backgroundImage = "none";
       return;
     }
 
     const investDone = rm.isFullyInvested?.(this.game.player, regionId);
-    const img = investDone ? (cfg.completedBgImage || cfg.bgImage) : cfg.bgImage;
+    const primaryImg  = investDone ? (cfg.completedBgImage || cfg.bgImage) : cfg.bgImage;
+    const fallbackImg = investDone ? cfg.bgImage : null; // 완료 이미지가 깨졌을 때만 재건 전 이미지로 재시도
 
-    if (img) {
-      wrap.style.backgroundImage = `linear-gradient(rgba(6,3,4,.55), rgba(6,3,4,.55)), url('${img}')`;
-      wrap.style.backgroundSize = "cover";
-      wrap.style.backgroundPosition = "center";
-    } else {
-      wrap.style.backgroundImage = "none";
-    }
+    const setBg = (src) => {
+      layout.style.backgroundImage = `linear-gradient(rgba(6,3,4,.45), rgba(6,3,4,.45)), url('${src}')`;
+      layout.style.backgroundSize = "cover";
+      layout.style.backgroundPosition = "center";
+    };
+
+    if (!primaryImg) { layout.style.backgroundImage = "none"; return; }
+
+    const probe = new Image();
+    probe.onload = () => setBg(primaryImg);
+    probe.onerror = () => {
+      console.warn(`[배경 로드 실패] "${primaryImg}" 파일을 images/ 폴더에서 찾을 수 없습니다. 파일명(띄어쓰기 포함)이 정확한지 확인해주세요.`);
+      if (fallbackImg && fallbackImg !== primaryImg) {
+        const probe2 = new Image();
+        probe2.onload = () => setBg(fallbackImg);
+        probe2.onerror = () => {
+          console.warn(`[배경 로드 실패] "${fallbackImg}" 파일도 찾을 수 없습니다.`);
+          layout.style.backgroundImage = "none";
+        };
+        probe2.src = fallbackImg;
+      } else {
+        layout.style.backgroundImage = "none";
+      }
+    };
+    probe.src = primaryImg;
   }
 
   // ── 걷기 애니메이션 타이머 ────────────────────────
@@ -490,6 +519,8 @@ class DungeonScene {
           normal: "guardian", abyss: "demon",
           mine: "general_gramos", harbor: "general_barkan",
           elfForest: "general_lilith", capital: "general_belzeron",
+          lavaCanyon: "gramos_true", sunkenWreck: "barkan_true",
+          corruptedGrove: "lilith_true", royalDungeon: "belzeron_true",
         };
         const bossId = BOSS_MAP[this.dungeonType] ?? "guardian";
 
@@ -498,6 +529,23 @@ class DungeonScene {
           this.game.player._darkasPreFightSeen = true;
           this.game.saveManager?.autoSave?.(this.game);
           this.showNpcDialogue("darkas_pre_fight", () => {
+            if (this._destroyed) return;
+            setTimeout(() => this.game.startBattle(bossId, true), 100);
+          });
+          break;
+        }
+
+        // 사천왕 진짜 본체 — 전투 전, "그때 쓰러뜨린 건 가짜였다" 반전 대사 (1회성)
+        const TRUE_BOSS_REVEAL = {
+          gramos_true: "gramos_true_pre_fight", barkan_true: "barkan_true_pre_fight",
+          lilith_true: "lilith_true_pre_fight", belzeron_true: "belzeron_true_pre_fight",
+        };
+        const revealKey = TRUE_BOSS_REVEAL[bossId];
+        const seenFlag  = `_${bossId}PreFightSeen`;
+        if (revealKey && !this.game.player[seenFlag]) {
+          this.game.player[seenFlag] = true;
+          this.game.saveManager?.autoSave?.(this.game);
+          this.showNpcDialogue(revealKey, () => {
             if (this._destroyed) return;
             setTimeout(() => this.game.startBattle(bossId, true), 100);
           });

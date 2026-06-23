@@ -86,9 +86,8 @@ const REGIONS = [
     completed: false,
     requires: "capital",
     dungeonType: "lavaCanyon",
-    fourKing: "general_gramos",
-    excludeFromKingdomCalc: true, // 아직 던전 콘텐츠 없는 미래 지역 — 왕국 번영도 100% 계산에서 제외
-    bgImage: "images/lava_cobbles.png",
+    fourKing: "gramos_true",
+    bgImage: "images/lava cobbles.png",
   },
   {
     id: "sunkenWreck",
@@ -98,11 +97,10 @@ const REGIONS = [
     unlocked: false,
     prosperity: 0,
     completed: false,
-    requires: "capital",
+    requires: "lavaCanyon",
     dungeonType: "sunkenWreck",
-    fourKing: "general_barkan",
-    excludeFromKingdomCalc: true,
-    bgImage: "images/Haunted_shipwreck_on_a_stormy_shore.png",
+    fourKing: "barkan_true",
+    bgImage: "images/Haunted shipwreck on a stormy shore.png",
   },
   {
     id: "corruptedGrove",
@@ -112,11 +110,10 @@ const REGIONS = [
     unlocked: false,
     prosperity: 0,
     completed: false,
-    requires: "capital",
+    requires: "sunkenWreck",
     dungeonType: "corruptedGrove",
-    fourKing: "general_lilith",
-    excludeFromKingdomCalc: true,
-    bgImage: "images/Corrupted_forest_of_forgotten_ruins.png",
+    fourKing: "lilith_true",
+    bgImage: "images/Corrupted forest of forgotten ruins.png",
   },
   {
     id: "royalDungeon",
@@ -126,11 +123,10 @@ const REGIONS = [
     unlocked: false,
     prosperity: 0,
     completed: false,
-    requires: "capital",
+    requires: "corruptedGrove",
     dungeonType: "royalDungeon",
-    fourKing: "general_belzeron",
-    excludeFromKingdomCalc: true,
-    bgImage: "images/Gothic_dungeon_with_hanging_cages.png",
+    fourKing: "belzeron_true",
+    bgImage: "images/Gothic dungeon with hanging cages.png",
   },
 ];
 
@@ -143,9 +139,10 @@ const REGION_BY_ID = REGIONS.reduce((m, r) => { m[r.id] = r; return m; }, {});
 // 새 지역에 투자 시스템을 추가하려면 이 객체에 항목만 추가하면 된다(코드 변경 불필요).
 const REGION_INVESTMENT = {
   mineTown: {
-    bgImage: "images/Grim_mining_village_beneath_rocky_cliffs.png", // 재건 전 거점 배경
-    completedBgImage: "images/Gold_discovery_festival_in_the_mountains.png", // 재건 완료 후 거점 배경
+    bgImage: "images/Grim mining village beneath rocky cliffs.png", // 재건 전 거점 배경
+    completedBgImage: "images/Gold discovery festival in the mountains.png", // 재건 완료 후 거점 배경
     npcId:     "miner_chief",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
+    returnGreetingId: "miner_chief_welcome_back", // 재방문 시(매번) 짧은 환영 인사
     npcName:   "광부 두칸",
     princessBriefId: "princess_brief_mine", // 첫 선택 시 마을에서 먼저 들려주는 공주의 사전 설명 (town-scene.js NPC_DATA)
     departDialogueId: "miner_chief_send_off", // "던전으로 출발" 첫 클릭 시 1회성 응원 대사
@@ -162,9 +159,10 @@ const REGION_INVESTMENT = {
     ],
   },
   harborTown: {
-    bgImage: "images/Mediterranean_fortress_by_the_sea.png", // 재건 전 거점 배경
-    completedBgImage: "images/Coastal_port_festival_celebration_in_full_swing.png", // 재건 완료 후 거점 배경
+    bgImage: "images/Mediterranean fortress by the sea.png", // 재건 전 거점 배경
+    completedBgImage: "images/Coastal port festival celebration in full swing.png", // 재건 완료 후 거점 배경
     npcId:     "harbor_master",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
+    returnGreetingId: "harbor_master_welcome_back",
     npcName:   "항구장 모리스",
     princessBriefId: "princess_brief_harbor", // 첫 선택 시 마을에서 먼저 들려주는 공주의 사전 설명
     departDialogueId: "harbor_master_send_off",
@@ -181,9 +179,10 @@ const REGION_INVESTMENT = {
     ],
   },
   forestVillage: {
-    bgImage: "images/Elven_village_amidst_mist_and_ruin.png", // 재건 전 거점 배경
-    completedBgImage: "images/Elven_festival_in_a_verdant_valley.png", // 재건 완료 후 거점 배경
+    bgImage: "images/Elven village amidst mist and ruin.png", // 재건 전 거점 배경
+    completedBgImage: "images/Elven festival in a verdant valley.png", // 재건 완료 후 거점 배경
     npcId:     "elf_elder",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
+    returnGreetingId: "elf_elder_welcome_back",
     npcName:   "엘프 장로 실라",
     princessBriefId: "princess_brief_forest", // 첫 선택 시 마을에서 먼저 들려주는 공주의 사전 설명
     departDialogueId: "elf_elder_send_off",
@@ -200,7 +199,9 @@ const REGION_INVESTMENT = {
     ],
   },
   capital: {
+    bgImage: "images/Chained in darkness under a tyrants gaze.png", // 던전/거점 배경 — 엔딩 컷신과 동일한 이미지 재사용
     npcId:     "royal_guard_captain",          // 거점 화면에 등장하는 NPC id (town-scene.js NPC_DATA에 정의)
+    returnGreetingId: "royal_guard_captain_welcome_back",
     npcName:   "근위대장 레오니스",
     princessBriefId: "princess_brief_capital", // 첫 선택 시 마을에서 먼저 들려주는 공주의 사전 설명
     departDialogueId: "royal_guard_captain_send_off",
@@ -214,6 +215,86 @@ const REGION_INVESTMENT = {
       { minInvest:600,  atkBonus:8,  hpBonus:0,   msg:"공격력 +8" },
       { minInvest:2200, atkBonus:14, hpBonus:80,  msg:"공격력 +14, HP +80" },
       { minInvest:5000, atkBonus:25, hpBonus:140, msg:"공격력 +25, HP +140" },
+    ],
+  },
+
+  // ── 사천왕 진짜 영역 (수도 완료 후 해금, 순서대로 풀림) ──
+  // 거점 NPC는 근위대장 레오니스가 그대로 맡는다 — 수도를 구한 뒤
+  // "진짜 사천왕"을 뿌리뽑기 위한 왕실 토벌 작전을 이끄는 설정으로 자연스럽게 이어진다.
+  lavaCanyon: {
+    bgImage: "images/lava cobbles.png", // 재건 전 거점 배경
+    npcId:     "royal_guard_captain_lava",
+    returnGreetingId: "royal_guard_captain_lava_welcome_back",
+    npcName:   "근위대장 레오니스",
+    princessBriefId: "princess_brief_lava",
+    departDialogueId: "royal_guard_captain_lava_send_off",
+    stages: [
+      { level:0, name:"끓어오르는 협곡", minInvest:0,    icon:"🌋", color:"#3a1408" },
+      { level:1, name:"정찰대 파견",     minInvest:1000, icon:"🔥", color:"#7a2a10" },
+      { level:2, name:"열기 결계 구축",  minInvest:3200, icon:"🛡", color:"#c0481a" },
+      { level:3, name:"협곡 완전 장악",  minInvest:6500, icon:"⚔",  color:"#ff7022" },
+    ],
+    rewards: [
+      { minInvest:1000, atkBonus:10, hpBonus:0,   msg:"공격력 +10" },
+      { minInvest:3200, atkBonus:18, hpBonus:100, msg:"공격력 +18, HP +100" },
+      { minInvest:6500, atkBonus:30, hpBonus:160, msg:"공격력 +30, HP +160" },
+    ],
+  },
+  sunkenWreck: {
+    bgImage: "images/Haunted shipwreck on a stormy shore.png", // 재건 전 거점 배경
+    npcId:     "royal_guard_captain_sunken",
+    returnGreetingId: "royal_guard_captain_sunken_welcome_back",
+    npcName:   "근위대장 레오니스",
+    princessBriefId: "princess_brief_sunken",
+    departDialogueId: "royal_guard_captain_sunken_send_off",
+    stages: [
+      { level:0, name:"가라앉은 함대", minInvest:0,    icon:"🚢", color:"#0a1a2a" },
+      { level:1, name:"잠수 장비 보급", minInvest:1200, icon:"⚓", color:"#103a50" },
+      { level:2, name:"해저 통로 개척", minInvest:3600, icon:"🌊", color:"#1860a0" },
+      { level:3, name:"폐선 완전 장악", minInvest:7000, icon:"⚔",  color:"#30a0e0" },
+    ],
+    rewards: [
+      { minInvest:1200, atkBonus:11, hpBonus:0,   msg:"공격력 +11" },
+      { minInvest:3600, atkBonus:19, hpBonus:110, msg:"공격력 +19, HP +110" },
+      { minInvest:7000, atkBonus:32, hpBonus:170, msg:"공격력 +32, HP +170" },
+    ],
+  },
+  corruptedGrove: {
+    bgImage: "images/Corrupted forest of forgotten ruins.png", // 재건 전 거점 배경
+    npcId:     "royal_guard_captain_grove",
+    returnGreetingId: "royal_guard_captain_grove_welcome_back",
+    npcName:   "근위대장 레오니스",
+    princessBriefId: "princess_brief_grove",
+    departDialogueId: "royal_guard_captain_grove_send_off",
+    stages: [
+      { level:0, name:"뒤틀린 숲의 핵심", minInvest:0,    icon:"🕸", color:"#1a0a2a" },
+      { level:1, name:"정화 제단 건설",   minInvest:1400, icon:"🕯", color:"#3a1a50" },
+      { level:2, name:"오염 정화 진행",   minInvest:4000, icon:"🌿", color:"#6030a0" },
+      { level:3, name:"정령숲 완전 장악", minInvest:7500, icon:"⚔",  color:"#a060e0" },
+    ],
+    rewards: [
+      { minInvest:1400, atkBonus:12, hpBonus:0,   msg:"공격력 +12" },
+      { minInvest:4000, atkBonus:20, hpBonus:120, msg:"공격력 +20, HP +120" },
+      { minInvest:7500, atkBonus:34, hpBonus:180, msg:"공격력 +34, HP +180" },
+    ],
+  },
+  royalDungeon: {
+    bgImage: "images/Gothic dungeon with hanging cages.png", // 재건 전 거점 배경
+    npcId:     "royal_guard_captain_dungeon",
+    returnGreetingId: "royal_guard_captain_dungeon_welcome_back",
+    npcName:   "근위대장 레오니스",
+    princessBriefId: "princess_brief_dungeon",
+    departDialogueId: "royal_guard_captain_dungeon_send_off",
+    stages: [
+      { level:0, name:"빛이 닿지 않는 지하", minInvest:0,    icon:"⛓", color:"#0a0a0a" },
+      { level:1, name:"감옥 통로 개방",       minInvest:1600, icon:"🔑", color:"#2a1a3a" },
+      { level:2, name:"봉인 해제 작업",       minInvest:4500, icon:"✨", color:"#5a2a6a" },
+      { level:3, name:"지하 감옥 완전 장악",   minInvest:8000, icon:"⚔",  color:"#a83cff" },
+    ],
+    rewards: [
+      { minInvest:1600, atkBonus:13, hpBonus:0,   msg:"공격력 +13" },
+      { minInvest:4500, atkBonus:22, hpBonus:130, msg:"공격력 +22, HP +130" },
+      { minInvest:8000, atkBonus:36, hpBonus:200, msg:"공격력 +36, HP +200" },
     ],
   },
 };
@@ -246,6 +327,26 @@ const REGION_FESTIVAL = {
     // 동료 결말편(아리아) 다음, 마무리(outro) 전에 — 장로 실라의 축복
     interludeNpcId: "elf_elder_blessing",
     outroNpcId: "archer_blessing_outro",
+  },
+
+  // ── 사천왕 진짜 영역 4곳 — 동료 개인 사연은 이미 다른 지역에 다 배정되어 있어
+  // 여기서는 "진짜 본체 격파"라는 반전 자체에 집중한 완료 장면으로 구성한다.
+  lavaCanyon: {
+    introNpcId: "royal_guard_captain_lava_festival_intro",
+    outroNpcId: "lava_festival_outro",
+  },
+  sunkenWreck: {
+    introNpcId: "royal_guard_captain_sunken_festival_intro",
+    outroNpcId: "sunken_festival_outro",
+  },
+  corruptedGrove: {
+    introNpcId: "royal_guard_captain_grove_festival_intro",
+    outroNpcId: "grove_festival_outro",
+  },
+  royalDungeon: {
+    introNpcId: "royal_guard_captain_dungeon_festival_intro",
+    // 4지역 전부 완료 시 — 사천왕 전멸 선언, 진짜 마지막 완료 장면
+    outroNpcId: "sacheonwang_all_defeated_outro",
   },
 };
 

@@ -414,6 +414,18 @@ class BattleScene {
     const pSrc = BACK_IMAGES[p?.type] || "";
     console.log("[전투] 플레이어 타입:", p?.type, "뒷모습:", pSrc);
     if (pSrc && this.el.playerImg) {
+      // 평상시(idle) 그림 파일이 없거나 깨졌을 때, 공격 모션 그림(있을 확률이 높음)으로
+      // 한 번 더 시도 — 그래도 없으면 그제서야 완전히 비워둔다(무한 루프 방지).
+      const fallbackSrc = CUTIN_HERO[p?.type] || "";
+      this.el.playerImg.onerror = () => {
+        this.el.playerImg.onerror = null;
+        if (fallbackSrc && fallbackSrc !== pSrc) {
+          console.warn(`[플레이어 그림 로드 실패] "${pSrc}" 를 images/ 폴더에서 찾을 수 없어, "${fallbackSrc}" 로 대신 표시합니다.`);
+          this.el.playerImg.src = fallbackSrc;
+        } else {
+          console.warn(`[플레이어 그림 로드 실패] "${pSrc}" 파일을 images/ 폴더에서 찾을 수 없습니다.`);
+        }
+      };
       this.el.playerImg.src = pSrc;
       if (this.el.playerWrap) this.el.playerWrap.style.display = "block";
     }

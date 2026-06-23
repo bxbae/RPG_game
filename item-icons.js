@@ -142,6 +142,12 @@ function _buildShapeSVG(item, size) {
       <path d="M10 3 H14 V7.2 L17.6 17.8 A2 2 0 0 1 15.7 20.5 H8.3 A2 2 0 0 1 6.4 17.8 L10 7.2 Z" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round"/>
       <line x1="9" y1="3" x2="15" y2="3" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
       <line x1="8.3" y1="14.5" x2="15.7" y2="14.5" stroke="${color}" stroke-width="1.1" opacity=".5"/>`;
+  } else if (type === "key") {
+    shape = `
+      <circle cx="8" cy="7" r="4" fill="none" stroke="${color}" stroke-width="2"/>
+      <line x1="11" y1="10" x2="20" y2="19" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="15" y1="14" x2="17.2" y2="16.2" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="17.5" y1="16.5" x2="19.7" y2="18.7" stroke="${color}" stroke-width="2" stroke-linecap="round"/>`;
   } else {
     // 알 수 없는 종류 — 보석 모양 기본 아이콘
     shape = `<path d="M12 2 L20 9 L12 22 L4 9 Z" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
