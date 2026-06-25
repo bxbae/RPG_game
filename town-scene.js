@@ -2237,7 +2237,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ① — 마왕이 직접 나타남 (충격적인 진실의 시작) ──
-  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+  capital_ending_appearance:{name:"???",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/capital_ending_appearance.png",
     dialogues:[
       "...여기까지 잘 해냈구나, 인간.",
       "수도의 일도, 지역들의 일도... 전부 내 손바닥 위에서 벌어진 일이었다는 걸 알고 있나?",
@@ -2254,7 +2254,7 @@ const NPC_DATA = {
     ]},
 
   // ── 수도 재건 완료 컷신 ③ — 전투 직전 도발 ──
-  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/Chained_in_darkness_under_a_tyrants_gaze.png",
+  capital_ending_sealkeeper:{name:"봉인의 관리자",nameColor:"#aa2244",portrait:"images/sd_Demon.png",bgImage:"images/capital_ending_sealkeeper.png",
     dialogues:[
       "그 봉인을 건드리고 싶다면... 먼저 나를 넘어서야 할 것이다.",
       "이곳까지 온 너의 각오가 진심인지, 내가 직접 확인해보겠다!",
@@ -2319,7 +2319,7 @@ const NPC_DATA = {
   // ══════════════ 심연 메인 스토리 — 마왕 다르카스 ══════════════
 
   // ── 보스룸 진입 직전 — 다르카스 등장, 전투 전 대사 ──
-  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral.png",
+  darkas_pre_fight:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/seal_collapse.png",
     dialogues:[
       "...드디어 여기까지 왔군. 내 부하들을 그렇게나 거두고도, 아직 멈추지 않다니.",
       "내가 왜 마왕군을 일으켰는지... 알고 싶나? 간단하다. 이 봉인에서 벗어나려면 힘이 필요했을 뿐이야.",
@@ -2338,7 +2338,7 @@ const NPC_DATA = {
     ]},
 
   // ── 봉인 붕괴 — 다르카스의 몸이 무너지며 그 안에 갇혀 있던 진짜 존재가 풀려난다 ──
-  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+  seal_collapse:{name:"기사",nameColor:"#ffe9a8",portrait:"images/portrait_Knight.png",bgImage:"images/Final_stand_in_the_arcane_temple.png",
     dialogues:[
       "...다르카스의 몸에서 빠져나온 그 기운이, 점점 커지고 있다.",
       "이건... 단순한 잔재가 아니야. 무언가가 깨어나고 있다.",
@@ -2353,7 +2353,7 @@ const NPC_DATA = {
     ]},
 
   // ── 다르카스의 마지막 말 — 전투 직전 ──
-  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/Heroes_face_looming_dark_god_in_cathedral2.png",
+  darkas_final_words:{name:"마왕 다르카스",nameColor:"#ff3333",portrait:"images/sd_Demon.png",bgImage:"images/darkas_final_words.png",
     dialogues:[
       "...아직, 끝나지 않았다.",
       "예전에도 한 번... 누군가 저것을 막으려 했었지. 그때는... 실패했다.",
