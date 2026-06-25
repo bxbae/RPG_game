@@ -1123,6 +1123,9 @@ class Game {
   //  전투 시작
   // ─────────────────────────────────────────────────
   startBattle(monsterId, isBoss) {
+    // 새 전투 시작 — 이전 전투 승리 처리 중 걸렸던 잠금을 해제
+    this._battleLocked = false;
+
     // 현재 던전 위치 저장
     this._returnAfterBattle = {
       type:  this.dungeonType,
@@ -1222,6 +1225,11 @@ class Game {
       if (this.dungeonScene._startWalkAnim) {
         this.dungeonScene._startWalkAnim();
       }
+      // 방금 격파한 게 보스였다면, 그 자리에 출구가 나타난다
+      if (this.dungeonScene._bossExitPos) {
+        this.dungeonScene.spawnExitAtBossPos();
+        this.log("🚪 보스를 쓰러뜨리자 출구가 열렸다!");
+      }
       this.dungeonScene.render?.();
       this.log("✅ 전투 승리! 탐험을 계속합니다.");
       // 자동저장
@@ -1230,6 +1238,11 @@ class Game {
     }
 
     // dungeonScene이 없으면 해당 층 새로 시작
+    // [진단용] 맵이 리셋되는 문제 추적 — 정상적으로는 위의 if 블록에서 return 됐어야 함.
+    // 여기 도달했다는 건 ret이 없거나 dungeonScene이 사라졌다는 뜻이므로, 다음에 같은 현상이
+    // 재발하면 이 로그를 보고 정확한 원인(ret 누락 vs dungeonScene 누락)을 알 수 있다.
+    console.warn("[맵 리셋 진단] 정상 재개 경로를 타지 못해 새 맵을 생성합니다.",
+      { hasRet: !!ret, hasDungeonScene: !!this.dungeonScene, ret, currentScene: this.currentScene });
     if (ret) {
       this.goToDungeon(ret.type || this.dungeonType || "normal", ret.floor ?? 1);
     } else if (this.dungeonType && this.player?.storyPhase === "dungeon") {
@@ -1252,10 +1265,19 @@ class Game {
       // 도망도 같은 맵 재개
       if (this.dungeonScene && this._returnAfterBattle) {
         this._returnAfterBattle = null;
+        // 보스에게서 도망친 거라면 — 격파한 게 아니므로 보스를 그 자리에 되돌려놓는다
+        // (출구는 격파해야만 열리므로, 도망쳤을 땐 출구를 띄우면 안 됨)
+        const bp = this.dungeonScene._bossExitPos;
+        if (bp) {
+          this.dungeonScene._bossExitPos = null;
+          this.dungeonScene.mapData.objects.set(`${bp.x},${bp.y}`, { type: window.TILE.BOSS });
+        }
         this._showScreen("dungeon");
         this.dungeonScene._startWalkAnim?.();
         this.dungeonScene.render?.();
       } else if (this._returnAfterBattle) {
+        console.warn("[맵 리셋 진단] 도망 후 정상 재개 경로를 타지 못해 새 맵을 생성합니다.",
+          { hasDungeonScene: !!this.dungeonScene, returnAfterBattle: this._returnAfterBattle });
         const { type, floor } = this._returnAfterBattle;
         this._returnAfterBattle = null;
         this.goToDungeon(type, floor ?? 1);

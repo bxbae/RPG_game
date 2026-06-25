@@ -237,8 +237,8 @@ function generateDungeonMap(width = 25, height = 18, floor = 1, isLastFloor = fa
   // 함정의 방 — 지뢰찾기 퍼즐 (층마다 고정 1회 등장, 튜토리얼 성 밖에는 미등장)
   if (dungeonType !== "outside") place(TILE.TRAPROOM);
 
-  // 출구 — 언제든지 마을로 탈출 (모든 층에 존재)
-  place(TILE.EXIT);
+  // 출구는 더 이상 무작위로 깔리지 않는다 — 보스를 잡아야 그 자리에 나타난다
+  // (보스가 없는 층은 계단으로 다음 층 진행, 또는 옆 패널의 "마을로" 버튼으로 언제든 나갈 수 있음)
 
   return { map, rooms, objects, startX, startY, width, height };
 }
@@ -376,6 +376,14 @@ class DungeonScene {
     clearInterval(this._walkTimer);
     this._walkFrame     = 0;
     this._compWalkFrame = 0;
+    // 핑퐁 시퀀스 — 1→2→3→2→1→2→3→2... 로 왕복하면 3번에서 1번으로 갑자기
+    // 끊기는 "튀는" 느낌 없이 자연스럽게 걷는 동작처럼 보인다.
+    const pingPongIndex = (frame, len) => {
+      if (len <= 1) return 0;
+      const cycle = (len - 1) * 2;          // 3프레임 기준 cycle=4: 0,1,2,1,0,1,2,1...
+      const pos = frame % cycle;
+      return pos < len ? pos : cycle - pos;
+    };
     this._walkTimer = setInterval(() => {
       // 던전 화면이 숨겨져 있으면 (전투 중) 업데이트 중단
       const dungeonScreen = document.getElementById("dungeonScreen");
@@ -386,15 +394,18 @@ class DungeonScene {
       const p     = this.game.player;
       const type  = p?.type || "knight";
 
-      // 플레이어 스프라이트 프레임 교체
+      // 플레이어 스프라이트 프레임 교체 (핑퐁) + 좌우 방향에 따라 가로 반전
       const spr    = document.getElementById("dungeonPlayerSprite");
       const frames = WALK_FRAMES[type];
       if (spr && frames) {
-        spr.src       = frames[this._walkFrame % frames.length];
+        spr.src       = frames[pingPongIndex(this._walkFrame, frames.length)];
         spr.onerror   = null;
+        spr.style.transform = this._facingLeft
+          ? "translate(-50%,-62%) scaleX(-1)"
+          : "translate(-50%,-62%)";
       }
 
-      // 동료 스프라이트 프레임 교체 (1·2·3번 모두)
+      // 동료 스프라이트 프레임 교체 (1·2·3번 모두, 핑퐁 + 좌우 반전)
       this._compWalkFrame2 = (this._compWalkFrame2 || 0) + 1;
       this._compWalkFrame3 = (this._compWalkFrame3 || 0) + 1;
       [
@@ -406,8 +417,11 @@ class DungeonScene {
         const cspr = document.getElementById(spriteId);
         const cframes = key ? COMP_WALK_FRAMES[key] : null;
         if (cspr && cframes) {
-          cspr.src     = cframes[frame % cframes.length];
+          cspr.src     = cframes[pingPongIndex(frame, cframes.length)];
           cspr.onerror = null;
+          cspr.style.transform = this._facingLeft
+            ? "translate(-50%,-62%) scaleX(-1)"
+            : "translate(-50%,-62%)";
         }
       });
     }, 160); // 약 6FPS
@@ -466,6 +480,9 @@ class DungeonScene {
   _tryMove(dx, dy) {
     if (this.moving) return;
     if (this._trapRoomActive) return; // 함정의 방 퍼즐 진행 중에는 이동 불가
+    // 좌우 이동일 때만 방향 갱신 — 위/아래로만 움직일 땐 마지막 좌우 방향 유지
+    if (dx < 0) this._facingLeft = true;
+    else if (dx > 0) this._facingLeft = false;
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;
     const { map, width, height, objects } = this.mapData;
@@ -514,6 +531,8 @@ class DungeonScene {
         break;
       case TILE.BOSS: {
         this.mapData.objects.delete(`${x},${y}`);
+        // 보스 격파 후 이 자리에 출구가 나타나도록 위치를 기억해둔다
+        this._bossExitPos = { x, y };
         // 던전 타입별 보스 몬스터 결정
         const BOSS_MAP = {
           normal: "guardian", abyss: "demon",
@@ -887,8 +906,15 @@ class DungeonScene {
     const mCtx = minimapEl.getContext("2d");
     const { map, objects, width, height } = this.mapData;
     const mts = 6; // 미니맵 타일 크기
-    minimapEl.width  = width  * mts;
-    minimapEl.height = height * mts;
+
+    // 캔버스 리사이즈는 내용을 통째로 지우는 무거운 작업이므로,
+    // 같은 층 안에서 이동할 때마다 매번 하지 않고 크기가 실제로 바뀔 때만 한다.
+    const needW = width  * mts;
+    const needH = height * mts;
+    if (minimapEl.width !== needW || minimapEl.height !== needH) {
+      minimapEl.width  = needW;
+      minimapEl.height = needH;
+    }
 
     mCtx.fillStyle = "#060304";
     mCtx.fillRect(0, 0, minimapEl.width, minimapEl.height);
@@ -917,7 +943,19 @@ class DungeonScene {
     mCtx.fillRect(this.playerX * mts, this.playerY * mts, mts, mts);
   }
 
-  // 터치/클릭 이동 버튼 지원 (모바일)
+  // 보스 격파 후 — 그 자리에 출구를 띄운다 (game.js의 onBattleVictory에서 호출)
+  // 메인 캔버스는 이미 매 프레임 자동으로 다시 그려지므로(requestAnimationFrame 루프),
+  // mapData만 갱신하면 충분하고 미니맵만 별도로 갱신해주면 된다.
+  spawnExitAtBossPos() {
+    const pos = this._bossExitPos;
+    if (!pos) return;
+    this._bossExitPos = null;
+    this.mapData.objects.set(`${pos.x},${pos.y}`, { type: TILE.EXIT });
+    this._revealAround(pos.x, pos.y, 4);
+    this._renderMinimap();
+  }
+
+  // ── 터치/클릭 이동 버튼 지원 (모바일) ──
   onDpadPress(dir) {
     const map = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };
     const d = map[dir];

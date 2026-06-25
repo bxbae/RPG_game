@@ -231,7 +231,7 @@ class BattleManager {
 
   // ── 회복 ──────────────────────────────────────────
   heal(game) {
-    if (game.isGameOver()) return;
+    if (game.isGameOver() || game._battleLocked) return;
     this._events = [];
 
     const p = game.player;
@@ -255,6 +255,7 @@ class BattleManager {
 
   // ── 주인공 궁극기 ─────────────────────────────────
   heroUltimate(game) {
+    if (game.isGameOver() || game._battleLocked) return;
     this._events = [];
 
     const p = game.player;
@@ -306,6 +307,7 @@ class BattleManager {
 
   // ── 동료 궁극기 ───────────────────────────────────
   partyUltimate(game) {
+    if (game.isGameOver() || game._battleLocked) return;
     this._events = [];
 
     const p = game.player;
@@ -371,6 +373,7 @@ class BattleManager {
 
   // ── 2번 동료 궁극기 (party2 전용) ───────────────────
   party2Ultimate(game) {
+    if (game.isGameOver() || game._battleLocked) return;
     this._events = [];
 
     const p = game.player;
@@ -436,6 +439,7 @@ class BattleManager {
 
   // ── 3번 동료 궁극기 (심연 전용) ──────────────────────
   party3Ultimate(game) {
+    if (game.isGameOver() || game._battleLocked) return;
     this._events = [];
 
     const p = game.player;
@@ -501,6 +505,7 @@ class BattleManager {
 
   // ── 직업 스킬 ─────────────────────────────────────
   jobSkill(game) {
+    if (game.isGameOver() || game._battleLocked) return;
     this._events = [];
 
     const p = game.player;
@@ -645,6 +650,12 @@ class BattleManager {
   }
 
   _onMonsterDefeated(game) {
+    // 같은 처치에 대해 두 번 호출되는 것을 막는다 (예: 공격 버튼 빠르게 연타 시
+    // 몬스터 HP가 이미 0인데도 또 한 번 처치 처리가 들어와서, _returnAfterBattle이
+    // 두 번째 onBattleVictory 호출 때 이미 소비돼 있어 던전이 새로 생성되던 버그)
+    if (game._battleLocked) return;
+    game._battleLocked = true;
+
     const p = game.player;
     const m = game.currentMonster;
     if (!m) return;
@@ -741,6 +752,19 @@ class BattleManager {
       if (aff2 === 100 && !p.party2BondMax) {
         p.party2BondMax = true;
         game.log("🌟 2번 동료 EX 궁극기 각성!");
+      }
+    }
+
+    // ── 3번 동료 호감도 (심연 전용 — party1·2와 마찬가지로 매 전투 승리 시 +1) ──
+    // party3가 party1 또는 party2와 같은 직업이면 위에서 이미 +1 됐으므로 중복 증가를 막는다.
+    if (p.party3 && p.party3 !== p.party && p.party3 !== p.party2) {
+      p.affinity[p.party3] = Math.min(100, (p.affinity[p.party3] || 0) + 1);
+      const aff3 = p.affinity[p.party3];
+      // 호감도 30 → 3번 동료 궁극기 사용 가능 (게이지가 차오름)
+      if (aff3 === 30) game.log("✨ 3번 동료 궁극기 사용 가능!");
+      if (aff3 === 100 && !p.party3BondMax) {
+        p.party3BondMax = true;
+        game.log("🌟 3번 동료 EX 궁극기 각성!");
       }
     }
 

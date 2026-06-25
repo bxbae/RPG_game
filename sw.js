@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v50";
-const STATIC_CACHE  = "rpg-static-v50";
-const DYNAMIC_CACHE = "rpg-dynamic-v50";
+const CACHE_NAME    = "rpg-v55";
+const STATIC_CACHE  = "rpg-static-v55";
+const DYNAMIC_CACHE = "rpg-dynamic-v55";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
