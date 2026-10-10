@@ -127,6 +127,15 @@ const ULT_THEME = {
   mage:     { c1:"#b25cff", c2:"#f2d8ff", ray:"170,90,255"  },
   healer:   { c1:"#ffd84a", c2:"#ffffff", ray:"255,225,120" },
 };
+// ─── 궁극기 영상에서 실제로 보여줄 구간 (초) ───
+//  start/end: 움직임이 많은 구간만 재생 (앞뒤의 정지된 부분은 잘라냄)
+//  hit: 타격(섬광) 순간 — 이때 화면 충격 효과를 맞춰 준다
+//  (영상 길이에 따른 자동 배속은 구간 길이를 기준으로 계산)
+const ULT_VIDEO_CLIP = {
+  "videos/tanker_ultimate.mp4":   { start: 1.0, end: 5.0, hit: 3.7 },   // 1초 클로즈업 → 방패 타격 → 여운 (뒤 3초는 정지에 가까움)
+  "videos/healer_ultimate.mp4":   { start: 0.0, end: 4.4 },
+  "videos/knight_ultimate.mp4":   { start: 0.0, end: 5.2 },
+};
 const ULT_THEME_ALIAS = { night:"knight", warrior:"knight", magician:"mage", mage_party:"mage" };
 
 class BattleScene {
@@ -1100,6 +1109,16 @@ class BattleScene {
       { transform: `translate(${amp}px,${-amp / 2}px)` }, { transform: `translate(${-amp / 2}px,${amp / 3}px)` }, { transform: "translate(0,0)" },
     ], { duration: 280 });
 
+    // 충격 연출 (영상 속 타격 순간, 그리고 마무리 때 공통)
+    const impactFx = (strong = true) => {
+      anim(flash, [{ opacity: strong ? .95 : .6 }, { opacity: 0 }], { duration: 340 });
+      ring(W() / 2, H() / 2, 18);
+      sparks(W() / 2, H() / 2, strong ? 22 : 14);
+      shake(strong ? 10 : 6);
+      bs?.classList.remove("ult-punch"); void bs?.offsetWidth; bs?.classList.add("ult-punch");
+      setTimeout(() => bs?.classList.remove("ult-punch"), 460);
+    };
+
     // ④ 마무리: 섬광 + 충격파 + 전투 화면 반동, 이어서 데미지 숫자
     const finish = (impact = true) => {
       if (dead) return;
@@ -1108,13 +1127,7 @@ class BattleScene {
       document.removeEventListener("keydown", onKey);
       video.pause();
       zoom?.cancel();
-      if (impact) {
-        anim(flash, [{ opacity: .95 }, { opacity: 0 }], { duration: 340 });
-        ring(W() / 2, H() / 2, 18);
-        sparks(W() / 2, H() / 2, 22);
-        bs?.classList.remove("ult-punch"); void bs?.offsetWidth; bs?.classList.add("ult-punch");
-        setTimeout(() => bs?.classList.remove("ult-punch"), 460);
-      }
+      if (impact) impactFx(true);
       setTimeout(() => {
         anim(screen, [{ opacity: 1 }, { opacity: 0 }], { duration: 240 }).onfinish = () => screen.remove();
       }, impact ? 150 : 0);
@@ -1136,12 +1149,19 @@ class BattleScene {
         if (started || dead) return;
         started = true;
         const d = video.duration || 5;
-        const rate = Math.min(2.2, Math.max(1, d / 3));         // 어떤 영상이든 약 3초 안에 끝나도록 배속
+        const clip  = ULT_VIDEO_CLIP[vidSrc] || {};
+        const start = Math.min(clip.start || 0, Math.max(0, d - 1));
+        const end   = Math.min(clip.end || d, d);
+        const len   = Math.max(1, end - start);
+        const rate  = Math.min(2.2, Math.max(1, len / 3));      // 보여줄 구간이 약 3초가 되도록 배속
+        if (start > 0) video.currentTime = start;
         video.playbackRate = rate;
         vwrap.classList.toggle("portrait", video.videoWidth < video.videoHeight);
         anim(vwrap, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
         video.play().catch(() => finish(true));
-        at(Math.min(3500, (d / rate) * 1000 + 250), () => finish(true));
+        const wall = (len / rate) * 1000;                       // 구간 재생에 걸리는 실제 시간(ms)
+        at(Math.min(4200, wall + 150), () => finish(true));
+        if (clip.hit != null) at(Math.max(0, (clip.hit - start) / rate * 1000), () => impactFx(false));
       };
       video.addEventListener("loadedmetadata", go, { once: true });
       video.addEventListener("ended", () => finish(true), { once: true });
