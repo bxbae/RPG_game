@@ -127,6 +127,20 @@ const ULT_THEME = {
   mage:     { c1:"#b25cff", c2:"#f2d8ff", ray:"170,90,255"  },
   healer:   { c1:"#ffd84a", c2:"#ffffff", ray:"255,225,120" },
 };
+// ─── 캐릭터 크기 보정 ───────────────────────────────
+//  그림마다 여백·비율이 달라 같은 칸에 넣어도 보이는 키가 제각각이다
+//  (칸 폭 대비 실제 캐릭터 높이: 힐러 1.21 / 마법사·궁수 0.99 / 기사·탱커 0.88).
+//  대기 이미지의 투명도 영역을 측정한 값(w: 이미지 폭, vh: 캐릭터가 차지하는 높이, px)으로
+//  모든 캐릭터의 보이는 높이를 SPRITE_TARGET × 칸 폭으로 맞춘다.
+const SPRITE_FIT = {
+  "images/sd_knight.png":    { w: 390, vh: 348 },
+  "images/SD_Tanker.png":    { w: 646, vh: 564 },
+  "images/sd_magician.png":  { w: 500, vh: 495 },
+  "images/sd_archer.png":    { w: 500, vh: 496 },
+  "images/sd_healer.png":    { w: 598, vh: 726 },
+};
+const SPRITE_TARGET = 1.15;
+
 // ─── 궁극기 영상에서 실제로 보여줄 구간 (초) ───
 //  start/end: 움직임이 많은 구간만 재생 (앞뒤의 정지된 부분은 잘라냄)
 //  hit: 타격(섬광) 순간 — 이때 화면 충격 효과를 맞춰 준다
@@ -368,6 +382,13 @@ class BattleScene {
     document.addEventListener("keydown", this._keyHandler);
   }
 
+  // 캐릭터 그림마다 다른 여백/비율을 보정해서 모든 캐릭터가 같은 키로 보이게 한다
+  // (공격 프레임으로 바뀌어도 같은 배율이 유지된다 — 배율은 img 요소에 걸린다)
+  _fitSprite(img, src) {
+    const f = SPRITE_FIT[src];
+    img.style.setProperty("--fit", f ? (SPRITE_TARGET * f.w / f.vh).toFixed(3) : "1");
+  }
+
   // 연타로 연출이 겹치지 않도록 짧은 입력 잠금 (ms 동안 다음 행동 무시)
   _busy(ms) {
     const now = performance.now();
@@ -467,27 +488,28 @@ class BattleScene {
         }
       };
       this.el.playerImg.src = pSrc;
+      this._fitSprite(this.el.playerImg, pSrc);
       if (this.el.playerWrap) this.el.playerWrap.style.display = "block";
     }
 
     if (p?.party && p.partyHp > 0) {
       const cSrc = COMPANION_BACK[p.party] || "";
       console.log("[전투] 동료 파티키:", p.party, "뒷모습:", cSrc);
-      if (cSrc && this.el.compImg) this.el.compImg.src = cSrc;
+      if (cSrc && this.el.compImg) { this.el.compImg.src = cSrc; this._fitSprite(this.el.compImg, cSrc); }
       if (this.el.compWrap) this.el.compWrap.style.display = "block";
     }
 
     if (p?.party2 && p.party2Hp > 0) {
       const c2Src = COMPANION_BACK[p.party2] || "";
       console.log("[전투] 동료2 파티키:", p.party2, "뒷모습:", c2Src);
-      if (c2Src && this.el.compImg2) this.el.compImg2.src = c2Src;
+      if (c2Src && this.el.compImg2) { this.el.compImg2.src = c2Src; this._fitSprite(this.el.compImg2, c2Src); }
       if (this.el.compWrap2) this.el.compWrap2.style.display = "block";
     }
 
     if (p?.party3 && p.party3Hp > 0) {
       const c3Src = COMPANION_BACK[p.party3] || "";
       console.log("[전투] 동료3 파티키:", p.party3, "뒷모습:", c3Src);
-      if (c3Src && this.el.compImg3) this.el.compImg3.src = c3Src;
+      if (c3Src && this.el.compImg3) { this.el.compImg3.src = c3Src; this._fitSprite(this.el.compImg3, c3Src); }
       if (this.el.compWrap3) this.el.compWrap3.style.display = "block";
     }
 
@@ -532,7 +554,7 @@ class BattleScene {
     const realMaxHp = p.maxHp + p.bonusHp;
     this._text("playerName",  p.name);
     // ★ night/mage/archer 키로 직업명 표시
-    this._text("playerClass", { knight:"기사", night:"기사", mage:"마법사", archer:"궁수" }[p.type] || p.type);
+    this._text("playerClass", { knight:"기사", night:"기사", mage:"마법사", archer:"궁수", tanker:"탱커", healer:"힐러" }[p.type] || p.type);
     this._text("gold",        `💰 ${p.money}G`);
     this._text("level",       p.level);
     this._text("exp",         p.exp);
