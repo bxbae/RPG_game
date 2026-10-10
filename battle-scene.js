@@ -119,6 +119,16 @@ const CUTIN_PARTY_FULLSCREEN = {
   archer:     "images/Elf_Archer_skill_cut.png",
 };
 
+// ─── 궁극기 컷신 직업별 색 (--c1 외곽/광채, --c2 하이라이트, ray 광선 rgb) ───
+const ULT_THEME = {
+  knight:   { c1:"#ff3b2f", c2:"#ffd36a", ray:"255,70,40"   },
+  tanker:   { c1:"#3aa0ff", c2:"#c4e8ff", ray:"60,150,255"  },
+  archer:   { c1:"#4fe06a", c2:"#eaffb8", ray:"90,230,110"  },
+  mage:     { c1:"#b25cff", c2:"#f2d8ff", ray:"170,90,255"  },
+  healer:   { c1:"#ffd84a", c2:"#ffffff", ray:"255,225,120" },
+};
+const ULT_THEME_ALIAS = { night:"knight", warrior:"knight", magician:"mage", mage_party:"mage" };
+
 class BattleScene {
   constructor(game) {
     this.game = game;
@@ -397,6 +407,7 @@ class BattleScene {
 
   startBattle(monster) {
     this._logLines = [];
+    this._ultActive = false; this._ultPending = [];
     clearTimeout(this._attackFlashTimer);   // 이전 공격 타이머 취소
     clearTimeout(this._attackFrame2Timer);
     this._attackFlashTimer  = null;
@@ -753,6 +764,7 @@ class BattleScene {
     if (!field) return;
     const crit = target === "monster" && this._critPending;
     if (target === "monster") this._critPending = false;
+    if (this._ultActive) { (this._ultPending ||= []).push({ amount, target }); return; }
     // 공격 연출 중이면 타격 순간(몬스터)·반격 순간(플레이어)에 맞춰 숫자를 띄운다
     const now = performance.now();
     const at  = target === "monster" ? this._impactAt : this._counterAt;
@@ -1002,7 +1014,7 @@ class BattleScene {
     const cutImg = CUTIN_HERO_FULLSCREEN[playerType] || "";
     const vidSrc = ULTIMATE_VIDEOS[playerType]       || "";
     const title  = CUTIN_HERO_TITLE[playerType]      || "✨ 궁극기!";
-    this._playUltimateCutThenVideo(cutImg, vidSrc, title);
+    this._playUltimateCutThenVideo(cutImg, vidSrc, title, playerType);
   }
 
   showEXCutin(partyKey) {
@@ -1014,114 +1026,183 @@ class BattleScene {
     const cutImg = CUTIN_PARTY_FULLSCREEN[party] || "";
     const vidSrc = ULTIMATE_PARTY_VIDEOS[party]  || "";
     const title  = CUTIN_PARTY_TITLE[party]      || "✨ 궁극기";
-    this._playUltimateCutThenVideo(cutImg, vidSrc, title);
+    this._playUltimateCutThenVideo(cutImg, vidSrc, title, party);
   }
 
-  // ── 궁극기: ① 컷신 이미지(2.5초) → ② MP4 영상 ──────
-  _playUltimateCutThenVideo(cutImgSrc, vidSrc, title) {
+  // ── 궁극기 컷신 ───────────────────────────────────────
+  //  ① 충전(0.3s): 섬광 + 암전 + 시네마 바 + 전투 화면 확대
+  //  ② 컷인(≈1.4s): 사선 와이프로 일러스트 등장, 광선·속도선, 스킬명이 쾅 하고 꽂힘
+  //  ③ 영상(≈3s, 배속): 일러스트는 블러 배경으로 깔리고 스킬명은 좌하단 배너로
+  //  ④ 타격(0.3s): 섬광 + 충격파 + 전투 화면 반동 → 데미지 숫자가 한꺼번에 터짐
+  //  클릭/Enter: 다음 단계로 건너뛰기, Esc: 즉시 닫기
+  _playUltimateCutThenVideo(cutImgSrc, vidSrc, title, themeKey = "knight") {
     document.getElementById("ultimateScreen")?.remove();
+    this._ultActive  = true;       // 연출이 끝날 때까지 데미지 숫자를 붙잡아 둔다
+    this._ultPending = [];
+
+    const th = ULT_THEME[themeKey] || ULT_THEME[ULT_THEME_ALIAS[themeKey]] || ULT_THEME.knight;
+    const m = String(title).match(/^(\S+)\s+(.+)$/);
+    const icon = m && /[^\w가-힣!]/.test(m[1]) ? m[1] : "";
+    const name = icon ? m[2] : String(title);
 
     const screen = document.createElement("div");
     screen.id = "ultimateScreen";
-    screen.style.cssText =
-      "position:fixed;inset:0;z-index:999999;background:#000;" +
-      "display:flex;align-items:center;justify-content:center;";
-
-    const label = document.createElement("div");
-    label.style.cssText =
-      "position:absolute;bottom:10%;left:50%;transform:translateX(-50%);" +
-      "color:#FFD700;font-size:2.6rem;font-weight:700;letter-spacing:.18em;" +
-      "text-shadow:0 0 30px #FFD700,0 0 60px #FFD70088;" +
-      "font-family:\'Noto Serif KR\',serif;text-align:center;z-index:10;" +
-      "pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .4s;";
-    label.textContent = title;
-    screen.appendChild(label);
-
-    const cutEl = document.createElement("img");
-    cutEl.style.cssText =
-      "position:absolute;inset:0;width:100%;height:100%;" +
-      "object-fit:contain;opacity:0;transition:opacity .35s ease;z-index:5;";
-    screen.appendChild(cutEl);
-
-    const video = document.createElement("video");
-    video.style.cssText =
-      "position:absolute;inset:0;width:100%;height:100%;" +
-      "object-fit:cover;opacity:0;transition:opacity .3s ease;z-index:6;";
-    video.playsInline = true;
-    video.controls    = false;
-    video.preload     = "auto";
-    screen.appendChild(video);
+    screen.style.cssText = `--c1:${th.c1};--c2:${th.c2};--ray:${th.ray};`;
+    screen.innerHTML = `
+      <div class="ult-dim"></div>
+      <div class="ult-rays"></div>
+      <div class="ult-art"><img alt=""></div>
+      <div class="ult-sweep"></div>
+      <div class="ult-speed"></div>
+      <div class="ult-video-wrap"><video playsinline muted preload="auto"></video></div>
+      <div class="ult-vignette"></div>
+      <div class="ult-bar top"></div><div class="ult-bar bottom"></div>
+      <div class="ult-title"><span class="ult-sub"></span><span class="ult-name"></span><span class="ult-line"></span></div>
+      <div class="ult-flash"></div>`;
+    const q = sel => screen.querySelector(sel);
+    const dim = q(".ult-dim"), rays = q(".ult-rays"), art = q(".ult-art"), artImg = art.querySelector("img"),
+          sweep = q(".ult-sweep"), vwrap = q(".ult-video-wrap"), video = q("video"),
+          barT = q(".ult-bar.top"), barB = q(".ult-bar.bottom"), titleEl = q(".ult-title"),
+          nameEl = q(".ult-name"), subEl = q(".ult-sub"), lineEl = q(".ult-line"), flash = q(".ult-flash");
+    nameEl.textContent = name;
+    subEl.textContent  = `${icon ? icon + " " : ""}ULTIMATE`;
     document.body.appendChild(screen);
 
-    let phase = 1;
-    let phase1Timer = null;
-    let fallbackTimer = null;
+    const bs = document.getElementById("battleScreen");
+    const zoom = bs?.animate([{ transform: "scale(1)" }, { transform: "scale(1.07)" }], { duration: 520, easing: "ease-in", fill: "forwards" });
 
-    const closeAll = () => {
-      clearTimeout(phase1Timer);
-      clearTimeout(fallbackTimer);
-      video.pause();
-      screen.style.transition = "opacity .3s ease";
-      screen.style.opacity    = "0";
-      setTimeout(() => screen.remove(), 320);
+    let dead = false, phase = 0;
+    const timers = [];
+    const at   = (ms, fn) => timers.push(setTimeout(() => { if (!dead) fn(); }, ms));
+    const anim = (el, kf, opt) => el.animate(kf, { fill: "forwards", ...opt });
+    const W = () => screen.clientWidth, H = () => screen.clientHeight;
+
+    const ring = (x, y, scale = 14) => {
+      const r = document.createElement("div");
+      r.className = "ult-ring"; r.style.left = `${x}px`; r.style.top = `${y}px`;
+      screen.appendChild(r);
+      anim(r, [{ opacity: .95, transform: "translate(-50%,-50%) scale(1)" }, { opacity: 0, transform: `translate(-50%,-50%) scale(${scale})` }], { duration: 560, easing: "ease-out" }).onfinish = () => r.remove();
+    };
+    const sparks = (x, y, n) => {
+      for (let i = 0; i < n; i++) {
+        const sp = document.createElement("div");
+        sp.className = "ult-spark"; sp.style.left = `${x}px`; sp.style.top = `${y}px`;
+        screen.appendChild(sp);
+        const ang = Math.random() * Math.PI * 2, d = 90 + Math.random() * 280;
+        anim(sp, [
+          { opacity: 1, transform: "translate(-50%,-50%) scale(1)" },
+          { opacity: 0, transform: `translate(calc(-50% + ${Math.cos(ang) * d}px), calc(-50% + ${Math.sin(ang) * d - 50}px)) scale(.2)` },
+        ], { duration: 500 + Math.random() * 600, easing: "cubic-bezier(.1,.8,.3,1)" }).onfinish = () => sp.remove();
+      }
+    };
+    const shake = (amp = 8) => screen.animate([
+      { transform: "translate(0,0)" }, { transform: `translate(${-amp}px,${amp / 2}px)` },
+      { transform: `translate(${amp}px,${-amp / 2}px)` }, { transform: `translate(${-amp / 2}px,${amp / 3}px)` }, { transform: "translate(0,0)" },
+    ], { duration: 280 });
+
+    // ④ 마무리: 섬광 + 충격파 + 전투 화면 반동, 이어서 데미지 숫자
+    const finish = (impact = true) => {
+      if (dead) return;
+      dead = true;
+      timers.forEach(clearTimeout);
       document.removeEventListener("keydown", onKey);
+      video.pause();
+      zoom?.cancel();
+      if (impact) {
+        anim(flash, [{ opacity: .95 }, { opacity: 0 }], { duration: 340 });
+        ring(W() / 2, H() / 2, 18);
+        sparks(W() / 2, H() / 2, 22);
+        bs?.classList.remove("ult-punch"); void bs?.offsetWidth; bs?.classList.add("ult-punch");
+        setTimeout(() => bs?.classList.remove("ult-punch"), 460);
+      }
+      setTimeout(() => {
+        anim(screen, [{ opacity: 1 }, { opacity: 0 }], { duration: 240 }).onfinish = () => screen.remove();
+      }, impact ? 150 : 0);
+      setTimeout(() => this._ultimateDone(), impact ? 190 : 40);
     };
 
-    const startPhase2 = () => {
-      clearTimeout(phase1Timer);
+    // ③ 영상
+    const startVideo = () => {
+      if (dead || phase >= 2) return;
       phase = 2;
-      cutEl.style.opacity = "0";
-      label.style.opacity = "0";
-      if (!vidSrc) { closeAll(); return; }
-
-      video.src = vidSrc;
-      video.style.opacity = "1";
-
-      let played = false;
-      const tryPlay = () => {
-        if (played) return;
-        played = true;
-        const p = video.play();
-        if (p) p.catch(() => setTimeout(() => video.play().catch(closeAll), 300));
+      if (!vidSrc) { finish(true); return; }
+      anim(flash, [{ opacity: .9 }, { opacity: 0 }], { duration: 280 });
+      ring(W() / 2, H() / 2, 12);
+      artImg.style.transition = "filter .4s ease";
+      artImg.style.filter = "blur(16px) brightness(.55)";      // 세로 영상 양옆을 컷인 일러스트가 채운다
+      titleEl.classList.add("small");
+      let started = false;
+      const go = () => {
+        if (started || dead) return;
+        started = true;
+        const d = video.duration || 5;
+        const rate = Math.min(2.2, Math.max(1, d / 3));         // 어떤 영상이든 약 3초 안에 끝나도록 배속
+        video.playbackRate = rate;
+        vwrap.classList.toggle("portrait", video.videoWidth < video.videoHeight);
+        anim(vwrap, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+        video.play().catch(() => finish(true));
+        at(Math.min(3500, (d / rate) * 1000 + 250), () => finish(true));
       };
-      video.addEventListener("canplay", tryPlay, { once: true });
-      setTimeout(tryPlay, 400); // file:// 환경 대응 강제 재생
-
-      video.addEventListener("ended", closeAll, { once: true });
-      video.addEventListener("error", closeAll, { once: true });
-      fallbackTimer = setTimeout(closeAll, 15000);
-      video.addEventListener("ended", () => clearTimeout(fallbackTimer), { once: true });
+      video.addEventListener("loadedmetadata", go, { once: true });
+      video.addEventListener("ended", () => finish(true), { once: true });
+      video.addEventListener("error", () => finish(true), { once: true });
+      video.src = vidSrc;
       video.load();
+      at(2500, go);
     };
 
-    // 클릭: Phase 1 → Phase 2 스킵 / Phase 2 → 닫기
-    screen.addEventListener("click", () => {
-      if (phase === 1) startPhase2();
-      else closeAll();
-    });
+    // ① 충전
+    anim(flash, [{ opacity: .85 }, { opacity: 0 }], { duration: 240 });
+    anim(dim,   [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+    anim(barT,  [{ height: "0" }, { height: "11vh" }], { duration: 260, easing: "cubic-bezier(.2,.9,.3,1)" });
+    anim(barB,  [{ height: "0" }, { height: "11vh" }], { duration: 260, easing: "cubic-bezier(.2,.9,.3,1)" });
+    at(100, () => anim(rays, [{ opacity: 0, scale: ".4" }, { opacity: 1, scale: "1" }], { duration: 380, easing: "ease-out" }));
 
+    // ② 컷인
+    let hasArt = !!cutImgSrc;
+    const slam = () => {
+      anim(titleEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 60 });
+      anim(nameEl, [
+        { transform: "skewX(-8deg) scale(3.2)", filter: "blur(14px)", opacity: 0 },
+        { transform: "skewX(-8deg) scale(.94)", filter: "blur(0)", opacity: 1, offset: .7 },
+        { transform: "skewX(-8deg) scale(1)",   filter: "blur(0)", opacity: 1 },
+      ], { duration: 340, easing: "cubic-bezier(.2,1,.3,1)" });
+      anim(subEl,  [{ opacity: 0, letterSpacing: "1.4em" }, { opacity: 1, letterSpacing: ".5em" }], { duration: 420, easing: "ease-out" });
+      anim(lineEl, [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: 380, delay: 120, easing: "cubic-bezier(.2,.9,.3,1)" });
+      shake(9);
+      const ty = H() * .84 - 30;
+      ring(W() / 2, ty, 16);
+      sparks(W() / 2, ty, 18);
+    };
+    if (hasArt) {
+      artImg.onerror = () => { hasArt = false; art.style.display = "none"; };
+      artImg.src = cutImgSrc;                                  // 와이프 전에 미리 로드 시작
+      at(260, () => {
+        anim(art,   [{ clipPath: "polygon(0 0,0 0,-30% 100%,-30% 100%)" }, { clipPath: "polygon(0 0,130% 0,100% 100%,-30% 100%)" }], { duration: 440, easing: "cubic-bezier(.2,.8,.2,1)" });
+        anim(sweep, [{ left: "-30%", opacity: 1 }, { left: "115%", opacity: 1 }], { duration: 440, easing: "cubic-bezier(.2,.8,.2,1)" });
+        anim(artImg, [{ transform: "scale(1.22) translateX(2%)" }, { transform: "scale(1.04) translateX(-1%)" }], { duration: 2000, easing: "ease-out" });
+      });
+    }
+    at(hasArt ? 420 : 200, slam);
+    at(hasArt ? 900 : 200, () => sparks(W() * (.2 + Math.random() * .6), H() * .75, 14));
+    at(hasArt ? 1700 : 650, () => { phase = 1; startVideo(); });
+
+    // 건너뛰기
+    screen.addEventListener("click", () => { if (phase < 2) startVideo(); else finish(true); });
     const onKey = e => {
-      if (e.key === "Escape") closeAll();
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (phase === 1) startPhase2(); else closeAll(); }
+      if (e.key === "Escape") { finish(false); return; }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (phase < 2) startVideo(); else finish(true); }
     };
     document.addEventListener("keydown", onKey);
+  }
 
-    if (!cutImgSrc) {
-      startPhase2();
-    } else {
-      cutEl.src = cutImgSrc;
-      const showCut = () => {
-        cutEl.style.opacity = "1";
-        label.style.opacity = "1";
-        phase1Timer = setTimeout(() => {
-          cutEl.style.opacity = "0";
-          label.style.opacity = "0";
-          setTimeout(startPhase2, 350);
-        }, 2500);
-      };
-      cutEl.onload  = () => requestAnimationFrame(showCut);
-      cutEl.onerror = () => startPhase2();
-    }
+  // 궁극기 연출이 끝나면, 붙잡아 둔 데미지 숫자를 한꺼번에 터뜨린다
+  _ultimateDone() {
+    this._ultActive = false;
+    const list = this._ultPending || [];
+    this._ultPending = [];
+    list.forEach((d, i) => setTimeout(() => this._spawnDamage(d.amount, d.target, d.target === "monster"), i * 170));
+    if (list.some(d => d.target === "monster")) this._shakeField();
   }
 
   // 하위호환

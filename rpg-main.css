@@ -530,3 +530,52 @@ button { font-family:inherit; }
   .damage { font-size:2rem; }
   .damage.crit { font-size:2.8rem; }
 }
+
+/* ═══════════════════════════════════════════════
+   궁극기 컷신 — 돌진하듯 빠른 연출
+   (battle-scene.js _playUltimateCutThenVideo 가 사용. --c1/--c2/--ray 는 직업별 색)
+═══════════════════════════════════════════════ */
+#ultimateScreen { position:fixed; inset:0; z-index:999999; overflow:hidden; cursor:pointer; background:transparent; -webkit-tap-highlight-color:transparent; }
+#ultimateScreen > * { position:absolute; pointer-events:none; }
+.ult-dim   { inset:0; background:rgba(2,0,8,.78); opacity:0; }
+.ult-rays  { inset:-60%; opacity:0; z-index:2;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(var(--ray),0) 0 9deg, rgba(var(--ray),.42) 9deg 15deg),
+    repeating-conic-gradient(from 7deg, rgba(var(--ray),0) 0 17deg, rgba(var(--ray),.22) 17deg 20deg);
+  -webkit-mask:radial-gradient(circle at 50% 52%, transparent 8%, #000 55%); mask:radial-gradient(circle at 50% 52%, transparent 8%, #000 55%);
+  animation:ult-spin 9s linear infinite; }
+@keyframes ult-spin { to { transform:rotate(360deg); } }
+.ult-art   { inset:0; z-index:3; overflow:hidden; clip-path:polygon(0 0,0 0,-30% 100%,-30% 100%); }
+.ult-art img { width:100%; height:100%; object-fit:cover; display:block; transform-origin:50% 45%; }
+.ult-sweep { top:-10%; bottom:-10%; width:18%; left:-30%; z-index:4; transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 45%,var(--c2) 55%,transparent); filter:blur(1px); opacity:0; }
+.ult-speed { inset:-25%; z-index:5; opacity:.55; mix-blend-mode:screen;
+  background:
+    repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0) 0 3.2deg, rgba(255,255,255,.7) 3.4deg 3.6deg, rgba(255,255,255,0) 3.8deg 8.9deg),
+    repeating-conic-gradient(from 2deg at 50% 50%, rgba(255,255,255,0) 0 6deg, rgba(255,255,255,.5) 6.1deg 6.25deg, rgba(255,255,255,0) 6.4deg 13.7deg);
+  -webkit-mask:radial-gradient(circle at 50% 50%, transparent 26%, #000 72%); mask:radial-gradient(circle at 50% 50%, transparent 26%, #000 72%);
+  animation:ult-speed .45s linear infinite; }
+@keyframes ult-speed { from { transform:scale(1) rotate(0deg); } to { transform:scale(1.4) rotate(3deg); } }
+.ult-video-wrap { inset:0; z-index:6; display:flex; align-items:center; justify-content:center; opacity:0; }
+.ult-video-wrap video { height:100%; width:100%; object-fit:cover; background:#000; }
+.ult-video-wrap.portrait video { width:auto; max-width:100%; box-shadow:0 0 60px 10px rgba(var(--ray),.55); }
+.ult-vignette { inset:0; z-index:7; background:radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.65) 100%); }
+.ult-bar   { left:0; right:0; z-index:8; height:0; background:#000; }
+.ult-bar.top    { top:0; }
+.ult-bar.bottom { bottom:0; }
+.ult-title { left:50%; bottom:16%; z-index:9; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:4px; white-space:nowrap; opacity:0; transition:left .4s cubic-bezier(.2,.9,.3,1), bottom .4s cubic-bezier(.2,.9,.3,1), transform .4s cubic-bezier(.2,.9,.3,1); }
+.ult-sub   { font-size:clamp(.75rem,2vw,1.05rem); font-weight:800; letter-spacing:.5em; color:var(--c2); text-shadow:0 0 12px var(--c1); padding-left:.5em; }
+.ult-name  { font-family:'Noto Serif KR',serif; font-weight:900; font-size:clamp(2.4rem,9vw,6.4rem); line-height:1.05; color:#fff; letter-spacing:.05em;
+  -webkit-text-stroke:3px var(--c1); paint-order:stroke fill; text-shadow:0 0 34px var(--c1), 0 7px 0 rgba(0,0,0,.55); transform:skewX(-8deg); }
+.ult-line  { height:5px; width:100%; background:linear-gradient(90deg,transparent,var(--c1),var(--c2),var(--c1),transparent); transform:scaleX(0); box-shadow:0 0 16px var(--c1); }
+.ult-title.small { left:3%; bottom:calc(11vh + 14px); transform:translateX(0); align-items:flex-start; }
+.ult-title.small .ult-name { font-size:clamp(1.5rem,4.2vw,3rem); -webkit-text-stroke:2px var(--c1); }
+.ult-title.small .ult-sub  { letter-spacing:.35em; }
+.ult-flash { inset:0; z-index:10; background:#fff; opacity:0; }
+.ult-ring  { z-index:9; width:40px; height:40px; border-radius:50%; border:6px solid var(--c2); box-shadow:0 0 30px var(--c1), inset 0 0 30px var(--c1); opacity:0; transform:translate(-50%,-50%); }
+.ult-spark { z-index:9; width:9px; height:9px; border-radius:50%; background:var(--c2); box-shadow:0 0 12px 2px var(--c1); opacity:0; }
+
+/* 전투 화면 쪽 반응: 궁극기 발동 순간 확대 → 마무리 순간 타격 반동 */
+@keyframes ult-punch { 0%{transform:scale(1.06);} 30%{transform:scale(.97) translate(6px,-3px);} 60%{transform:scale(1.015) translate(-4px,2px);} 100%{transform:scale(1);} }
+.ult-punch { animation:ult-punch .42s ease-out; }
+@media (prefers-reduced-motion:reduce) { .ult-rays, .ult-speed { animation:none; } }
