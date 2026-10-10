@@ -173,8 +173,30 @@ class SaveManager {
     };
     p.cooldowns = { jobSkill:0, partyUltimate:0, party2Ultimate:0, party3Ultimate:0, heal:0, ...(raw.cooldowns || {}) };
     p.status    = { poison:0, stun:0, burn:0,          ...(raw.status    || {}) };
-    p.affinity  = { archer:0, healer:0, tanker:0, dealer:0, mage_party:0, ...(raw.affinity || {}) };
+    p.affinity  = { archer:0, healer:0, tanker:0, mage_party:0, ...(raw.affinity || {}) };
     p.bank      = { deposit:0, interest:0, totalInvested:0, milestones:[], ...(raw.bank || {}) };
+
+    // 4-1) 카르나(dealer)는 카인(tanker)에 병합됨 — 구 세이브의 카르나 데이터를 카인으로 이관
+    const PARTY_SLOTS = ["party", "party2", "party3"];
+    if (PARTY_SLOTS.some(s => p[s] === "dealer")) {
+      const tankerAlready = PARTY_SLOTS.some(s => p[s] === "tanker");
+      for (const s of PARTY_SLOTS) {
+        if (p[s] !== "dealer") continue;
+        const mem = tankerAlready ? null : PARTY_MEMBERS.tanker;
+        p[s]               = mem ? "tanker" : null;
+        p[`${s}Hp`]        = mem ? mem.hp : 0;
+        p[`${s}MaxHp`]     = mem ? mem.hp : 0;
+        p[`_${s}KnockedOut`] = false;
+      }
+    }
+    p.affinity.tanker = Math.max(p.affinity.tanker || 0, p.affinity.dealer || 0);
+    delete p.affinity.dealer;
+    if (p.partyCutinLevel) {
+      p.partyCutinLevel.tanker = Math.max(p.partyCutinLevel.tanker || 0, p.partyCutinLevel.dealer || 0);
+      delete p.partyCutinLevel.dealer;
+    }
+    if (p.companionStory)   delete p.companionStory.dealer;
+    if (p.companionPassives) delete p.companionPassives.dealer;
 
     // 5) storyPhase 는 항상 마을에서 다시 시작 (저장값 무시)
     p.storyPhase = "town";
@@ -247,7 +269,7 @@ class ItemManager {
       }
     }
     if (item.weaponClass && dest.isParty && dest.member) {
-      const allowed = { healer:"staff", mage_party:"staff", archer:"bow", tanker:"sword", dealer:"sword" }[dest.member];
+      const allowed = { healer:"staff", mage_party:"staff", archer:"bow", tanker:"sword" }[dest.member];
       if (allowed && item.weaponClass !== allowed) {
         game.log(`❌ 동료는 ${allowed}만 사용 가능`);
         return;

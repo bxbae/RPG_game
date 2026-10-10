@@ -21,7 +21,6 @@ const CLASSES = {
 const PARTY_MEMBERS = {
   healer:    { name: "리온",   className: "힐러",   hp: 90,  attack: 12, defense: 5, icon: "✝"  },
   tanker:    { name: "카인",   className: "탱커",   hp: 140, attack: 18, defense: 8, icon: "🛡" },
-  dealer:    { name: "카르나", className: "딜러",   hp: 100, attack: 28, defense: 2, icon: "⚔"  },
   mage_party:{ name: "엘린",   className: "마법사", hp: 85,  attack: 30, defense: 1, icon: "🔮" },
   archer:    { name: "아리아", className: "궁수",   hp: 110, attack: 22, defense: 3, icon: "🏹" },
 };
@@ -172,7 +171,7 @@ class Player {
     this.status       = { poison:0, stun:0, burn:0 };
 
     // 호감도
-    this.affinity = { archer:0, healer:0, tanker:0, dealer:0, mage_party:0 };
+    this.affinity = { archer:0, healer:0, tanker:0, mage_party:0 };
     this.partyEvents = { affinity25:false, affinity50:false, affinity75:false, affinity100:false };
     this.partyUltimateUnlocked = false;
     this.partyUltimateEX      = false;
@@ -181,7 +180,7 @@ class Player {
     this.partyBondMax         = false;
     this.party2BondMax        = false;
     this.storyRewardClaimed   = {};
-    this.partyCutinLevel      = { healer:0, tanker:0, mage_party:0, archer:0, dealer:0 };
+    this.partyCutinLevel      = { healer:0, tanker:0, mage_party:0, archer:0 };
 
     // 퀘스트
     this.quest         = null;

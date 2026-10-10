@@ -59,7 +59,7 @@ const ACHIEVEMENTS = [
   { id:"region_complete_1", cat:"왕국", icon:"🏗",  title:"첫 재건",            desc:"지역 하나를 완전히 재건하라",         cond: p => Object.entries(p.regions||{}).filter(([id,r])=>id!=="starterVillage"&&r.completed).length >= 1, reward:"골드 +300" },
   { id:"region_complete_all",cat:"왕국", icon:"👑", title:"왕국의 재건자",      desc:"왕국 번영도 100% 달성",              cond: p => (window.rpgGame?.regionManager?.kingdomProsperity(p) ?? 0) >= 100, reward:"공격력 +15, HP +100" },
   { id:"companion_story_1", cat:"왕국", icon:"💝",  title:"마음을 나누다",      desc:"동료의 개인 사연을 하나 해결하라",     cond: p => Object.values(p.companionStory||{}).some(s=>s.done), reward:"호감도 +10" },
-  { id:"companion_story_all",cat:"왕국", icon:"🌈", title:"모두의 이야기",      desc:"모든 동료의 개인 사연을 해결하라",     cond: p => ["tanker","dealer","archer","mage_party","healer"].every(k => p.companionStory?.[k]?.done), reward:"전 동료 호감도 +10" },
+  { id:"companion_story_all",cat:"왕국", icon:"🌈", title:"모두의 이야기",      desc:"모든 동료의 개인 사연을 해결하라",     cond: p => ["tanker","archer","mage_party","healer"].every(k => p.companionStory?.[k]?.done), reward:"전 동료 호감도 +10" },
   { id:"title_guardian",    cat:"왕국", icon:"🛡",  title:"왕국의 수호자",      desc:"왕국의 수호자 칭호를 받아라",         cond: p => !!p.guardianTitle, reward:"방어력 +10" },
   { id:"title_chancellor",  cat:"왕국", icon:"⚜",  title:"재상",               desc:"진엔딩에서 재상 칭호를 받아라",       cond: p => !!p.chancellorTitle, reward:"공격력 +10, 방어력 +10" },
   { id:"sacheonwang_all",   cat:"왕국", icon:"👑",  title:"진짜 사천왕 토벌자",  desc:"사천왕 진짜 본체 넷을 모두 쓰러뜨려라", cond: p => ["lavaCanyon","sunkenWreck","corruptedGrove","royalDungeon"].every(id => p.regions?.[id]?.completed), reward:"공격력 +20, HP +150" },

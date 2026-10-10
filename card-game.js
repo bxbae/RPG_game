@@ -32,7 +32,6 @@ const CARD_GAME_PORTRAITS = {
   tanker:     "images/portrait_tanker.png",
   mage_party: "images/portrait_magician.png",
   archer:     "images/portrait_archer.png",
-  dealer:     "images/portrait_Knight.png",
 };
 
 // ── 카드 게임 엔진 (순수 로직, DOM 의존 없음) ──────────

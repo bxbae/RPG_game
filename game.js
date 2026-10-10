@@ -148,7 +148,6 @@ class Game {
       tanker:     "images/portrait_tanker.png",
       mage_party: "images/portrait_magician.png",
       archer:     "images/portrait_archer.png",
-      dealer:     "images/portrait_Knight.png",
     };
     const imgTag = (src, size=60) =>
       `<img src="${src}" style="width:${size}px;height:${size}px;object-fit:contain;border:1px solid #4a2e38;border-radius:2px;flex-shrink:0;" onerror="this.style.display='none'"/>`;
@@ -544,7 +543,7 @@ class Game {
   // 없으면 지역 재난의 원인만 간단히 알려주는 일반 버전으로 진행한다.
   static GENERAL_TO_COMPANION = {
     general_gramos:   "tanker",
-    general_barkan:   "dealer",
+    general_barkan:   "tanker",
     general_lilith:   "archer",
     general_belzeron: "mage_party",
   };
@@ -1301,12 +1300,12 @@ class Game {
       };
 
       const reactionMap = {
-        tanker: "ending_companion_tanker", dealer: "ending_companion_dealer",
+        tanker: "ending_companion_tanker",
         archer: "ending_companion_archer", mage_party: "ending_companion_mage",
         healer: "ending_companion_healer",
       };
       const careerMap = {
-        tanker: "ending_career_tanker", dealer: "ending_career_dealer",
+        tanker: "ending_career_tanker",
         archer: "ending_career_archer", mage_party: "ending_career_mage",
         healer: "ending_career_healer",
       };
@@ -1461,8 +1460,7 @@ class Game {
           <div class="ec-line"><b>${p?.name || "용사"}</b> <span>— ${protagonistTitle}</span></div>
 
           <div class="ec-section-title">함께한 동료들</div>
-          <div class="ec-line"><b>카인</b> <span>— 광산도시 길드장</span></div>
-          <div class="ec-line"><b>카르나</b> <span>— 왕국 기사단 재건</span></div>
+          <div class="ec-line"><b>카인</b> <span>— 광산도시 길드장 · 왕국 기사단 재건</span></div>
           <div class="ec-line"><b>아리아</b> <span>— 인간-엘프 외교관</span></div>
           <div class="ec-line"><b>엘린</b> <span>— 왕립 마도원장</span></div>
           <div class="ec-line"><b>리온</b> <span>— 왕립 대치유사</span></div>
@@ -1868,7 +1866,7 @@ class Game {
   grantPartyAffinity(amount) {
     const p = this.player;
     if (!p || !p.party || !amount || amount <= 0) return 0;
-    if (!p.affinity) p.affinity = { archer:0, healer:0, tanker:0, dealer:0, mage_party:0 };
+    if (!p.affinity) p.affinity = { archer:0, healer:0, tanker:0, mage_party:0 };
     if (!p.partyEvents) p.partyEvents = { affinity25:false, affinity50:false, affinity75:false, affinity100:false };
 
     const before = p.affinity[p.party] || 0;

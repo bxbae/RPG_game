@@ -263,7 +263,6 @@ const COMP_WALK_FRAMES = {
   tanker:     ["images/SD_Tanker_walk_1.png",   "images/SD_Tanker_walk_2.png",   "images/SD_Tanker_walk_3.png"],
   mage_party: ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
   archer:     ["images/sd_archer_walk_1.png",   "images/sd_archer_walk_2.png",   "images/sd_archer_walk_3.png"],
-  dealer:     ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
 };
 
 class DungeonScene {

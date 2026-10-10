@@ -162,7 +162,6 @@ class BattleManager {
     const party3Active = p.party3 && p.party3Hp > 0 && dt === "abyss";
 
     if (partyActive) dmg += p.partyAttack;
-    if (partyActive && p.party === "dealer") dmg = Math.floor(dmg * 1.2);
     if (partyActive && p.party === "healer") {
       p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + 15);
       game.log("✨ 힐러 회복 +15");
@@ -174,9 +173,7 @@ class BattleManager {
 
     const critChance = p.skills.criticalBoost * 5 + p.setBonus.crit
       + (partyActive && p.party === "archer" ? 15 : 0)
-      + ((p.passiveSkills?.eagle_eye || 0) ? [0,8,16,26][p.passiveSkills.eagle_eye] : 0)
-      // "기사의 책무" — 카르나(딜러) 개인 스토리 보상. 파티 슬롯과 무관하게 적용.
-      + ((p.party === "dealer" || p.party2 === "dealer") && p.companionPassives?.dealer ? 15 : 0);
+      + ((p.passiveSkills?.eagle_eye || 0) ? [0,8,16,26][p.passiveSkills.eagle_eye] : 0);
     const isCrit = Math.random() * 100 < critChance;
     if (isCrit) {
       const manaSurgeLv = p.passiveSkills?.mana_surge || 0;
@@ -187,12 +184,6 @@ class BattleManager {
     if (partyActive && p.party === "healer" && Math.random() < 0.15) {
       p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + 80);
       game.log("✨ 대치유!");
-    }
-    // [BALANCE 05] dealer 암살: 15%→10%, dmg 2배 대신 totalAttack 추가 피해 (중복 배율 제거)
-    if (partyActive && p.party === "dealer" && Math.random() < 0.10) {
-      const assassinBonus = p.totalAttack;
-      m.hp -= assassinBonus;
-      game.log(`⚔ 암살! +${assassinBonus}`);
     }
     if (partyActive && p.party === "archer"     && Math.random() < 0.15) { m.hp -= dmg; game.log("🏹 관통사격!"); }
     if (partyActive && p.party === "mage_party" && Math.random() < 0.15) { const ex = 80 + p.level * 3; m.hp -= ex; game.log(`☄ 메테오! ${ex}`); }
@@ -357,12 +348,6 @@ class BattleManager {
         this._emit("damage", { amount: dmg, target: "monster" });
         game.log(hasStoryReward ? `🔮 금단의 비전! ${dmg}` : `☄ 아포칼립스! ${dmg}`); break;
       }
-      case "dealer": {
-        const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
-        m.hp -= dmg;
-        this._emit("damage", { amount: dmg, target: "monster" });
-        game.log(`⚔ 그림자 참격! ${dmg}`); break;
-      }
     }
     p.cooldowns.partyUltimate = 8;
     if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
@@ -423,12 +408,6 @@ class BattleManager {
         this._emit("damage", { amount: dmg, target: "monster" });
         game.log(hasStoryReward ? `🔮 금단의 비전! ${dmg}` : `☄ 아포칼립스! ${dmg}`); break;
       }
-      case "dealer": {
-        const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
-        m.hp -= dmg;
-        this._emit("damage", { amount: dmg, target: "monster" });
-        game.log(`⚔ 그림자 참격! ${dmg}`); break;
-      }
     }
     p.cooldowns.party2Ultimate = 8;
     if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
@@ -488,12 +467,6 @@ class BattleManager {
         m.hp -= dmg;
         this._emit("damage", { amount: dmg, target: "monster" });
         game.log(hasStoryReward ? `🔮 금단의 비전! ${dmg}` : `☄ 아포칼립스! ${dmg}`); break;
-      }
-      case "dealer": {
-        const dmg = Math.floor(m.maxHp * (ex ? 0.6 : 0.35));
-        m.hp -= dmg;
-        this._emit("damage", { amount: dmg, target: "monster" });
-        game.log(`⚔ 그림자 참격! ${dmg}`); break;
       }
     }
     p.cooldowns.party3Ultimate = 8;
@@ -707,9 +680,6 @@ class BattleManager {
           tanker:
             "카인: \"흥, 꽤 하는군. 이 정도면 내 등을 맡겨도 되겠어.\"\n" +
             "\"…그게 내 방식의 칭찬이다. 오해하지 마라.\"",
-          dealer:
-            "카르나: \"아직 경계를 완전히 풀 순 없지만… 나쁘지 않은 동료야.\"\n" +
-            "\"그림자에서 사는 나한테 이런 감정은 처음이라, 좀 당황스럽군.\"",
           mage_party:
             "엘린: \"이상해요. 당신 곁에 있으면 마법이 더 잘 풀리는 것 같아요.\"\n" +
             "\"마나의 흐름이 공명하는 걸까요? 아니면… 다른 이유일까요?\"",

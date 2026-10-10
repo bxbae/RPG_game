@@ -315,7 +315,6 @@ const REGION_FESTIVAL = {
   harborTown: {
     // 배들이 돌아오고 아이들이 기뻐하는 장면 (town-scene.js NPC_DATA)
     introNpcId: "harbor_master_festival_intro",
-    companionKey: "dealer",
     outroNpcId: "harbor_festival_outro",
     // 이 장면 마지막에 항해 허가증을 인벤토리에 지급 (스토리용 — 실제 잠금 효과 없음)
     itemReward: { name: "항해 허가증", type: "key", class: "rare", desc: "항구도시 재건을 도운 증표. 어디든 배를 타고 나갈 수 있다는 항구장의 허락이 담겨 있다." },
@@ -370,16 +369,6 @@ const COMPANION_STORY = {
     reward: { type:"passive", id:"tanker_guard_pulse",
       name:"수호의 맥동", desc:"전투 시작 후 3턴 동안 받는 피해 30% 감소",
       icon:"🛡" },
-  },
-  dealer: {
-    partyKey: "dealer", companionName: "카르나",
-    regionId: "harborTown",
-    affinityRequired: 75,
-    conflictNpcId:  "dealer_story_conflict",   // 옛 부하 생존자 발견 + 배신자의 진실
-    resolutionNpcId:"dealer_story_resolution", // 해적 선장 처치 후
-    reward: { type:"passive", id:"dealer_redemption",
-      name:"기사의 책무", desc:"전투 중 치명타율 +15%",
-      icon:"⚔" },
   },
   archer: {
     partyKey: "archer", companionName: "아리아",

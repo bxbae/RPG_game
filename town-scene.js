@@ -1525,7 +1525,6 @@ class TownScene {
       tanker:     "images/portrait_tanker.png",
       mage_party: "images/portrait_magician.png",
       archer:     "images/portrait_archer.png",
-      dealer:     "images/portrait_Knight.png",
     };
 
     cards.innerHTML = "";
@@ -1756,7 +1755,6 @@ TownScene.prototype._renderSaveSlots = function(mode) {
     tanker:     "images/portrait_tanker.png",
     mage_party: "images/portrait_magician.png",
     archer:     "images/portrait_archer.png",
-    dealer:     "images/portrait_Knight.png",
   };
 
   const imgTag = (src, size=60) =>
@@ -2373,8 +2371,6 @@ const NPC_DATA = {
   // ── 동료 후일담 (네메시스 승리 직후, 파티에 있을 때만) ──
   ending_companion_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
     dialogues:["...해냈군. 이제 돌아가서, 광산도시 사람들한테 자랑 좀 해야겠어. 더는 그 무게에 짓눌리지 않을 거야. 🛡"]},
-  ending_companion_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["기사로서 끝까지 책임을 다했군. 이제야 검을 내려놓고 발 뻗고 잘 수 있겠어. ⚔"]},
   ending_companion_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["드디어 끝났네요... 숲으로 돌아가면, 장로님께 가장 먼저 이 소식을 전해드려야겠어요. 🏹"]},
   ending_companion_mage:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
@@ -2384,9 +2380,7 @@ const NPC_DATA = {
 
   // ── 동료 후일담 — 직업·직함 (위 한마디 반응 다음에 이어짐, 파티에 있을 때만) ──
   ending_career_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
-    dialogues:["그러고 보니... 광산도시에서 길드장 자리를 맡아달라고 하더군. 다시는 누구도 잃지 않도록, 이번엔 내가 직접 지켜볼 생각이야. 🛡⛏"]},
-  ending_career_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["왕실에서 기사단 재건을 맡아달라고 부탁해왔어. 이번엔... 제대로 된 기사단을 만들어 보이겠어. ⚔👑"]},
+    dialogues:["그러고 보니... 광산도시에서 길드장 자리를 맡아달라고 하더군. 다시는 누구도 잃지 않도록, 이번엔 내가 직접 지켜볼 생각이야. 왕실에서는 기사단 재건도 맡아달라더군... 이번엔 제대로 된 기사단을 만들어 보이겠어. 🛡⛏👑"]},
   ending_career_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["장로님과 왕실, 양쪽에서 부탁하셨어요. 엘프와 인간 사이를 잇는 외교관이 되어달라고요. 기쁘게 받아들였어요. 🏹🕊"]},
   ending_career_mage:{name:"엘린",nameColor:"#cc88ff",portrait:"images/sd_magician.png",
@@ -2517,21 +2511,6 @@ const NPC_DATA = {
       "저도 한 번 더 말씀드릴게요. 함께해줘서, 정말 고마워요. 🏹💚",
     ]},
 
-  // ── 카르나(딜러/기사) — 항구도시: 기사단 해체, 배신의 진실 ──
-  dealer_story_conflict:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:[
-      "...저 사람, 낯이 익은데. 설마, 그때 기사단에 있던...",
-      "오래전에 해적 토벌에 나섰다가 실패해서 기사단이 해체됐어. 그때 살아남은 동료가 또 있을 줄은 몰랐군.",
-      "그 작전, 사실은 누군가 정보를 흘려서 실패한 거였어. 나는 그게 누군지... 짐작은 하고 있었지만 증거가 없었지.",
-      "이번엔 다를 거야. 배신자가 누군지, 끝까지 확인하고야 말겠어.",
-    ]},
-  dealer_story_resolution:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:[
-      "...해적 선장을 처치하고서야 알았어. 배신자가 누구였는지, 전부 다.",
-      "오래 묵혀둔 의심이 풀리니까, 오히려 마음이 가벼워지는군.",
-      "이제야... 기사로서의 책임을 다한 것 같아.",
-      "다시 검을 든 의미를 찾은 기분이야. 앞으로도 잘 부탁한다. ⚔",
-    ]},
 
   // ── 아리아(궁수) — 깊은 숲: 인간에게 가족을 잃은 과거 ──
   archer_story_conflict:{name:"엘프 장로 실라",nameColor:"#6cd0a0",portrait:"images/Cilla the Elder Elf.png",
@@ -2611,12 +2590,12 @@ const NPC_DATA = {
     ]},
 
   // ── 바르칸(항구도시) ──
-  general_barkan_defeat_with_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
+  general_barkan_defeat_with_tanker:{name:"카인",nameColor:"#ffaa44",portrait:"images/portrait_tanker.png",
     dialogues:[
       "...바르칸. 이 자가 뒤에서 해적단을 조종하고 있었다니.",
-      "그렇다면 그때 기사단을 무너뜨린 배신, 그 정보가 새어나간 것도... 이 자의 짓이었을 가능성이 커.",
-      "오랜 의심이 이제야 풀리는군. 우리 기사단의 실패도, 항구도시의 약탈도, 전부 같은 곳에서 시작된 거였어.",
-      "이걸로 확실해졌다. 더는 옛일에 휘둘리지 않겠어.",
+      "내가 몸담았던 기사단이 무너진 것도, 정보가 새어나간 것도... 이 자의 짓이었을 가능성이 커.",
+      "기사단을 잃고 광부로 살아온 세월이 전부 같은 곳에서 시작된 거였군.",
+      "이걸로 확실해졌다. 더는 옛일에 휘둘리지 않겠어. 🛡",
     ]},
   general_barkan_defeat_generic:{name:"용사",nameColor:"#d8c8b0",portrait:"images/Hero.png",
     dialogues:[
@@ -2686,12 +2665,6 @@ const NPC_DATA = {
       "더 이상 지켜만 볼 수 없어요. 마왕을 직접 끝내야 해요.",
       "제 화살이 닿지 않는 곳은 없어요. 당신 뒤를 맡길게요. 🏹",
     ]},
-  join_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:[
-      "하하! 마침 나도 마왕한테 한 방 먹여주고 싶었거든? 타이밍 딱 맞네.",
-      "뭐, 실력은 내가 더 좋을 수도 있어. 근데 혼자 가기엔 심연이 너무 깊어.",
-      "자, 이제부터 우리 팀이야. 후회는 시키지 않을게! ⚔",
-    ]},
 
   // ── 레벨업 동료 반응 대사 ─────────────────────────
 
@@ -2704,8 +2677,6 @@ const NPC_DATA = {
     dialogues:["오오! Lv.5 달성! 성장 속도가 제 예측치를 웃돌고 있어요! 🔮","이 추세라면 마왕 토벌도 충분히 가능해요!"]},
   levelup_5_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["...Lv.5. 예상보다 빠르네요. 🏹","당신이라면 믿을 수 있을 것 같아요."]},
-  levelup_5_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["오, Lv.5! 제법인데? 아직 나한테는 멀었지만. ⚔","하하, 농담이야. 좋은 출발이야!"]},
 
   // Lv.10 ─────
   levelup_10_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
@@ -2716,8 +2687,6 @@ const NPC_DATA = {
     dialogues:["Lv.10 달성! 이제 진짜 모험가라고 할 수 있겠어요! 🔮","마력 수치도 눈에 띄게 올랐어요. 제 분석이 맞았어요!"]},
   levelup_10_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["Lv.10. 이제 어지간한 몬스터들은 상대가 되지 않겠군요. 🏹","조금씩 당신을 믿게 되고 있어요."]},
-  levelup_10_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["Lv.10이라고! 이야, 꽤 하는데? ⚔","인정해줄게. 이 정도면 같이 다닐 만해!"]},
 
   // Lv.15 ─────
   levelup_15_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
@@ -2728,8 +2697,6 @@ const NPC_DATA = {
     dialogues:["Lv.15! 이제 고급 마법 공략도 함께 쓸 수 있겠어요! 🔮","마왕의 약점 분석도 거의 완성됐어요. 조금만 더요!"]},
   levelup_15_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["Lv.15. 이제 심연 입구까지는 충분히 싸울 수 있어요. 🏹","...같이 여기까지 온 게, 사실 외롭지 않았어요."]},
-  levelup_15_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["오오, Lv.15! 이 정도면 나랑 어깨를 나란히 할 만하잖아? ⚔","농담이 아니야. 진짜로 실력이 붙었어. 인정!"]},
 
   // Lv.20 ─────
   levelup_20_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
@@ -2740,8 +2707,6 @@ const NPC_DATA = {
     dialogues:["Lv.20 달성!! 공략 퀘스트 조건 충족이에요! 드디어예요! 🔮🎉","마왕 약점 분석 완료, 전략 준비 완료! 이제 심연에 갑시다!"]},
   levelup_20_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["Lv.20. 이걸 기다리고 있었어요. 🏹","이제 마왕을 끝낼 준비가 됐어요. 같이 가요."]},
-  levelup_20_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["Lv.20! 드디어야! 이제 마왕이랑 제대로 붙어볼 수 있겠어! ⚔","솔직히 여기까지 같이 올 줄 몰랐어. 잘했어, 진짜로."]},
 
   // Lv.25 ─────
   levelup_25_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
@@ -2752,8 +2717,6 @@ const NPC_DATA = {
     dialogues:["Lv.25! 이 정도 성장이면 마왕에게도 충분히 유효한 데미지를 줄 수 있어요! 🔮","마지막 전략 점검 완료. 이제 마왕만 남았어요!"]},
   levelup_25_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["Lv.25. ...당신 덕분에 이 숲도, 나도 달라졌어요. 🏹","마지막까지 함께할게요."]},
-  levelup_25_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["Lv.25! 이야! 거의 내 수준이잖아? ⚔","하하, 농담이야. 근데 진짜로 강해졌어. 마왕, 각오해라!"]},
 
   // MAX ─────
   levelup_max_healer:{name:"리온",nameColor:"#88ccff",portrait:"images/portrait_healer.png",
@@ -2764,8 +2727,6 @@ const NPC_DATA = {
     dialogues:["최고 레벨 달성!!! 제 연구 역사상 가장 위대한 순간이에요!!! 🔮🎉","마왕의 완전 공략 데이터 준비 완료! 이제 우리가 역사를 만들어요!"]},
   levelup_max_archer:{name:"아리아",nameColor:"#88ee88",portrait:"images/portrait_archer.png",
     dialogues:["최고 레벨... 당신은 제가 본 가장 강한 사람이에요. 🏹","마지막 화살, 마왕의 심장을 향해 쏠게요."]},
-  levelup_max_dealer:{name:"카르나",nameColor:"#ffdd66",portrait:"images/portrait_Knight.png",
-    dialogues:["최고 레벨 달성!! 야, 너 진짜 미쳤다! ⚔","인정! 이제 진짜 최강 파티야. 마왕, 우리가 간다!!!"]},
 
   // ══ 퀘스트 수락 대화 ══════════════════════════════
 
@@ -3072,13 +3033,11 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
     tanker:                        "images/SD_Tanker.png",
     mage_party:                    "images/sd_magician.png",
     archer:                        "images/sd_archer.png",
-    dealer:                        "images/sd_knight.png",
     // 합류 대화용
     join_healer:     "images/sd_healer.png",
     join_tanker:     "images/SD_Tanker.png",
     join_mage_party: "images/sd_magician.png",
     join_archer:     "images/sd_archer.png",
-    join_dealer:     "images/sd_knight.png",
     // 레벨업 반응용
     levelup_5_healer:      "images/sd_healer.png",
     levelup_10_healer:     "images/sd_healer.png",
@@ -3104,12 +3063,6 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
     levelup_20_archer:     "images/sd_archer.png",
     levelup_25_archer:     "images/sd_archer.png",
     levelup_max_archer:    "images/sd_archer.png",
-    levelup_5_dealer:      "images/sd_knight.png",
-    levelup_10_dealer:     "images/sd_knight.png",
-    levelup_15_dealer:     "images/sd_knight.png",
-    levelup_20_dealer:     "images/sd_knight.png",
-    levelup_25_dealer:     "images/sd_knight.png",
-    levelup_max_dealer:    "images/sd_knight.png",
     // 퀘스트 의뢰인
     qaccept_q_slime:      "images/sd_merchant.png",
     qaccept_q_goblin:     "images/Marta a village resident.png",
@@ -3483,14 +3436,12 @@ TownScene.prototype._renderTownCharacters = function() {
     tanker:     "images/SD_Tanker.png",
     mage_party: "images/sd_magician.png",
     archer:     "images/sd_archer.png",
-    dealer:     "images/sd_knight.png",
   };
   const COMP_FALLBACK = {
     healer:     "images/sd_healer_walk_1.png",
     tanker:     "images/SD_Tanker_walk_1.png",
     mage_party: "images/sd_magician_walk_1.png",
     archer:     "images/sd_archer_walk_1.png",
-    dealer:     "images/sd_knight_walk_1.png",
   };
 
   // CSS 애니메이션 (최초 1회 주입)

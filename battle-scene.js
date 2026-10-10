@@ -20,7 +20,6 @@ const COMPANION_BACK = {
   healer:     "images/sd_healer.png",
   tanker:     "images/SD_Tanker.png",
   warrior:    "images/SD_Tanker.png",    // 하위호환
-  dealer:     "images/sd_knight.png",
   mage_party: "images/sd_magician.png",
   archer:     "images/sd_archer.png",
 };
@@ -31,7 +30,6 @@ const COMPANION_ATTACK = {
   warrior:    ["images/SD_Tanker_attack_1.png",   "images/SD_Tanker_attack_2.png"],
   mage_party: ["images/sd_magician_attack_1.png", "images/sd_magician_attack_2.png"],
   archer:     ["images/sd_archer_attack_1.png",   "images/sd_archer_attack_2.png"],
-  dealer:     ["images/sd_knight_attack_1.png",   "images/sd_knight_attack_2.png"],
 };
 
 // ─── 주인공 컷인 이미지 ──────────────────────────────
@@ -72,7 +70,6 @@ const CUTIN_PARTY = {
   warrior:    "images/SD_Tanker_attack_2.png",   // 하위호환
   mage_party: "images/sd_magician_attack_1.png",
   archer:     "images/sd_archer_attack_1.png",
-  dealer:     "images/sd_knight_attack_1.png",
 };
 const CUTIN_PARTY_TITLE = {
   healer:     "✨ 천상의 기적",
@@ -80,7 +77,6 @@ const CUTIN_PARTY_TITLE = {
   warrior:    "🛡 절대 수호",   // 하위호환
   mage_party: "☄ 아포칼립스",
   archer:     "🏹 폭풍 사격",
-  dealer:     "⚔ 그림자 참격",
 };
 
 // ─── 궁극기 영상 (videos/ 폴더 MP4) ─────────────────
@@ -100,7 +96,6 @@ const ULTIMATE_PARTY_VIDEOS = {
   warrior:    "videos/tanker_ultimate.mp4",  // 하위호환
   mage_party: "videos/magician_ultimate.mp4",
   archer:     "videos/archer_ultimate.mp4",
-  dealer:     "videos/knight_ultimate.mp4",
 };
 
 // ─── 궁극기 2단계: 풀화면 드라마틱 컷신 ─────────────
@@ -122,7 +117,6 @@ const CUTIN_PARTY_FULLSCREEN = {
   warrior:    "images/tanker_skill_cut.png",          // 하위호환
   mage_party: "images/magician_skill_cut.png",
   archer:     "images/Elf_Archer_skill_cut.png",
-  dealer:     "images/Night_skill_cut.png",
 };
 
 class BattleScene {
