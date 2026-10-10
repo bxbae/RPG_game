@@ -93,7 +93,7 @@ button { font-family:inherit; }
 }
 .dungeon-canvas-wrap.bump { animation:wallBump .15s ease; }
 @keyframes wallBump { 0%,100%{transform:none;} 50%{transform:translate(4px,0);} }
-#dungeonCanvas { display:block; image-rendering:pixelated; max-width:92%; max-height:92%; border:2px solid var(--border); background:#060304; }
+#dungeonCanvas { display:block; width:100%; height:100%; object-fit:contain; image-rendering:auto; background:transparent; }
 .dungeon-right-panel {
   width:220px; flex-shrink:0; background:rgba(20,14,18,.82);
   border-left:1px solid var(--border); padding:12px; overflow-y:auto;

@@ -3169,7 +3169,7 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
   }
   const textEl=document.getElementById("npcText"),progEl=document.getElementById("npcProg"),hintEl=document.getElementById("npcHint");
   const lastLine=()=>lineIdx>=npc.dialogues.length-1;
-  const updateUI=()=>{progEl.textContent=`${lineIdx+1}/${npc.dialogues.length}`;hintEl.textContent=lastLine()?"":"▼ 클릭하여 계속";document.getElementById("npcClose").textContent=lastLine()?"✕ 닫기 [Enter]":"✕ 닫기";};
+  const updateUI=()=>{if(!box.isConnected){clearTimeout(typeTimer);return;}progEl.textContent=`${lineIdx+1}/${npc.dialogues.length}`;hintEl.textContent=lastLine()?"":"▼ 클릭하여 계속";const closeBtn=box.querySelector("#npcClose");if(closeBtn)closeBtn.textContent=lastLine()?"✕ 닫기 [Enter]":"✕ 닫기";};
   const typeLine=()=>{clearTimeout(typeTimer);charIdx=0;hintEl.textContent="";textEl.textContent="";updateUI();const line=npc.dialogues[lineIdx]||"";const tick=()=>{if(charIdx<line.length){textEl.textContent+=line[charIdx++];typeTimer=setTimeout(tick,26);}else {
       updateUI();
       // 공략 퀘스트 언급 시 버튼 반짝이기

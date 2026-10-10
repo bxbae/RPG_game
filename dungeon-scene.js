@@ -305,6 +305,7 @@ class DungeonScene {
     this.playerY = this.mapData.startY;
 
     this.revealed.clear();
+    this._trail = [];
     this._revealAround(this.playerX, this.playerY, 4);
     this._centerCamera();
 
@@ -335,7 +336,9 @@ class DungeonScene {
     const cfg = regionId ? rm?.getInvestConfig?.(regionId) : null;
 
     if (!cfg) {
-      layout.style.backgroundImage = "none";
+      layout.style.backgroundImage = `linear-gradient(rgba(6,3,10,.6), rgba(6,3,10,.6)), url('${DungeonVisuals.backdropFor(this.dungeonType)}')`;
+      layout.style.backgroundSize = "cover";
+      layout.style.backgroundPosition = "center";
       return;
     }
 
@@ -493,6 +496,8 @@ class DungeonScene {
     }
 
     this.moving = true;
+    (this._trail ||= []).unshift({ x: this.playerX, y: this.playerY });
+    if (this._trail.length > 8) this._trail.length = 8;
     this.playerX = nx;
     this.playerY = ny;
     this._revealAround(nx, ny, 4);
@@ -609,6 +614,7 @@ class DungeonScene {
     this.playerY = this.mapData.startY;
 
     this.revealed.clear();
+    this._trail = [];
     this._revealAround(this.playerX, this.playerY, 4);
     this._centerCamera();
     this._renderMinimap();
@@ -719,103 +725,9 @@ class DungeonScene {
   const cw = this.canvas.width;
   const ch = this.canvas.height;
 
+  // 배경 아트·바닥/벽 텍스처·조명·오브젝트 연출은 dungeon-visuals.js 가 그린다
   ctx.clearRect(0, 0, cw, ch);
-  ctx.fillStyle = "#060304";
-  ctx.fillRect(0, 0, cw, ch);
-
-  // 보이는 타일 범위 계산
-  const startTX = Math.max(0, Math.floor(this.cameraX / ts) - 1);
-  const startTY = Math.max(0, Math.floor(this.cameraY / ts) - 1);
-  const endTX   = Math.min(width  - 1, startTX + Math.ceil(cw / ts) + 2);
-  const endTY   = Math.min(height - 1, startTY + Math.ceil(ch / ts) + 2);
-
-  for (let ty = startTY; ty <= endTY; ty++) {
-    for (let tx = startTX; tx <= endTX; tx++) {
-      const key      = `${tx},${ty}`;
-      const isRevealed = this.revealed.has(key);
-      if (!isRevealed) continue;
-
-      const px = tx * ts - this.cameraX;
-      const py = ty * ts - this.cameraY;
-      const tileType  = map[ty][tx];
-      const colors    = getTileColors(tileType, this.dungeonType);
-      const isVisible = Math.abs(tx - this.playerX) <= 4
-                     && Math.abs(ty - this.playerY) <= 4;
-
-      // ── 타일 배경 ──
-      ctx.globalAlpha = isVisible ? 1.0 : 0.45;
-      ctx.fillStyle   = colors.bg;
-      ctx.fillRect(px, py, ts, ts);
-      ctx.strokeStyle = colors.border;
-      ctx.lineWidth   = 0.5;
-      ctx.strokeRect(px + 0.5, py + 0.5, ts - 1, ts - 1);
-
-      // 바닥 텍스처
-      if (tileType === TILE.FLOOR) {
-        ctx.fillStyle = "rgba(255,255,255,0.03)";
-        ctx.fillRect(px + 2, py + 2, ts - 4, ts - 4);
-      }
-      ctx.globalAlpha = 1;
-
-      // ── 오브젝트 아이콘 ──
-      const obj = objects.get(key);
-      if (obj && obj.type !== TILE.START) {
-        const icon = getTileIcon(obj.type, this.dungeonType) || "";
-        if (icon) {
-          // 시야 내: 선명, 시야 밖 탐색됨: 반투명
-          ctx.globalAlpha = isVisible ? 1.0 : 0.55;
-
-          // 발광 효과
-          if (obj.type === TILE.BOSS) {
-            ctx.shadowColor = "#ff3300";
-            ctx.shadowBlur  = 20;
-          } else if (obj.type === TILE.ENEMY) {
-            ctx.shadowColor = "#ff6600";
-            ctx.shadowBlur  = 14;
-          } else if (obj.type === TILE.CHEST) {
-            ctx.shadowColor = "#ffcc00";
-            ctx.shadowBlur  = 12;
-          } else if (obj.type === TILE.EXIT) {
-            ctx.shadowColor = "#00ffcc";
-            ctx.shadowBlur  = 12;
-          } else if (obj.type === TILE.STAIRS) {
-            ctx.shadowColor = "#4488ff"; // 파란 발광으로 계단 강조
-            ctx.shadowBlur  = 14;
-          } else if (obj.type === TILE.TRAPROOM) {
-            ctx.shadowColor = "#aa44ff"; // 보랏빛 발광으로 함정의 방 강조
-            ctx.shadowBlur  = 16;
-          } else {
-            ctx.shadowBlur = 0;
-          }
-
-          // 아이콘 크기 크게
-          ctx.font         = `${Math.floor(ts * 0.75)}px serif`;
-          ctx.textAlign    = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(icon, px + ts / 2, py + ts / 2);
-          ctx.shadowBlur = 0;
-
-          // 시야 내에서만 라벨 표시
-          if (isVisible && (obj.type === TILE.ENEMY || obj.type === TILE.BOSS)) {
-            ctx.globalAlpha = 1;
-            ctx.font      = `bold ${Math.floor(ts * 0.25)}px sans-serif`;
-            ctx.fillStyle = obj.type === TILE.BOSS ? "#ff4400" : "#ffaa88";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "alphabetic";
-            ctx.fillText(
-              obj.type === TILE.BOSS ? "BOSS" : "적",
-              px + ts / 2,
-              py + ts - 2
-            );
-          }
-
-          ctx.globalAlpha  = 1;
-          ctx.fillStyle    = "#ffffff";
-          ctx.textBaseline = "middle";
-        }
-      }
-    }
-  }
+  DungeonVisuals.render(this, performance.now());
 
   // ── 플레이어 렌더 (PNG 프레임 순환 스프라이트 오버레이) ──
   const ppx = this.playerX * ts - this.cameraX + ts / 2;
@@ -850,24 +762,33 @@ class DungeonScene {
   }
 
   // 캔버스 좌표 → CSS 픽셀 변환
-  const scaleX = (this.canvas.offsetWidth  || this.canvas.width)  / this.canvas.width;
-  const scaleY = (this.canvas.offsetHeight || this.canvas.height) / this.canvas.height;
-  const sprSize = ts * 2.4 * scaleX;
+  // object-fit:contain 으로 캔버스가 레터박스될 수 있으므로 실제 그려진 배율/여백을 계산한다
+  const scaleX = Math.min((this.canvas.offsetWidth || cw) / cw, (this.canvas.offsetHeight || ch) / ch);
+  const scaleY = scaleX;
+  const boxX = this.canvas.offsetLeft + ((this.canvas.offsetWidth  || cw) - cw * scaleX) / 2;
+  const boxY = this.canvas.offsetTop  + ((this.canvas.offsetHeight || ch) - ch * scaleY) / 2;
+  const sprSize = ts * 2.2 * scaleX;
   spr.style.width  = `${sprSize}px`;
   spr.style.height = `${sprSize}px`;
-  spr.style.left   = `${this.canvas.offsetLeft + ppx * scaleX}px`;
-  spr.style.top    = `${this.canvas.offsetTop  + ppy * scaleY}px`;
+  spr.style.left   = `${boxX + ppx * scaleX}px`;
+  spr.style.top    = `${boxY + ppy * scaleY}px`;
 
-  // 동료 스프라이트 (1·2·3번 모두) — 플레이어 주변에 다른 위치로 배치
-  const COMPANION_OFFSETS = [
-    { field: "party",  spriteId: "dungeonCompSprite",  dx: 1.5,  dy: 0   },
-    { field: "party2", spriteId: "dungeonComp2Sprite", dx: -1.5, dy: 0   },
-    { field: "party3", spriteId: "dungeonComp3Sprite", dx: 0,    dy: 1.5 },
+  // 동료 스프라이트 (1·2·3번 모두) — 플레이어가 지나온 길을 뒤따른다
+  const COMPANION_SLOTS = [
+    { field: "party",  spriteId: "dungeonCompSprite"  },
+    { field: "party2", spriteId: "dungeonComp2Sprite" },
+    { field: "party3", spriteId: "dungeonComp3Sprite" },
   ];
-  COMPANION_OFFSETS.forEach(({ field, spriteId, dx, dy }) => {
+  const active = COMPANION_SLOTS.filter(({ field }) => p?.[field] && COMP_WALK_FRAMES[p[field]]);
+  const spots = this._followerTiles(active.length);
+  let ai = 0;
+  COMPANION_SLOTS.forEach(({ field, spriteId }) => {
     const key = p?.[field];
     let cspr = document.getElementById(spriteId);
     if (key && COMP_WALK_FRAMES[key]) {
+      const spot = spots[ai++];
+      const cx = spot.x * ts - this.cameraX + ts / 2;
+      const cy = spot.y * ts - this.cameraY + ts / 2;
       if (!cspr) {
         cspr = document.createElement("img");
         cspr.id = spriteId;
@@ -877,8 +798,8 @@ class DungeonScene {
           "z-index:14",
           "transform:translate(-50%,-62%)",
           "image-rendering:auto",
-          "opacity:0.88",
-          "transition:left .1s linear,top .1s linear",
+          "opacity:0.92",
+          "transition:left .12s linear,top .12s linear",
         ].join(";");
         const cf = COMP_WALK_FRAMES[key];
         if (cf) cspr.src = cf[0];
@@ -886,17 +807,45 @@ class DungeonScene {
       }
       cspr.style.width   = `${sprSize}px`;
       cspr.style.height  = `${sprSize}px`;
-      cspr.style.left    = `${this.canvas.offsetLeft + (ppx + ts * dx) * scaleX}px`;
-      cspr.style.top     = `${this.canvas.offsetTop  + (ppy + ts * dy) * scaleY}px`;
+      cspr.style.left    = `${boxX + cx * scaleX}px`;
+      cspr.style.top     = `${boxY + cy * scaleY}px`;
       cspr.style.display = "block";
+      DungeonVisuals.drawNameTag(ctx, cx, cy + ts * 0.98, (window.PARTY_MEMBERS || {})[key]?.name || "동료", "#cfe6ff", ts);
     } else if (cspr) {
       cspr.style.display = "none";
     }
   });
+  DungeonVisuals.drawNameTag(ctx, ppx, ppy + ts * 0.98, p?.name || "용사", "#ffe9a8", ts);
 }
 
-
-
+  // 동료가 설 타일 — 플레이어가 지나온 칸을 순서대로, 모자라면 주변 빈 바닥으로 채운다
+  _followerTiles(n) {
+    const { map, width, height } = this.mapData;
+    const px = this.playerX, py = this.playerY;
+    const walkable = (x, y) => x >= 0 && y >= 0 && x < width && y < height && map[y][x] !== TILE.WALL;
+    const out = [], used = new Set([`${px},${py}`]);
+    // 1) 지나온 길을 2칸 간격으로 따라온다 (한 칸 간격이면 스프라이트가 서로 겹침)
+    for (let k = 0; k < n; k++) {
+      const t = (this._trail || [])[k * 2 + 1];
+      if (t && !used.has(`${t.x},${t.y}`)) { used.add(`${t.x},${t.y}`); out.push({ x: t.x, y: t.y }); }
+      else break;
+    }
+    // 2) 모자라면 주변 빈 바닥 중 서로·플레이어와 가장 멀리 떨어진 칸을 고른다
+    while (out.length < n) {
+      let best = null, bestScore = -Infinity;
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+        const x = px + dx, y = py + dy;
+        if (used.has(`${x},${y}`) || !walkable(x, y)) continue;
+        const others = [{ x: px, y: py }, ...out];
+        const gap = Math.min(...others.map(o => Math.hypot(o.x - x, o.y - y)));
+        const score = Math.min(gap, 2) * 10 - Math.hypot(dx, dy) - (dy < 0 ? 0.5 : 0);
+        if (score > bestScore) { bestScore = score; best = { x, y }; }
+      }
+      if (!best) best = { x: px, y: py };
+      used.add(`${best.x},${best.y}`); out.push(best);
+    }
+    return out;
+  }
 
   // ── 미니맵 ──────────────────────────────────────
   _renderMinimap() {
