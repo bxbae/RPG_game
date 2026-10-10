@@ -446,7 +446,7 @@ class TownScene {
       "#townMain{flex:1;position:relative;overflow:hidden;}",
       ".town-bg-full{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;filter:brightness(.75);z-index:0;}",
       ".town-bg-grad{position:absolute;bottom:0;left:0;right:0;height:42%;background:linear-gradient(to top,rgba(5,2,10,.92) 0%,transparent 100%);z-index:1;pointer-events:none;}",
-      "#townCharArea{position:fixed;bottom:0;left:0;right:0;z-index:8001;display:flex;align-items:flex-end;justify-content:center;gap:24px;padding:0 60px 160px;pointer-events:none;}",
+      "#townCharArea{position:fixed;bottom:0;left:0;right:0;z-index:8001;display:flex;align-items:flex-end;justify-content:center;gap:24px;padding:0 60px var(--npc-dlg-pad,160px);pointer-events:none;}",
       ".town-char-slot{flex:1;max-width:200px;min-height:200px;display:flex;align-items:flex-end;justify-content:center;position:relative;}",
       ".town-char-slot img{width:100%;object-fit:contain;filter:drop-shadow(0 4px 20px rgba(0,0,0,.8));}",
       "#townHiddenData{display:none!important;}",
@@ -3019,6 +3019,8 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
   if(!npc){ if(onClose) onClose(); return; }  // NPC 데이터 없으면 즉시 콜백(체인 안 끊기게)
   this._hideIdleBubble();
   document.getElementById("npcDialogueBox")?.remove();
+  this._npcDlgRO?.disconnect();
+  document.documentElement.style.removeProperty("--npc-dlg-pad");
 
   // ── NPC 전신 이미지 맵 (슬롯 표시용) ──
   const NPC_BODY = {
@@ -3155,6 +3157,16 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
   const box=document.createElement("div"); box.id="npcDialogueBox";
   box.innerHTML=`<div class="npc-wrap"><div class="npc-namebar" style="color:${npc.nameColor||'#44dd88'}">${npc.name}</div><div class="npc-body"><img class="npc-portrait" src="${npc.portrait}" onerror="this.style.display='none'" alt="${npc.name}"/><div class="npc-textarea"><div class="npc-text" id="npcText"></div></div></div><div class="npc-footer"><span class="npc-progress" id="npcProg"></span><span class="npc-hint" id="npcHint">▼ 클릭하여 계속</span><button class="npc-closebtn" id="npcClose">✕ 닫기</button></div></div>`;
   document.body.appendChild(box);
+  // 대화창 높이만큼 캐릭터 영역을 띄워 캐릭터가 대화창에 가려지지 않게 한다
+  // (대사 길이·화면 크기에 따라 높이가 바뀌므로 ResizeObserver로 계속 따라간다)
+  const syncCharPad = () => {
+    document.documentElement.style.setProperty("--npc-dlg-pad", `${box.offsetHeight + 12}px`);
+  };
+  syncCharPad();
+  if (typeof ResizeObserver !== "undefined") {
+    this._npcDlgRO = new ResizeObserver(syncCharPad);
+    this._npcDlgRO.observe(box);
+  }
   const textEl=document.getElementById("npcText"),progEl=document.getElementById("npcProg"),hintEl=document.getElementById("npcHint");
   const lastLine=()=>lineIdx>=npc.dialogues.length-1;
   const updateUI=()=>{progEl.textContent=`${lineIdx+1}/${npc.dialogues.length}`;hintEl.textContent=lastLine()?"":"▼ 클릭하여 계속";document.getElementById("npcClose").textContent=lastLine()?"✕ 닫기 [Enter]":"✕ 닫기";};
@@ -3195,12 +3207,14 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
     if (_closed) return;
     _closed = true;
     clearTimeout(typeTimer);
+    this._npcDlgRO?.disconnect();
     box.style.transition="opacity .25s";
     box.style.opacity="0";
     const bgEl = document.getElementById("npcDialogueBg");
     if (bgEl) { bgEl.style.opacity = "0"; setTimeout(() => bgEl.remove(), 650); }
     setTimeout(() => {
       box.remove();
+      document.documentElement.style.removeProperty("--npc-dlg-pad");
       // 슬롯 복원
       if (this._renderTownCharacters) this._renderTownCharacters();
       // 대화가 완전히 닫힌 뒤 콜백 실행 — setInterval 폴링 대신 직접 호출
@@ -3449,7 +3463,7 @@ TownScene.prototype._renderTownCharacters = function() {
     const s = document.createElement("style");
     s.id = "townCharCSS";
     s.textContent = `
-      .tc-img { width:100%; max-height:240px; object-fit:contain;
+      .tc-img { width:100%; max-height:max(100px,min(240px,calc(100vh - var(--npc-dlg-pad,160px) - 220px))); object-fit:contain;
         filter:drop-shadow(0 6px 24px rgba(0,0,0,.85));
         animation:tcBob 3s ease-in-out infinite; }
       .tc-img.delay1 { animation-delay:.5s; }
