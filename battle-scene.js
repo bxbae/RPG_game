@@ -138,16 +138,16 @@ class BattleScene {
 <div class="poke-field" id="battleField">
   <img class="battle-bg" id="battleBg" src="images/던전내부이미지1.png" alt="배경"/>
   <div class="poke-enemy-hud">
-    <div class="poke-hud-name" id="bMonsterName">???</div>
+    <div class="poke-hud-head">
+      <span class="poke-hud-name" id="bMonsterName">???</span>
+      <span id="bMonsterAtk" class="poke-atk-badge"></span>
+    </div>
     <div class="poke-hud-row">
       <div class="poke-hp-bar-wrap">
         <div class="poke-hp-label">HP</div>
         <div class="poke-hp-track"><div id="bMonsterHpBar" class="poke-hp-fill enemy-hp"></div></div>
       </div>
-    </div>
-    <div class="poke-hud-sub">
       <span id="bMonsterHpText" class="poke-hp-nums"></span>
-      <span id="bMonsterAtk" class="poke-atk-badge"></span>
     </div>
     <div id="monsterStatusIcons" style="display:flex;gap:3px;margin-top:3px;"></div>
   </div>
@@ -159,61 +159,67 @@ class BattleScene {
   </div>
   <div class="poke-player-hud">
     <div class="poke-player-hud-inner">
-      <div class="poke-hud-name" id="bPlayerName">용사</div>
-      <div class="poke-hud-sub-name">
-        <span id="bPlayerClass">전사</span>
-        <span id="bGold" style="color:var(--gold2);font-size:.6rem;margin-left:6px;">💰 0G</span>
+      <div class="poke-hud-head">
+        <span class="poke-hud-name" id="bPlayerName">용사</span>
+        <span class="poke-hud-sub-name" id="bPlayerClass">전사</span>
+        <span id="bGold" class="poke-gold">💰 0G</span>
       </div>
       <div class="poke-hud-row">
         <div class="poke-hp-bar-wrap">
           <div class="poke-hp-label">HP</div>
           <div class="poke-hp-track"><div id="bPlayerHpBar" class="poke-hp-fill player-hp"></div></div>
         </div>
+        <span class="poke-hp-nums" id="bPlayerHpVal">160/160</span>
       </div>
-      <div class="poke-hp-nums" id="bPlayerHpVal">160/160</div>
-      <div class="poke-hud-row" style="margin-top:4px;">
+      <div class="poke-hud-row">
         <div class="poke-hp-bar-wrap">
-          <div class="poke-hp-label" style="color:var(--gold);">MP</div>
+          <div class="poke-hp-label poke-mp-label">MP</div>
           <div class="poke-hp-track"><div id="bPlayerMpBar" class="poke-hp-fill player-mp"></div></div>
         </div>
+        <span class="poke-hp-nums poke-mp-nums" id="bPlayerMpVal">0%</span>
       </div>
-      <div class="poke-hp-nums" id="bPlayerMpVal" style="color:var(--gold);">0%</div>
     </div>
     <div class="poke-companion-hud" id="bCompanionHud" style="display:none;">
-      <div class="poke-hud-name" id="bCompName">동료</div>
-      <div class="poke-hud-sub-name" id="bCompClass">힐러</div>
+      <div class="poke-hud-head">
+        <span class="poke-hud-name" id="bCompName">동료</span>
+        <span class="poke-hud-sub-name" id="bCompClass">힐러</span>
+        <span class="poke-aff" id="bCompAffinity">❤ 0</span>
+      </div>
       <div class="poke-hud-row">
         <div class="poke-hp-bar-wrap">
           <div class="poke-hp-label">HP</div>
           <div class="poke-hp-track"><div id="bCompHpBar" class="poke-hp-fill companion-hp"></div></div>
         </div>
+        <span class="poke-hp-nums" id="bCompHpVal">90/90</span>
       </div>
-      <div class="poke-hp-nums" id="bCompHpVal">90/90</div>
-      <div id="bCompAffinity" style="color:#ff77aa;font-size:.6rem;text-align:right;margin-top:2px;">❤ 0</div>
     </div>
     <div class="poke-companion-hud" id="bCompanionHud2" style="display:none;">
-      <div class="poke-hud-name" id="bComp2Name">동료2</div>
-      <div class="poke-hud-sub-name" id="bComp2Class">탱커</div>
+      <div class="poke-hud-head">
+        <span class="poke-hud-name" id="bComp2Name">동료2</span>
+        <span class="poke-hud-sub-name" id="bComp2Class">탱커</span>
+        <span class="poke-aff" id="bComp2Affinity">❤ 0</span>
+      </div>
       <div class="poke-hud-row">
         <div class="poke-hp-bar-wrap">
           <div class="poke-hp-label">HP</div>
           <div class="poke-hp-track"><div id="bComp2HpBar" class="poke-hp-fill companion-hp"></div></div>
         </div>
+        <span class="poke-hp-nums" id="bComp2HpVal">90/90</span>
       </div>
-      <div class="poke-hp-nums" id="bComp2HpVal">90/90</div>
-      <div id="bComp2Affinity" style="color:#ff77aa;font-size:.6rem;text-align:right;margin-top:2px;">❤ 0</div>
     </div>
     <div class="poke-companion-hud" id="bCompanionHud3" style="display:none;">
-      <div class="poke-hud-name" id="bComp3Name">동료3</div>
-      <div class="poke-hud-sub-name" id="bComp3Class">궁수</div>
+      <div class="poke-hud-head">
+        <span class="poke-hud-name" id="bComp3Name">동료3</span>
+        <span class="poke-hud-sub-name" id="bComp3Class">궁수</span>
+        <span class="poke-aff" id="bComp3Affinity">❤ 0</span>
+      </div>
       <div class="poke-hud-row">
         <div class="poke-hp-bar-wrap">
           <div class="poke-hp-label">HP</div>
           <div class="poke-hp-track"><div id="bComp3HpBar" class="poke-hp-fill companion-hp"></div></div>
         </div>
+        <span class="poke-hp-nums" id="bComp3HpVal">90/90</span>
       </div>
-      <div class="poke-hp-nums" id="bComp3HpVal">90/90</div>
-      <div id="bComp3Affinity" style="color:#ff77aa;font-size:.6rem;text-align:right;margin-top:2px;">❤ 0</div>
     </div>
   </div>
   <div class="player-level">Lv.<span id="bLevel">1</span></div>
@@ -298,11 +304,13 @@ class BattleScene {
     const g = this.game;
 
     // ⚔ 공격 버튼 — 클릭 즉시 공격 애니메이션 실행 후 battle-manager 호출
-    this.el.btnAttack?.addEventListener("click", () => {
-      this.showAttackFlash(g.player?.type);   // ← 즉시 이미지 교체
-      g.battleManager.attack(g);
+    this.el.btnAttack?.parentElement?.addEventListener("click", () => { this._actionAt = performance.now(); }, true);
+    this.el.btnAttack?.addEventListener("click", () => this._doAttack());
+    this.el.btnHeal    ?.addEventListener("click", () => {
+      if (this._busy(450)) return;
+      this._playHealFx();
+      g.battleManager.heal(g);
     });
-    this.el.btnHeal    ?.addEventListener("click", () => g.battleManager.heal(g));
     this.el.btnJobSkill?.addEventListener("click", () => g.battleManager.jobSkill(g));
     this.el.btnHeroUlt ?.addEventListener("click", () => g.battleManager.heroUltimate(g));
     this.el.btnPartyUlt?.addEventListener("click", () => {
@@ -335,10 +343,28 @@ class BattleScene {
     this._keyHandler = (e) => {
       if ((e.code === "Space" || e.key === " ") && !e.repeat) {
         e.preventDefault();
-        if (g.battleScene === this) g.battleManager.attack(g);
+        if (g.battleScene === this) this._doAttack();
       }
     };
     document.addEventListener("keydown", this._keyHandler);
+  }
+
+  // 연타로 연출이 겹치지 않도록 짧은 입력 잠금 (ms 동안 다음 행동 무시)
+  _busy(ms) {
+    const now = performance.now();
+    if (now < (this._busyUntil || 0)) return true;
+    this._busyUntil = now + ms;
+    return false;
+  }
+
+  // ⚔ 싸운다 — 공격 액션 연출을 먼저 시작하고, 같은 프레임에 전투 로직을 실행한다
+  _doAttack() {
+    const g = this.game;
+    if (this._busy(1150)) return;
+    const type = g.player?.type;
+    this.showAttackFlash(type);
+    this._playAttackAction(type);
+    g.battleManager.attack(g);
   }
 
   // game.js가 호출하는 메인 로그 메서드 — 이것이 없으면 모든 버튼이 오류로 멈춤
@@ -725,13 +751,186 @@ class BattleScene {
   showDamage(amount, target) {
     const field = this.el.field;
     if (!field) return;
-    const n = document.createElement("div");
-    n.className = `damage ${target === "monster" ? "monster-dmg" : "player-dmg"}`;
-    n.innerText = `-${amount}`;
-    field.appendChild(n);
-    if (target === "monster") this._triggerMonsterHit();
-    else this._shakeField();
-    setTimeout(() => n.remove(), 900);
+    const crit = target === "monster" && this._critPending;
+    if (target === "monster") this._critPending = false;
+    // 공격 연출 중이면 타격 순간(몬스터)·반격 순간(플레이어)에 맞춰 숫자를 띄운다
+    const now = performance.now();
+    const at  = target === "monster" ? this._impactAt : this._counterAt;
+    const delay = Math.max(0, (at || 0) - now);
+    // 내가 방금 행동한 직후의 피해(= 몬스터 반격)면, 숫자가 뜨기 직전에 몬스터가 돌진해 온다
+    if (target === "player" && now - (this._actionAt || 0) < 1600) {
+      setTimeout(() => this._enemyStrike(), Math.max(0, delay - 230));
+    }
+    setTimeout(() => this._spawnDamage(amount, target, crit), delay);
+  }
+
+  _spawnDamage(amount, target, crit) {
+    const field = this.el.field;
+    if (!field?.isConnected) return;
+    const fr = field.getBoundingClientRect();
+    const wrap = target === "monster" ? this.el.monsterWrap : this.el.playerWrap;
+    const r = wrap.getBoundingClientRect();
+    const x = r.left - fr.left + r.width * (target === "monster" ? .5 : .55) + (Math.random() - .5) * 40;
+    const y = r.top  - fr.top  + r.height * .28;
+    const n = this._fx(`damage ${target === "monster" ? "monster-dmg" : "player-dmg"}${crit ? " crit" : ""}`, x, y, {}, 1100);
+    n.innerText = `${crit ? "💥" : ""}${amount}`;
+    if (target === "monster") {
+      this._triggerMonsterHit();
+      this._impactBurst(x, r.top - fr.top + r.height * .5, crit);
+      if (crit) this._shakeField();
+    } else {
+      this._enemyStrikeHit();
+    }
+  }
+
+  // 필드 위에 떠다니는 이펙트 요소 생성 (field 기준 좌표)
+  _fx(cls, x, y, css = {}, life = 600) {
+    const d = document.createElement("div");
+    d.className = `fx ${cls}`;
+    d.style.left = `${x}px`; d.style.top = `${y}px`;
+    Object.assign(d.style, css);
+    this.el.field.appendChild(d);
+    setTimeout(() => d.remove(), life);
+    return d;
+  }
+
+  _impactBurst(x, y, big) {
+    const colors = ["#fff4c0", "#ffcf6a", "#ff9040"];
+    this._fx("fx-burst", x, y, { width: big ? "150px" : "100px", height: big ? "150px" : "100px" }, 420);
+    const n = big ? 16 : 9;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, r = (big ? 70 : 48) + Math.random() * 60;
+      const sp = this._fx("fx-spark", x, y, { background: colors[i % 3], color: colors[i % 3] }, 650);
+      sp.animate([
+        { transform: "translate(-50%,-50%) scale(1)", opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r + 14}px)) scale(.15)`, opacity: 0 },
+      ], { duration: 380 + Math.random() * 220, easing: "cubic-bezier(.1,.8,.3,1)", fill: "forwards" });
+    }
+  }
+
+  // ── ⚔ 공격 액션: 돌진 → 투사체/베기 → 타격 ─────────────────
+  // 직업별: 기사·탱커 = 돌진 + X자 베기, 궁수 = 화살, 마법사 = 마력구, 힐러 = 성광
+  _playAttackAction(type) {
+    const field = this.el.field, pw = this.el.playerWrap, mw = this.el.monsterWrap;
+    if (!field || !pw || !mw) return;
+    const fr = field.getBoundingClientRect(), pr = pw.getBoundingClientRect(), mr = mw.getBoundingClientRect();
+    const from = { x: pr.left - fr.left + pr.width * .75, y: pr.top - fr.top + pr.height * .45 };
+    const to   = { x: mr.left - fr.left + mr.width * .5,  y: mr.top - fr.top + mr.height * .55 };
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const kind = type === "archer" ? "arrow" : (type === "mage" || type === "magician") ? "orb" : type === "healer" ? "holy" : "slash";
+    const now = performance.now();
+
+    // 공격 버튼 눌림 → 즉시 반응하는 돌진/반동
+    const lunge = (wrap, frac, dur, delay = 0) => {
+      wrap.style.zIndex = "20";
+      const a = wrap.animate([
+        { transform: "translate(0,0) scale(1)" },
+        { transform: "translate(-22px,2px) scale(.96)", offset: .22 },
+        { transform: `translate(${dx * frac}px,${dy * frac * .6}px) scale(1.12)`, offset: .5 },
+        { transform: `translate(${dx * frac * .85}px,${dy * frac * .5}px) scale(1.08)`, offset: .66 },
+        { transform: "translate(0,0) scale(1)" },
+      ], { duration: dur, delay, easing: "cubic-bezier(.3,.7,.3,1)" });
+      a.onfinish = a.oncancel = () => { wrap.style.zIndex = ""; };
+    };
+    const recoil = (wrap, dur, delay = 0) => wrap.animate([
+      { transform: "translate(0,0)" }, { transform: "translate(-26px,0) scale(.97)", offset: .35 }, { transform: "translate(0,0)" },
+    ], { duration: dur, delay, easing: "ease-out" });
+
+    let impactMs;
+    if (kind === "slash") {
+      lunge(pw, .72, 560);
+      impactMs = 280;
+      setTimeout(() => this._slashFx(to), impactMs - 20);
+    } else {
+      recoil(pw, 380);
+      impactMs = kind === "arrow" ? 300 : kind === "orb" ? 360 : 260;
+      setTimeout(() => this._projectileFx(kind, from, to, impactMs - 60), 60);
+    }
+
+    // 동료들도 한 박자씩 늦게 따라 공격
+    [this.el.compWrap, this.el.compWrap2, this.el.compWrap3].forEach((w, i) => {
+      if (!w || w.style.display === "none") return;
+      lunge(w, .38, 520, 110 + i * 90);
+    });
+
+    this._impactAt  = now + impactMs;
+    this._counterAt = this._impactAt + 520;       // 몬스터 반격은 내 공격이 끝난 뒤
+    this.pulseButton(this.el.btnAttack);
+  }
+
+  _slashFx(to) {
+    this._fx("fx-slash", to.x, to.y, { "--rot": "-38deg" }, 420);
+    setTimeout(() => this._fx("fx-slash", to.x, to.y, { "--rot": "34deg" }, 420), 90);
+  }
+
+  _projectileFx(kind, from, to, flight) {
+    const ang = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI;
+    const p = this._fx(kind === "arrow" ? "fx-arrow" : kind === "orb" ? "fx-orb" : "fx-holy", from.x, from.y, {}, flight + 500);
+    if (kind === "holy") {                          // 성광: 적 머리 위에서 내리꽂는 빛기둥
+      p.style.left = `${to.x}px`; p.style.top = `${to.y - 40}px`;
+      return;
+    }
+    p.animate([
+      { transform: `translate(-50%,-50%) rotate(${ang}deg) scale(.6)`, opacity: .2 },
+      { transform: `translate(calc(-50% + ${(to.x - from.x) * .5}px), calc(-50% + ${(to.y - from.y) * .5}px)) rotate(${ang}deg) scale(1)`, opacity: 1, offset: .5 },
+      { transform: `translate(calc(-50% + ${to.x - from.x}px), calc(-50% + ${to.y - from.y}px)) rotate(${ang}deg) scale(1.1)`, opacity: 1 },
+    ], { duration: flight, easing: "ease-in", fill: "forwards" });
+    setTimeout(() => p.remove(), flight + 30);
+  }
+
+  // 몬스터의 반격 연출: 플레이어 쪽으로 돌진
+  _enemyStrike() {
+    const mw = this.el.monsterWrap, pw = this.el.playerWrap, field = this.el.field;
+    if (!mw?.isConnected || !pw || !field || !(this.game.currentMonster?.hp > 0)) return;
+    const mr = mw.getBoundingClientRect(), pr = pw.getBoundingClientRect();
+    const dx = (pr.left + pr.width * .5) - (mr.left + mr.width * .5);
+    const dy = (pr.top + pr.height * .3) - (mr.top + mr.height * .5);
+    mw.style.zIndex = "20";
+    const a = mw.animate([
+      { transform: "translate(0,0) scale(1)" },
+      { transform: "translate(22px,-6px) scale(.97)", offset: .25 },
+      { transform: `translate(${dx * .45}px,${dy * .45}px) scale(1.12)`, offset: .55 },
+      { transform: "translate(0,0) scale(1)" },
+    ], { duration: 460, easing: "cubic-bezier(.3,.7,.3,1)" });
+    a.onfinish = a.oncancel = () => { mw.style.zIndex = ""; };
+  }
+
+  _enemyStrikeHit() {
+    const pw = this.el.playerWrap, field = this.el.field;
+    if (!pw || !field) return;
+    this._shakeField();
+    pw.animate([
+      { transform: "translateX(0)", filter: "brightness(1)" },
+      { transform: "translateX(-16px)", filter: "brightness(2.2) saturate(.3)", offset: .2 },
+      { transform: "translateX(10px)", offset: .5 },
+      { transform: "translateX(0)", filter: "brightness(1)" },
+    ], { duration: 320 });
+    const hurt = this._fx("fx-hurt", 0, 0, {}, 450);
+    hurt.style.left = "0"; hurt.style.top = "0";
+  }
+
+  // 버튼 눌림 팝 효과
+  pulseButton(btn) {
+    if (!btn) return;
+    btn.classList.remove("pressed"); void btn.offsetWidth; btn.classList.add("pressed");
+    setTimeout(() => btn.classList.remove("pressed"), 220);
+  }
+
+  // 회복: 초록 빛이 올라가는 연출
+  _playHealFx() {
+    const field = this.el.field, pw = this.el.playerWrap;
+    if (!field || !pw) return;
+    const fr = field.getBoundingClientRect(), pr = pw.getBoundingClientRect();
+    const cx = pr.left - fr.left + pr.width * .5, by = pr.top - fr.top + pr.height * .85;
+    for (let i = 0; i < 9; i++) {
+      const sp = this._fx("fx-plus", cx + (Math.random() - .5) * pr.width * .8, by, {}, 1100);
+      sp.textContent = "✚";
+      sp.animate([
+        { transform: "translate(-50%,0) scale(.6)", opacity: 0 },
+        { opacity: 1, offset: .25 },
+        { transform: `translate(-50%,-${pr.height * (.6 + Math.random() * .3)}px) scale(1.1)`, opacity: 0 },
+      ], { duration: 800 + Math.random() * 300, delay: i * 70, easing: "ease-out", fill: "backwards" });
+    }
   }
 
   _triggerMonsterHit() {
@@ -739,6 +938,11 @@ class BattleScene {
     if (!w) return;
     w.classList.remove("hit"); void w.offsetWidth; w.classList.add("hit");
     setTimeout(() => w.classList.remove("hit"), 350);
+    w.animate([                                       // 맞는 순간 뒤로 밀려나는 넉백
+      { transform: "translate(0,0) rotate(0)" },
+      { transform: "translate(18px,-5px) rotate(2.5deg)", offset: .3 },
+      { transform: "translate(0,0) rotate(0)" },
+    ], { duration: 320, easing: "ease-out" });
   }
 
   _shakeField() {
@@ -751,6 +955,7 @@ class BattleScene {
   hitFlash() { this._triggerMonsterHit(); }
 
   showBossWarning(msg) {
+    if (msg === "CRITICAL!") this._critPending = true;   // 이어지는 몬스터 데미지 숫자를 치명타 스타일로
     const el = this.el.bossWarning;
     if (!el) return;
     el.className = "boss-warning";

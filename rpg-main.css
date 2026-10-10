@@ -412,3 +412,121 @@ button { font-family:inherit; }
     -webkit-user-select:none;
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   전투 화면 — 가시성 · 공격 연출 개선
+   (위의 기본 규칙을 덮어쓴다)
+═══════════════════════════════════════════════ */
+/* HUD 카드: 이름·직업·호감도를 한 줄에, HP 바와 수치도 한 줄에 */
+.poke-hud-head { display:flex; align-items:baseline; gap:8px; margin-bottom:6px; min-width:0; }
+.poke-hud-name { font-size:1.15rem; font-weight:800; color:#fff; margin:0; text-shadow:0 1px 3px #000; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.poke-hud-sub-name { font-size:.82rem; color:#cdbfa8; margin:0; white-space:nowrap; }
+.poke-aff, .poke-gold { margin-left:auto; font-size:.88rem; font-weight:700; white-space:nowrap; }
+.poke-aff  { color:#ff8fb8; }
+.poke-gold { color:#ffd76a; }
+.poke-hud-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.poke-hp-bar-wrap { flex:1; min-width:0; display:flex; align-items:center; gap:6px; }
+.poke-hp-label { font-size:.85rem; font-weight:800; width:auto; color:#ff7a7a; }
+.poke-mp-label { color:#e8c060; }
+.poke-hp-track { height:14px; border-radius:8px; background:#120608; border:1px solid rgba(255,255,255,.2); }
+.poke-hp-fill  { border-radius:8px; }
+.poke-hp-nums  { font-size:.95rem; font-weight:700; color:#fff; margin:0; text-align:right; min-width:4.6em; font-variant-numeric:tabular-nums; text-shadow:0 1px 2px #000; }
+.poke-mp-nums  { color:#f4dc98; }
+.poke-atk-badge { margin-left:auto; font-size:.85rem; font-weight:800; padding:1px 8px; color:#ff9a8a; }
+.poke-enemy-hud { min-width:290px; padding:12px 16px 10px; background:rgba(8,4,6,.88); }
+.poke-player-hud { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; width:min(480px,50%); align-items:stretch; }
+.poke-player-hud-inner, .poke-companion-hud { min-width:0; padding:9px 12px 7px; background:rgba(8,4,6,.88); }
+.player-level { left:28px; bottom:250px; font-size:1.3rem; text-shadow:0 1px 4px #000,0 0 10px #000; }
+.player-exp   { left:28px; bottom:224px; font-size:1rem; font-weight:700; color:#ffe08a; text-shadow:0 1px 4px #000,0 0 8px #000; }
+.player-skill { left:28px; bottom:200px; font-size:1rem; font-weight:700; color:#8dffb4; text-shadow:0 1px 4px #000,0 0 8px #000; }
+
+/* 하단 메시지창 + 커맨드: 큰 글씨, 색으로 구분되는 버튼 */
+.poke-bottom { height:196px; background:linear-gradient(#0d0816,#07040c); border-top:3px solid #3a2850; }
+.poke-textbox { padding:14px 22px; font-size:1.2rem; font-weight:600; line-height:1.65; color:#fff; text-shadow:0 1px 3px #000; }
+.poke-textbox-inner { -webkit-line-clamp:4; line-clamp:4; }
+.poke-commands { width:min(580px,54%); grid-template-columns:repeat(3,1fr); grid-template-rows:none; grid-auto-rows:1fr; gap:6px; padding:8px; background:#090510; }
+.poke-cmd { font-size:1.02rem; font-weight:800; line-height:1.2; min-height:48px; padding:6px 10px; justify-content:center; text-align:center; border-radius:8px; border:2px solid #4a3668; background:linear-gradient(#21163a,#120c22); color:#f6eee2; text-shadow:0 1px 2px #000; box-shadow:0 2px 0 #05030a, inset 0 1px 0 rgba(255,255,255,.08); }
+.poke-cmd::before { display:none; }
+.poke-cmd:hover:not(:disabled) { filter:brightness(1.25); border-color:var(--gold2); color:#fff; background:linear-gradient(#2c1e4c,#170f2c); }
+.poke-cmd:active:not(:disabled) { transform:translateY(1px) scale(.97); }
+.poke-cmd.pressed { animation:cmd-pop .22s ease; }
+@keyframes cmd-pop { 0%{transform:scale(1);} 40%{transform:scale(.92);filter:brightness(1.7);} 100%{transform:scale(1);} }
+.poke-cmd:disabled { opacity:.55 !important; color:#b8aec8 !important; filter:saturate(.6); }
+#bAttack   { grid-column:span 2; font-size:1.35rem; letter-spacing:.08em; border-color:#e0583c; background:linear-gradient(#6e221a,#2e0e0b); color:#fff0e4; }
+#bHeal     { border-color:#3fa862; background:linear-gradient(#17402a,#0b2016); color:#d4ffe0; }
+#bJobSkill { border-color:#9b6bff; background:linear-gradient(#34205c,#190f33); color:#eadcff; }
+.hero-ult-cmd { border-color:#4fc3f0 !important; background:linear-gradient(#0e3550,#071a28) !important; color:#c8f0ff !important; font-size:1.02rem !important; }
+.ult-cmd   { border-color:#c8a030; background:linear-gradient(#3e3010,#1e1706); color:#ffe9a8; }
+#bFlee     { border-color:#7a8094; background:linear-gradient(#2a2d38,#14161c); color:#e0e3ee; }
+
+/* 데미지 숫자: 대상 위에서 크게 튀어 오름 (치명타는 더 크고 금색) */
+.damage { z-index:13; font-size:2.6rem; font-weight:900; color:#fff; white-space:nowrap; -webkit-text-stroke:2px #000; paint-order:stroke fill; text-shadow:0 3px 10px rgba(0,0,0,.9); animation:dmg-pop 1.05s cubic-bezier(.2,.8,.3,1) forwards; }
+.damage.monster-dmg, .damage.player-dmg { right:auto; bottom:auto; }
+.damage.monster-dmg { color:#ffe27a; }
+.damage.player-dmg  { color:#ff6a6a; }
+.damage.crit { font-size:3.8rem; color:#ffcf2a; text-shadow:0 0 18px #ff9a00,0 3px 10px rgba(0,0,0,.9); }
+@keyframes dmg-pop {
+  0%   { opacity:0; transform:translate(-50%,-30%) scale(.4); }
+  15%  { opacity:1; transform:translate(-50%,-70%) scale(1.35); }
+  30%  { transform:translate(-50%,-80%) scale(1); }
+  80%  { opacity:1; transform:translate(-50%,-140%) scale(1); }
+  100% { opacity:0; transform:translate(-50%,-170%) scale(.95); }
+}
+
+/* 공격 이펙트 */
+.fx { position:absolute; pointer-events:none; z-index:12; }
+.fx-slash { width:240px; height:16px; border-radius:50%; background:linear-gradient(90deg,transparent,#fff 40%,#ffe9a0 60%,transparent); box-shadow:0 0 20px 6px rgba(255,210,130,.85); animation:fx-slash .34s ease-out forwards; }
+@keyframes fx-slash {
+  0%   { opacity:0; transform:translate(-50%,-50%) rotate(var(--rot)) scaleX(.1); }
+  25%  { opacity:1; transform:translate(-50%,-50%) rotate(var(--rot)) scaleX(1.05); }
+  100% { opacity:0; transform:translate(-50%,-50%) rotate(var(--rot)) scaleX(1.3); }
+}
+.fx-burst { border-radius:50%; background:radial-gradient(circle,rgba(255,255,230,.95) 0%,rgba(255,190,90,.7) 35%,rgba(255,120,40,0) 70%); animation:fx-burst .4s ease-out forwards; }
+@keyframes fx-burst { 0%{opacity:1;transform:translate(-50%,-50%) scale(.2);} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.4);} }
+.fx-spark { width:8px; height:8px; border-radius:50%; box-shadow:0 0 8px 1px currentColor; }
+.fx-arrow { width:96px; height:5px; border-radius:3px; background:linear-gradient(90deg,transparent,#d9ffb0 70%,#fff); box-shadow:0 0 12px 3px rgba(150,255,120,.8); }
+.fx-orb   { width:46px; height:46px; border-radius:50%; background:radial-gradient(circle,#fff 0%,#e6b3ff 35%,#8a3cff 70%,rgba(138,60,255,0) 100%); box-shadow:0 0 26px 10px rgba(170,90,255,.8); }
+.fx-holy  { width:120px; height:380px; background:linear-gradient(180deg,rgba(255,255,220,0),rgba(255,248,190,.9) 60%,rgba(255,255,255,.25)); clip-path:polygon(40% 0,60% 0,100% 100%,0 100%); animation:fx-holy .45s ease-out forwards; }
+@keyframes fx-holy { 0%{opacity:0;transform:translate(-50%,-90%) scaleX(.3);} 35%{opacity:1;} 100%{opacity:0;transform:translate(-50%,-60%) scaleX(1.2);} }
+.fx-hurt  { width:100%; height:100%; z-index:11; background:radial-gradient(ellipse at center,rgba(255,0,0,0) 45%,rgba(255,30,30,.55) 100%); animation:fx-hurt .45s ease-out forwards; }
+@keyframes fx-hurt { 0%{opacity:1;} 100%{opacity:0;} }
+.fx-plus  { color:#7dffa6; font-size:1.6rem; font-weight:900; text-shadow:0 0 10px #2cff7a,0 0 3px #000; }
+
+/* 파티 캐릭터: 네 명이 HUD 카드 왼쪽에 모두 보이도록 폭·간격을 맞춘다 (캐릭터 그림은 좌우 여백이 있어 조금 겹쳐도 무방) */
+.poke-field { --ps:min(17%,190px); }
+.poke-player-sprite-wrap     { width:var(--ps); left:4%; }
+.poke-companion-sprite-wrap  { width:var(--ps); left:calc(4% + var(--ps) * .8); }
+.poke-companion2-sprite-wrap { left:calc(4% + var(--ps) * 1.6); }
+.poke-companion3-sprite-wrap { left:calc(4% + var(--ps) * 2.4); }
+.poke-enemy-sprite-wrap { top:1%; width:min(33%,260px); }
+
+/* 좁은 화면: HUD를 하단에 가로로 눌러 담고, 캐릭터는 그 위로 올린다 */
+@media (max-width:480px) {
+  .poke-enemy-hud { min-width:0; width:60%; top:6px; left:6px; padding:8px 10px 6px; }
+  .poke-hud-name { font-size:1rem; }
+  .poke-hp-label { font-size:.78rem; }
+  .poke-hp-nums  { font-size:.85rem; min-width:4.2em; }
+  .poke-atk-badge { font-size:.78rem; }
+  .poke-player-hud { left:6px; right:6px; bottom:6px; width:auto; gap:5px; }
+  .poke-player-hud-inner, .poke-companion-hud { padding:6px 8px 5px; }
+  .poke-hud-sub-name { display:none; }
+  .poke-hud-row { margin-bottom:3px; gap:5px; }
+  .poke-hp-track { height:11px; }
+  .poke-field { --ps:26%; }
+  .poke-player-sprite-wrap     { left:2%; bottom:176px; }
+  .poke-companion-sprite-wrap  { left:calc(2% + var(--ps) * .85); bottom:176px; }
+  .poke-companion2-sprite-wrap { left:calc(2% + var(--ps) * 1.7); }
+  .poke-companion3-sprite-wrap { left:calc(2% + var(--ps) * 2.55); }
+  .player-level { left:2%; bottom:352px; font-size:1.05rem; }
+  .player-exp   { left:2%; bottom:330px; font-size:.82rem; }
+  .player-skill { left:2%; bottom:312px; font-size:.82rem; }
+  .poke-enemy-sprite-wrap { width:min(46%,230px); right:3%; top:8%; }
+  .poke-bottom { height:auto; min-height:0; }
+  .poke-textbox { min-height:60px; max-height:none; padding:8px 12px; font-size:1rem; border-right:0; border-bottom:3px solid #221428; }
+  .poke-commands { width:100%; height:auto; padding:6px; gap:5px; }
+  .poke-cmd { font-size:.9rem; min-height:46px; padding:4px 6px; }
+  #bAttack { font-size:1.15rem; }
+  .damage { font-size:2rem; }
+  .damage.crit { font-size:2.8rem; }
+}
