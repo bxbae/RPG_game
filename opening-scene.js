@@ -10,7 +10,7 @@
 const OPENING_SCRIPT = [
   {
     id: "darkness_descends",
-    bgImage: "images/Heroes face looming dark god in cathedral.png",
+    bgImage: "images/Heroes_face_looming_dark_god_in_cathedral.png",
     lines: [
       "오래전, 이 땅은 평화로웠다.",
       "그러나 그 평화는 영원하지 않았다.",
@@ -19,7 +19,7 @@ const OPENING_SCRIPT = [
   },
   {
     id: "kingdom_falls",
-    bgImage: "images/Chained in darkness under a tyrants gaze.png",
+    bgImage: "images/Chained_in_darkness_under_a_tyrants_gaze.png",
     lines: [
       "왕은 모습을 감췄고, 근위대는 무너졌다.",
       "광산도시, 항구도시, 깊은 숲... 마왕의 부하들이 왕국 곳곳을 짓밟았다.",

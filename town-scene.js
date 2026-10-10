@@ -3152,7 +3152,7 @@ TownScene.prototype.showNpcDialogue = function(npcId, onClose) {
     mage:     "images/sd_magician_walk_1.png",
     magician: "images/sd_magician_walk_1.png",
     archer:   "images/sd_archer_walk_1.png",
-    tanker:   "images/sd_tanker_walk_1.png",
+    tanker:   "images/SD_Tanker_walk_1.png",
     healer:   "images/sd_healer_walk_1.png",
   };
 
@@ -3471,11 +3471,11 @@ TownScene.prototype._renderTownCharacters = function() {
   const CHAR_FALLBACK = {
     knight:   "images/sd_knight_walk_1.png",
     night:    "images/sd_knight_walk_1.png",
-    warrior:  "images/sd_tanker_walk_1.png",
+    warrior:  "images/SD_Tanker_walk_1.png",
     mage:     "images/sd_magician_walk_1.png",
     magician: "images/sd_magician_walk_1.png",
     archer:   "images/sd_archer_walk_1.png",
-    tanker:   "images/sd_tanker_walk_1.png",
+    tanker:   "images/SD_Tanker_walk_1.png",
     healer:   "images/sd_healer_walk_1.png",
   };
   const COMP_IMG = {
@@ -3487,7 +3487,7 @@ TownScene.prototype._renderTownCharacters = function() {
   };
   const COMP_FALLBACK = {
     healer:     "images/sd_healer_walk_1.png",
-    tanker:     "images/sd_tanker_walk_1.png",
+    tanker:     "images/SD_Tanker_walk_1.png",
     mage_party: "images/sd_magician_walk_1.png",
     archer:     "images/sd_archer_walk_1.png",
     dealer:     "images/sd_knight_walk_1.png",

@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v55";
-const STATIC_CACHE  = "rpg-static-v55";
-const DYNAMIC_CACHE = "rpg-dynamic-v55";
+const CACHE_NAME    = "rpg-v56";
+const STATIC_CACHE  = "rpg-static-v56";
+const DYNAMIC_CACHE = "rpg-dynamic-v56";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -32,7 +32,6 @@ const CORE_FILES = [
 
 // ── 이미지 파일 ──────────────────────────────────────
 const IMAGE_FILES = [
-  "./images/TOWN_MAP.png",
   "./images/Dungeon_Entrance.png",
   "./images/dungeon_interior.png",
   "./images/Dungeon_BOSS_ROOM.png",
@@ -60,7 +59,6 @@ const IMAGE_FILES = [
   "./images/sd_knight_attack_2.png",
   "./images/sd_knight_walk_1.png",
   "./images/sd_knight_walk_2.png",
-  "./images/SD__Magician.png",
   "./images/sd_magician_attack_1.png",
   "./images/sd_magician_attack_2.png",
   "./images/sd_magician_walk_1.png",
@@ -95,7 +93,6 @@ const IMAGE_FILES = [
   "./images/sd_orc.png",
   "./images/sd_orc2.png",
   "./images/sd_guardian.png",
-  "./images/sd_demon.png",
   "./images/sd_abyss_mage.png",
   "./images/sd_Dungeon_Guardian.png",
   "./images/sd_Demon.png",
@@ -107,7 +104,6 @@ const IMAGE_FILES = [
   "./images/portrait_tanker.png",
   "./images/portrait_healer.png",
   "./images/portrait_mage_party.png",
-  "./images/portrait_dealer.png",
 
   // 아이템 아이콘 이미지
   "./images/items/weapon_sword_normal.png",
@@ -131,27 +127,9 @@ const IMAGE_FILES = [
   "./images/items/helmet_normal.png",
   "./images/items/helmet_rare.png",
   "./images/items/helmet_legend.png",
-  "./images/items/helmet_sword_normal.png",
-  "./images/items/helmet_sword_rare.png",
-  "./images/items/helmet_sword_legend.png",
-  "./images/items/helmet_bow_normal.png",
-  "./images/items/helmet_bow_rare.png",
-  "./images/items/helmet_bow_legend.png",
-  "./images/items/helmet_staff_normal.png",
-  "./images/items/helmet_staff_rare.png",
-  "./images/items/helmet_staff_legend.png",
   "./images/items/shield_normal.png",
   "./images/items/shield_rare.png",
   "./images/items/shield_legend.png",
-  "./images/items/shield_round_normal.png",
-  "./images/items/shield_round_rare.png",
-  "./images/items/shield_round_legend.png",
-  "./images/items/shield_kite_normal.png",
-  "./images/items/shield_kite_rare.png",
-  "./images/items/shield_kite_legend.png",
-  "./images/items/shield_wing_normal.png",
-  "./images/items/shield_wing_rare.png",
-  "./images/items/shield_wing_legend.png",
 ];
 
 // ── 사운드 파일 ──────────────────────────────────────

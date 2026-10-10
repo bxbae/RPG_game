@@ -251,16 +251,16 @@ function generateDungeonMap(width = 25, height = 18, floor = 1, isLastFloor = fa
 const WALK_FRAMES = {
   knight:   ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
   night:    ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
-  warrior:  ["images/sd_tanker_walk_1.png",   "images/sd_tanker_walk_2.png",   "images/sd_tanker_walk_3.png"],
+  warrior:  ["images/SD_Tanker_walk_1.png",   "images/SD_Tanker_walk_2.png",   "images/SD_Tanker_walk_3.png"],
   mage:     ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
   magician: ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
   archer:   ["images/sd_archer_walk_1.png",   "images/sd_archer_walk_2.png",   "images/sd_archer_walk_3.png"],
-  tanker:   ["images/sd_tanker_walk_1.png",   "images/sd_tanker_walk_2.png",   "images/sd_tanker_walk_3.png"],
+  tanker:   ["images/SD_Tanker_walk_1.png",   "images/SD_Tanker_walk_2.png",   "images/SD_Tanker_walk_3.png"],
   healer:   ["images/sd_healer_walk_1.png",   "images/sd_healer_walk_2.png",   "images/sd_healer_walk_3.png"],
 };
 const COMP_WALK_FRAMES = {
   healer:     ["images/sd_healer_walk_1.png",   "images/sd_healer_walk_2.png",   "images/sd_healer_walk_3.png"],
-  tanker:     ["images/sd_tanker_walk_1.png",   "images/sd_tanker_walk_2.png",   "images/sd_tanker_walk_3.png"],
+  tanker:     ["images/SD_Tanker_walk_1.png",   "images/SD_Tanker_walk_2.png",   "images/SD_Tanker_walk_3.png"],
   mage_party: ["images/sd_magician_walk_1.png", "images/sd_magician_walk_2.png", "images/sd_magician_walk_3.png"],
   archer:     ["images/sd_archer_walk_1.png",   "images/sd_archer_walk_2.png",   "images/sd_archer_walk_3.png"],
   dealer:     ["images/sd_knight_walk_1.png",   "images/sd_knight_walk_2.png",   "images/sd_knight_walk_3.png"],
