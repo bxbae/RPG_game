@@ -13,7 +13,7 @@ test("키트: 레벨 능력치·동료 수가 지역 규칙을 따른다", () =>
   const env = S.create(1);
   const p = env.buildKit({ cls: "knight", level: 20, zone: "abyss", gear: "auto" });
   assert.equal(p.level, 20);
-  assert.equal(p.maxHp, env.CLASSES.knight.hp + env.Balance.LEVELUP.hp * 19);
+  assert.equal(p.maxHp, env.CLASSES.knight.hp + env.Balance.growth('knight').hp * 19);
   assert.ok(p.party && p.party2 && p.party3);
   assert.equal(env.buildKit({ cls: "knight", level: 5, zone: "outside" }).party, null);
 });
@@ -75,10 +75,10 @@ test("탱커·힐러도 직업 스킬을 쓴다", () => {
   const env = S.create(2);
   oneTurn(env, "tanker", (bm, g, p, m) => {
     p.activeSkills.shieldBash = true; const hp0 = m.hp; bm.jobSkill(g);
-    assert.ok(m.hp < hp0); assert.ok(p.cooldowns.jobSkill > 0); assert.ok(p.guardBuff >= 1);
+    assert.ok(m.hp < hp0); assert.ok(p.cooldowns.jobSkill > 0); assert.equal(p.guardBuff, env.Balance.JOB_SKILL.tankerGuard - 1);   // 반격 한 번이 이미 방어 태세를 소모했다
   });
   oneTurn(env, "healer", (bm, g, p, m) => {
-    p.activeSkills.holyLight = true; p.hp = 50; bm.jobSkill(g);
+    p.activeSkills.holyLight = true; p.hp = 50; m.attack = 0; bm.jobSkill(g);
     assert.ok(p.hp > 50); assert.ok(p.cooldowns.jobSkill > 0);
   });
   oneTurn(env, "tanker", (bm, g, p, m) => { p.activeSkills.shieldBash = false; const hp0 = m.hp; bm.jobSkill(g); assert.equal(m.hp, hp0); });   // 배우지 않았으면 안 나간다
@@ -88,4 +88,13 @@ test("축복 패시브는 회복 스킬을 키운다", () => {
   const env = S.create(2);
   const heal = lv => { let out; oneTurn(env, "healer", (bm, g, p) => { p.passiveSkills = { blessing: lv }; p.hp = 1; bm.heal(g); out = p.hp - 1; }); return out; };
   assert.ok(heal(3) > heal(0));
+});
+
+test("직업 균형: 기준 구역에서 모든 직업이 비슷하게 클리어한다", () => {
+  const env = S.create(9);
+  const rate = c => S.clearRate(env, { cls: c, gear: "auto", level: 30 }, "harbor", 3, 60).clear;
+  const r = Object.fromEntries(["knight", "tanker", "mage", "archer", "healer"].map(c => [c, rate(c)]));
+  for (const c of Object.keys(r)) assert.ok(r[c] >= 0.6, `${c} ${JSON.stringify(r)}`);   // 어느 직업도 못 깨는 구역이 없어야 한다
+  const lo = Math.min(...Object.values(r)), hi = Math.max(...Object.values(r));
+  assert.ok(hi - lo <= 0.4, JSON.stringify(r));
 });

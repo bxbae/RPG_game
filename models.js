@@ -14,7 +14,7 @@ const CLASSES = {
   magician: { name: "마법사", hp: 100, attack: 38, defense: 3,  icon: "🔮", portrait: "images/sd_magician.png" },
   archer:   { name: "궁수",   hp: 120, attack: 30, defense: 5,  icon: "🏹", portrait: "images/sd_archer.png"   },
   tanker:   { name: "탱커",   hp: 200, attack: 22, defense: 15, icon: "🛡", portrait: "images/SD_Tanker.png"   },
-  healer:   { name: "힐러",   hp: 130, attack: 20, defense: 6,  icon: "✝",  portrait: "images/sd_healer.png"   },
+  healer:   { name: "힐러",   hp: 190, attack: 38, defense: 6,  icon: "✝",  portrait: "images/sd_healer.png"   },
 };
 
 // ── 동료 정의 ──────────────────────────────────────
@@ -226,7 +226,7 @@ class Player {
 
   // ── 계산 프로퍼티 ──
   get totalAttack() {
-    let atk = this.baseAttack
+    let atk = Math.floor(this.baseAttack)
       + (this.equipment.weapon?.attack  || 0)
       + (this.equipment.weapon?.enhance || 0)
       + this.skills.attackBoost * 3
@@ -325,9 +325,10 @@ class Player {
       this.exp        -= this.nextExp;
       this.level      += 1;
       this.skillPoints += Balance.LEVELUP.skillPoints;
-      this.maxHp      += Balance.LEVELUP.hp;
+      const gr         = Balance.growth(this.type);
+      this.maxHp      += gr.hp;
       this.hp          = this.maxHp + this.bonusHp;
-      this.baseAttack  += Balance.LEVELUP.atk;
+      this.baseAttack  += gr.atk;
       this.nextExp     = Balance.expToNext(this.level);
       leveledUp        = true;
     }

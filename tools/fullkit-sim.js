@@ -53,6 +53,12 @@ const PASSIVES = {
 };
 PASSIVES.tanker = PASSIVES.knight;
 PASSIVES.healer = [{ id: "blessing", cost: [2, 3, 4] }, { id: "arcane_ward", cost: [2, 3, 4] }, { id: "war_cry", cost: [2, 3, 4] }];
+// 습득 순서(SP 가 모자라면 앞쪽부터 채워진다). 방어 패시브를 먼저 찍는 쪽이 대체로 유리해서 그렇게 가정한다.
+const PLAN_ORDER = {
+  knight: ["iron_body", "war_cry", "berserker"], tanker: ["iron_body", "war_cry", "berserker"],
+  mage: ["arcane_ward", "mana_surge", "spell_echo"], archer: ["swift_feet", "eagle_eye", "poison_tip"],
+  healer: ["blessing", "arcane_ward", "war_cry"],
+};
 const JOB_SKILL = { knight: "whirlwind", mage: "magicBall", archer: "rapidShot", tanker: "shieldBash", healer: "holyLight" };
 
 // 장비 단계(무기 공격력 / 갑옷 방어 / 투구 방어). 출처: models.js SHOP_ITEMS, createRandomItem(12/6 + [0,5,12,25,40])
@@ -72,7 +78,7 @@ function gearTierFor(level, mode) {
   /* auto */ return level < 10 ? GEAR_TIER.iron : level < 20 ? GEAR_TIER.rare : level < 30 ? GEAR_TIER.epic : GEAR_TIER.legend;
 }
 
-const COMPANION_PREF = ["tanker", "healer", "mage_party", "archer"];          // 같은 직업은 제외하고 이 순서로 고른다
+const COMPANION_PREF = ["tanker", "healer", "archer", "mage_party"];          // 같은 직업은 제외하고 이 순서로 고른다
 const CLASS_TO_COMPANION = { knight: null, tanker: "tanker", healer: "healer", mage: "mage_party", archer: "archer" };
 const PARTY2_ZONES = new Set(["normal", "mine", "harbor", "elfForest", "capital", "abyss"]);   // game.js goToDungeon: 2번 동료가 따라가는 던전
 const BOSS_OF = { normal: "guardian", abyss: "demon", mine: "general_gramos", harbor: "general_barkan", elfForest: "general_lilith", capital: "general_belzeron" };
@@ -82,7 +88,7 @@ function allocateSkills(env, p, points, passivesMode) {
   const spend = c => { if (left.n >= c) { left.n -= c; return true; } return false; };
   const job = JOB_SKILL[p.type];
   if (job && spend(3)) p.activeSkills[job] = true;
-  const plan = passivesMode === "none" ? [] : PASSIVES[p.type];
+  const plan = passivesMode === "none" ? [] : (PLAN_ORDER[p.type] || PASSIVES[p.type].map(x => x.id)).map(id => PASSIVES[p.type].find(x => x.id === id));
   p.passiveSkills = {};
   for (const sk of plan || []) for (let lv = 0; lv < sk.cost.length; lv++) { if (!spend(sk.cost[lv])) break; p.passiveSkills[sk.id] = lv + 1; }
   const order = ["attackBoost", "hpBoost", "criticalBoost"];
@@ -105,8 +111,9 @@ function buildKit(env, spec) {
   const base = CLASSES[spec.cls];
   const p = new Player(spec.cls);
   p.level = L;
-  p.maxHp = base.hp + Balance.LEVELUP.hp * (L - 1);
-  p.baseAttack = base.attack + Balance.LEVELUP.atk * (L - 1);
+  const gr = Balance.growth(spec.cls);
+  p.maxHp = base.hp + gr.hp * (L - 1);
+  p.baseAttack = base.attack + gr.atk * (L - 1);
   allocateSkills(env, p, L - 1, spec.passives || "actual");
 
   const tier = gearTierFor(L, spec.gear || "auto");

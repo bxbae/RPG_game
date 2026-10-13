@@ -28,6 +28,15 @@
     EXP_POWER: 1.65,          // 1이면 직선, 2면 제곱. 지수 성장(×1.3)이 아니라 완만한 거듭제곱이라 후반이 막히지 않는다
     LEVELUP: { hp: 20, atk: 5, skillPoints: 1 },
 
+    // 직업별 레벨업 성장량(없는 직업은 LEVELUP 기본값). 직업의 성격(마법사·궁수=공격형, 탱커·힐러=방어형)은 여기서 조절한다.
+    CLASS_GROWTH: {
+      mage:   { hp: 28, atk: 7 },       // 공격형: 기본 방어가 낮은 대신 레벨업 때 더 많이 큰다
+      archer: { hp: 30, atk: 7.5 },
+      tanker: { hp: 18, atk: 4.5 },     // 방어 패시브·방패 강타로 이미 단단해서 성장은 조금 낮춘다
+      healer: { hp: 17, atk: 4 },
+    },
+    growth(type) { return { ...Balance.LEVELUP, ...(Balance.CLASS_GROWTH[type] || {}) }; },
+
     // 다음 레벨까지 필요한 경험치 = BASE + COEF × (레벨-1)^POWER
     expToNext(level) {
       const lv = Math.max(1, Math.floor(level) || 1);
@@ -69,7 +78,8 @@
 
     // ── 직업 스킬 ───────────────────────────────────
     JOB_SKILL_KEY: { knight:"whirlwind", night:"whirlwind", warrior:"whirlwind", mage:"magicBall", archer:"rapidShot", tanker:"shieldBash", healer:"holyLight" },
-    JOB_SKILL: { tankerMult: 1.6, healerMult: 1.3, healerHealPct: 0.10 },
+    BLESSING: [0, 0.1, 0.2, 0.3],      // 힐러 패시브 '축복': 회복 스킬 증가율(레벨 1~3)
+    JOB_SKILL: { tankerMult: 1.6, tankerGuard: 1, healerMult: 1.3, healerHealPct: 0.04, healerUltHealPct: 0.25 },
 
     // ── 피해 / 회복 ─────────────────────────────────
     // 방어는 "비율 감쇠": 피해 = 공격 × K/(K+방어).  방어 K 면 피해가 절반.

@@ -1338,7 +1338,7 @@ class TownScene {
     };
     allPassives.knight = allPassives.tanker = allPassives.warrior;
     allPassives.healer = [
-      { id:"blessing",    name:"✨ 축복",        desc:["회복량+25%","회복량+50%","회복량+80%"], spCost:[2,3,4] },
+      { id:"blessing",    name:"✨ 축복",        desc:["회복량+10%","회복량+20%","회복량+30%"], spCost:[2,3,4] },
       allPassives.mage[2],
       allPassives.warrior[1],
     ];

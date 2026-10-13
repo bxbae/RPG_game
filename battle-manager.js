@@ -228,7 +228,7 @@ class BattleManager {
     const p = game.player;
     if (p.cooldowns.heal > 0) { game.log(`💊 회복 대기 (${p.cooldowns.heal}턴)`); return; }
     const blessLv = p.passiveSkills?.blessing || 0;
-    const healed = Math.floor(Balance.healSkillAmount(p.maxHp + p.bonusHp) * (1 + [0, 0.25, 0.5, 0.8][blessLv]));
+    const healed = Math.floor(Balance.healSkillAmount(p.maxHp + p.bonusHp) * (1 + (Balance.BLESSING[blessLv] || 0)));
     p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + healed);
     p.cooldowns.heal = 3;
     game.log(`💚 회복! +${healed} HP`);
@@ -288,8 +288,10 @@ class BattleManager {
       case "healer":
         // 신성 폭발 — 적에게 피해 + 자신 HP 완전 회복
         dmg = Math.floor(p.totalAttack * 2.5); m.hp -= dmg;
-        p.hp = p.maxHp + (p.bonusHp || 0);
-        game.log(`✝ 신성 폭발! ${dmg} — HP 완전 회복!`); break;
+        { const mx = p.maxHp + (p.bonusHp || 0), pct = Balance.JOB_SKILL.healerUltHealPct;
+          p.hp = Math.min(mx, p.hp + Math.floor(mx * pct));
+          game.log(`✝ 신성 폭발! ${dmg} — ${pct >= 1 ? "HP 완전 회복!" : `HP ${Math.round(pct * 100)}% 회복`}`); }
+        break;
     }
     this._emit("damage", { amount: dmg, target: "monster" });
     if (m.hp <= 0) { this._onMonsterDefeated(game); return; }
@@ -499,8 +501,8 @@ class BattleManager {
       case "mage":    dmg = Math.floor(p.totalAttack * 2.2); m.hp -= dmg;   game.log(`🔮 매직볼! ${dmg}`);    break;
       case "archer":  dmg = Math.floor(p.totalAttack * 1.2); m.hp -= dmg*2; game.log(`🏹 속사! ${dmg}×2`);   break;
       case "tanker":  // 방패 강타 — 일격 + 2턴간 받는 피해 50% 감소
-        dmg = Math.floor(p.totalAttack * Balance.JOB_SKILL.tankerMult); m.hp -= dmg; p.guardBuff = Math.max(p.guardBuff || 0, 2);
-        game.log(`🛡 방패 강타! ${dmg} — 2턴 방어 태세`); break;
+        dmg = Math.floor(p.totalAttack * Balance.JOB_SKILL.tankerMult); m.hp -= dmg; p.guardBuff = Math.max(p.guardBuff || 0, Balance.JOB_SKILL.tankerGuard);
+        game.log(`🛡 방패 강타! ${dmg} — ${Balance.JOB_SKILL.tankerGuard}번 방어 태세`); break;
       case "healer": { // 성스러운 빛 — 일격 + 최대 HP 일부 회복
         dmg = Math.floor(p.totalAttack * Balance.JOB_SKILL.healerMult); m.hp -= dmg;
         const heal = Math.floor((p.maxHp + p.bonusHp) * Balance.JOB_SKILL.healerHealPct);
