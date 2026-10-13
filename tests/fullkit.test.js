@@ -98,3 +98,22 @@ test("직업 균형: 기준 구역에서 모든 직업이 비슷하게 클리어
   const lo = Math.min(...Object.values(r)), hi = Math.max(...Object.values(r));
   assert.ok(hi - lo <= 0.4, JSON.stringify(r));
 });
+
+test("동료 균형: 어느 동료를 데려가도 전투 부담이 비슷하게 줄어든다", () => {
+  const env = S.create(4), L = 28, zone = "harbor";
+  const lost = comp => {
+    let sum = 0, N = 60;
+    for (let i = 0; i < N; i++) {
+      const p = env.buildKit({ cls: "knight", gear: "auto", level: L, zone, companions: [comp, "healer"], affinity: 100 });
+      p.party2 = null;
+      const g = S.makeGame(env, p, zone), hp0 = p.hp;
+      const sc = env.Balance.monsterScale(L, env.DIFF[zone][0], env.ZLV[zone][0]);
+      S.fight(env, g, env.createMonster("chimera", sc), { heals: 0, ults: 0, partyUlts: 0, jobs: 0, turns: 0 });
+      sum += (hp0 - Math.max(0, p.hp)) / (p.maxHp + p.bonusHp);
+    }
+    return 100 * sum / N;
+  };
+  const r = Object.fromEntries(["tanker", "healer", "archer", "mage_party"].map(c => [c, lost(c)]));
+  const v = Object.values(r);
+  assert.ok(Math.max(...v) - Math.min(...v) <= 20, JSON.stringify(r));
+});

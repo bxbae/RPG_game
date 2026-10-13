@@ -81,6 +81,16 @@
     BLESSING: [0, 0.1, 0.2, 0.3],      // 힐러 패시브 '축복': 회복 스킬 증가율(레벨 1~3)
     JOB_SKILL: { tankerMult: 1.6, tankerGuard: 1, healerMult: 1.3, healerHealPct: 0.04, healerUltHealPct: 0.25 },
 
+    // ── 동료 궁극기 ─────────────────────────────────
+    // 예전에는 마법사 동료(엘린)의 궁극기가 주인공 공격력의 5~13배라 한 방에 끝났고 궁수 동료는 전혀 못 따라갔다(tools/fullkit-sim.js).
+    PARTY_ULT: {
+      mage:   { mult: 3.5, exMult: 5.5, storyMult: 6, storyExMult: 8 },   // 주인공 공격력 배수
+      archer: { hits: 6, exHits: 10, atkShare: 0.25 },                    // 타수, 타당 피해 = 동료 공격력 + 주인공 공격력 × atkShare
+    },
+    partyMageMult(story, ex) { const u = Balance.PARTY_ULT.mage; return story ? (ex ? u.storyExMult : u.storyMult) : (ex ? u.exMult : u.mult); },
+    partyArcherHits(ex) { const u = Balance.PARTY_ULT.archer; return ex ? u.exHits : u.hits; },
+    partyArcherHit(partyAttack, heroAttack) { return Math.floor(partyAttack + heroAttack * Balance.PARTY_ULT.archer.atkShare); },
+
     // ── 피해 / 회복 ─────────────────────────────────
     // 방어는 "비율 감쇠": 피해 = 공격 × K/(K+방어).  방어 K 면 피해가 절반.
     //   (예전 정액 차감 방식은 초반엔 방어가 공격을 넘어 피해가 0, 후반엔 방어가 무의미해졌다.)

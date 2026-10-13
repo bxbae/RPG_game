@@ -338,15 +338,15 @@ class BattleManager {
         p.guardBuff = ex ? 10 : 5;
         game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
       case "archer": {
-        const hits = ex ? 10 : 6;
-        const hitDmg = Math.floor(p.partyAttack || 20);
+        const hits = Balance.partyArcherHits(ex);
+        const hitDmg = Balance.partyArcherHit(p.partyAttack || 20, p.totalAttack);
         for (let i = 0; i < hits; i++) m.hp -= hitDmg;
         this._emit("damage", { amount: hitDmg * hits, target: "monster" });
         game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
       }
       case "mage_party": {
         const hasStoryReward = !!p.companionPassives?.mage_party; // "금단의 비전" — 누명 해소 후 위력 대폭 강화
-        const mult = hasStoryReward ? (ex ? 13 : 8) : (ex ? 8 : 5);
+        const mult = Balance.partyMageMult(hasStoryReward, ex);
         const dmg = Math.floor(p.totalAttack * mult);
         m.hp -= dmg;
         this._emit("damage", { amount: dmg, target: "monster" });
@@ -398,15 +398,15 @@ class BattleManager {
         p.guardBuff = ex ? 10 : 5;
         game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
       case "archer": {
-        const hits = ex ? 10 : 6;
-        const hitDmg = Math.floor(p.party2Attack || 20);
+        const hits = Balance.partyArcherHits(ex);
+        const hitDmg = Balance.partyArcherHit(p.party2Attack || 20, p.totalAttack);
         for (let i = 0; i < hits; i++) m.hp -= hitDmg;
         this._emit("damage", { amount: hitDmg * hits, target: "monster" });
         game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
       }
       case "mage_party": {
         const hasStoryReward = !!p.companionPassives?.mage_party;
-        const mult = hasStoryReward ? (ex ? 13 : 8) : (ex ? 8 : 5);
+        const mult = Balance.partyMageMult(hasStoryReward, ex);
         const dmg = Math.floor(p.totalAttack * mult);
         m.hp -= dmg;
         this._emit("damage", { amount: dmg, target: "monster" });
@@ -458,15 +458,15 @@ class BattleManager {
         p.guardBuff = ex ? 10 : 5;
         game.log(ex ? "🌟 EX 절대수호!" : "🛡 수호 결계!"); break;
       case "archer": {
-        const hits = ex ? 10 : 6;
-        const hitDmg = Math.floor(p.party3Attack || 20);
+        const hits = Balance.partyArcherHits(ex);
+        const hitDmg = Balance.partyArcherHit(p.party3Attack || 20, p.totalAttack);
         for (let i = 0; i < hits; i++) m.hp -= hitDmg;
         this._emit("damage", { amount: hitDmg * hits, target: "monster" });
         game.log(`🏹 폭풍 사격! ×${hits} (${hitDmg * hits})`); break;
       }
       case "mage_party": {
         const hasStoryReward = !!p.companionPassives?.mage_party;
-        const mult = hasStoryReward ? (ex ? 13 : 8) : (ex ? 8 : 5);
+        const mult = Balance.partyMageMult(hasStoryReward, ex);
         const dmg = Math.floor(p.totalAttack * mult);
         m.hp -= dmg;
         this._emit("damage", { amount: dmg, target: "monster" });
