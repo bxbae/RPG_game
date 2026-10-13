@@ -185,6 +185,9 @@ npm test                 # 단위 테스트 (밸런스 수식 동등성, 세이�
 npm run balance          # 밸런스 시뮬레이터 표 (기본: 기사 / 상점 최고 장비 / 일반 던전 2층)
 node tools/balance-sim.js --zone abyss:3 --class tanker --gear starter --max 40
 npm run balance:check    # 목표 곡선(tools/balance-sim.js 의 TARGETS)과 비교, 어긋나면 종료 코드 1
+npm run balance:full     # 풀 키트 시뮬레이터: 실제 BattleManager 로 동료·궁극기·직업 스킬·물약까지 포함해 던전 층 클리어율 계단표를 출력
+node tools/fullkit-sim.js --fight normal:3 --level 20 --class mage --gear shop   # 한 지역·레벨 상세
+node tools/fullkit-sim.js --compare   # 직업 × 장비 가정 비교
 ```
 
 - **밸런스 수치는 `balance.js`에서만 고칩니다.** 경험치 곡선을 바꾸면 `Balance.CURVE_ID`를 1 올리세요.

@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "balance": "node tools/balance-sim.js",
-    "balance:check": "node tools/balance-sim.js --check"
+    "balance:check": "node tools/balance-sim.js --check",
+    "balance:full": "node tools/fullkit-sim.js"
   },
   "engines": { "node": ">=20" }
 }
