@@ -472,6 +472,7 @@ class BattleScene {
 
     // ★ player.type (night/mage/archer) 으로 뒷모습 선택
     const p = this.game.player;
+    const slots = Balance.partySlots(this.game?.dungeonType ?? "normal");   // 이 던전에서 함께 싸우는 동료 수
     const pSrc = BACK_IMAGES[p?.type] || "";
     console.log("[전투] 플레이어 타입:", p?.type, "뒷모습:", pSrc);
     if (pSrc && this.el.playerImg) {
@@ -492,21 +493,21 @@ class BattleScene {
       if (this.el.playerWrap) this.el.playerWrap.style.display = "block";
     }
 
-    if (p?.party && p.partyHp > 0) {
+    if (slots >= 1 && p?.party && p.partyHp > 0) {
       const cSrc = COMPANION_BACK[p.party] || "";
       console.log("[전투] 동료 파티키:", p.party, "뒷모습:", cSrc);
       if (cSrc && this.el.compImg) { this.el.compImg.src = cSrc; this._fitSprite(this.el.compImg, cSrc); }
       if (this.el.compWrap) this.el.compWrap.style.display = "block";
     }
 
-    if (p?.party2 && p.party2Hp > 0) {
+    if (slots >= 2 && p?.party2 && p.party2Hp > 0) {
       const c2Src = COMPANION_BACK[p.party2] || "";
       console.log("[전투] 동료2 파티키:", p.party2, "뒷모습:", c2Src);
       if (c2Src && this.el.compImg2) { this.el.compImg2.src = c2Src; this._fitSprite(this.el.compImg2, c2Src); }
       if (this.el.compWrap2) this.el.compWrap2.style.display = "block";
     }
 
-    if (p?.party3 && p.party3Hp > 0) {
+    if (slots >= 3 && p?.party3 && p.party3Hp > 0) {
       const c3Src = COMPANION_BACK[p.party3] || "";
       console.log("[전투] 동료3 파티키:", p.party3, "뒷모습:", c3Src);
       if (c3Src && this.el.compImg3) { this.el.compImg3.src = c3Src; this._fitSprite(this.el.compImg3, c3Src); }
@@ -550,6 +551,7 @@ class BattleScene {
     const p = g.player;
     const m = g.currentMonster;
     if (!p) return;
+    const slots = Balance.partySlots(g.dungeonType ?? "normal");
 
     const realMaxHp = p.maxHp + p.bonusHp;
     this._text("playerName",  p.name);
@@ -590,7 +592,7 @@ class BattleScene {
       const cd       = p.cooldowns?.partyUltimate || 0;
       const hasParty = !!(p.party && p.partyHp > 0);
 
-      this.el.btnPartyUlt.style.display = ""; // 항상 표시
+      this.el.btnPartyUlt.style.display = slots >= 1 ? "" : "none";   // 동료가 함께하지 않는 던전(성 밖)에서는 숨김
 
       if (!p.party) {
         this.el.btnPartyUlt.disabled      = true;
@@ -633,7 +635,7 @@ class BattleScene {
 
     // 2번 동료 궁극기 버튼 — party2가 있을 때만 표시
     if (this.el.btnParty2Ult) {
-      if (!p.party2) {
+      if (!p.party2 || slots < 2) {
         this.el.btnParty2Ult.style.display = "none";
       } else {
         this.el.btnParty2Ult.style.display = "";
@@ -677,7 +679,7 @@ class BattleScene {
 
     // 3번 동료 궁극기 버튼 — party3가 있을 때만 표시 (심연 전용)
     if (this.el.btnParty3Ult) {
-      if (!p.party3) {
+      if (!p.party3 || slots < 3) {
         this.el.btnParty3Ult.style.display = "none";
       } else {
         this.el.btnParty3Ult.style.display = "";
@@ -720,7 +722,7 @@ class BattleScene {
     }
 
     // 동료 HUD
-    const hasParty = !!(p.party && p.partyHp > 0);
+    const hasParty = !!(slots >= 1 && p.party && p.partyHp > 0);
     if (this.el.companionHud) this.el.companionHud.style.display = hasParty ? "block" : "none";
     if (this.el.compWrap)     this.el.compWrap.style.display     = hasParty ? "block" : "none";
     if (hasParty) {
@@ -734,7 +736,7 @@ class BattleScene {
     }
 
     // 동료2 HUD
-    const hasParty2 = !!(p.party2 && p.party2Hp > 0);
+    const hasParty2 = !!(slots >= 2 && p.party2 && p.party2Hp > 0);
     if (this.el.companionHud2) this.el.companionHud2.style.display = hasParty2 ? "block" : "none";
     if (this.el.compWrap2)     this.el.compWrap2.style.display     = hasParty2 ? "block" : "none";
     if (hasParty2) {
@@ -748,7 +750,7 @@ class BattleScene {
     }
 
     // 동료3 HUD (심연 전용)
-    const hasParty3 = !!(p.party3 && p.party3Hp > 0);
+    const hasParty3 = !!(slots >= 3 && p.party3 && p.party3Hp > 0);
     if (this.el.companionHud3) this.el.companionHud3.style.display = hasParty3 ? "block" : "none";
     if (this.el.compWrap3)     this.el.compWrap3.style.display     = hasParty3 ? "block" : "none";
     if (hasParty3) {

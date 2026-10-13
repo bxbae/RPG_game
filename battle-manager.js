@@ -157,9 +157,10 @@ class BattleManager {
 
     let dmg = p.totalAttack;
     const dt = game.dungeonType ?? "normal"; // 던전 타입별 동료 참전 제한
-    const partyActive  = p.party  && p.partyHp  > 0 && dt !== "outside";
-    const party2Active = p.party2 && p.party2Hp > 0 && (dt === "normal" || dt === "abyss");
-    const party3Active = p.party3 && p.party3Hp > 0 && dt === "abyss";
+    const slots = Balance.partySlots(dt);
+    const partyActive  = p.party  && p.partyHp  > 0 && slots >= 1;
+    const party2Active = p.party2 && p.party2Hp > 0 && slots >= 2;
+    const party3Active = p.party3 && p.party3Hp > 0 && slots >= 3;
 
     if (partyActive) dmg += p.partyAttack;
     if (partyActive && p.party === "healer") {
@@ -309,6 +310,7 @@ class BattleManager {
     const m = game.currentMonster;
     const party = p.party;
     if (!party || !m) { game.log("❌ 동료가 없습니다"); return; }
+    if (Balance.partySlots(game.dungeonType ?? "normal") < 1) { game.log("❌ 이곳에는 동료가 함께하지 않습니다"); return; }
     if (p.partyHp <= 0) { game.log("💔 동료 전투 불능 (마을에서 회복 가능)"); return; }
 
     const aff = p.affinity?.[party] || 0;
@@ -369,6 +371,7 @@ class BattleManager {
     const m = game.currentMonster;
     const party = p.party2;
     if (!party || !m) { game.log("❌ 2번 동료가 없습니다"); return; }
+    if (Balance.partySlots(game.dungeonType ?? "normal") < 2) { game.log("❌ 이곳에는 2번 동료가 함께하지 않습니다"); return; }
     if (p.party2Hp <= 0) { game.log("💔 2번 동료 전투 불능 (마을에서 회복 가능)"); return; }
 
     const aff = p.affinity?.[party] || 0;
@@ -429,6 +432,7 @@ class BattleManager {
     const m = game.currentMonster;
     const party = p.party3;
     if (!party || !m) { game.log("❌ 3번 동료가 없습니다"); return; }
+    if (Balance.partySlots(game.dungeonType ?? "normal") < 3) { game.log("❌ 이곳에는 3번 동료가 함께하지 않습니다"); return; }
     if (p.party3Hp <= 0) { game.log("💔 3번 동료 전투 불능 (마을에서 회복 가능)"); return; }
 
     const aff = p.affinity?.[party] || 0;
@@ -606,7 +610,8 @@ class BattleManager {
     this._tryInflictPlayer(game);
 
     // 파티원 반격 피해 — outside 던전(혼자)은 제외
-    if (p.party && p.partyHp > 0 && game.dungeonType !== "outside") {
+    const slots = Balance.partySlots(game.dungeonType ?? "normal");
+    if (p.party && p.partyHp > 0 && slots >= 1) {
       const cd = darkasProtects ? 0 : Balance.partyCounterDamage(m.attack, 0, p.partyDefense);
       p.partyHp = Math.max(0, p.partyHp - cd);
       if (cd > 0) game.log(`👥 동료 ${cd} 피해`);
@@ -618,7 +623,7 @@ class BattleManager {
     }
 
     // 2번째 동료 반격 피해 (일반+)
-    if (p.party2 && p.party2Hp > 0) {
+    if (p.party2 && p.party2Hp > 0 && slots >= 2) {
       const cd2 = darkasProtects ? 0 : Balance.partyCounterDamage(m.attack, 1, p.party2Defense);
       p.party2Hp = Math.max(0, p.party2Hp - cd2);
       if (cd2 > 0) game.log(`👤 보조 동료 ${cd2} 피해`);
@@ -626,7 +631,7 @@ class BattleManager {
     }
 
     // 3번째 동료 반격 피해 (심연 전용)
-    if (p.party3 && p.party3Hp > 0) {
+    if (p.party3 && p.party3Hp > 0 && slots >= 3) {
       const cd3 = darkasProtects ? 0 : Balance.partyCounterDamage(m.attack, 2, p.party3Defense);
       p.party3Hp = Math.max(0, p.party3Hp - cd3);
       if (cd3 > 0) game.log(`👥 3번째 동료 ${cd3} 피해`);

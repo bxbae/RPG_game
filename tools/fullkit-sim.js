@@ -80,7 +80,6 @@ function gearTierFor(level, mode) {
 
 const COMPANION_PREF = ["tanker", "healer", "archer", "mage_party"];          // 같은 직업은 제외하고 이 순서로 고른다
 const CLASS_TO_COMPANION = { knight: null, tanker: "tanker", healer: "healer", mage: "mage_party", archer: "archer" };
-const PARTY2_ZONES = new Set(["normal", "mine", "harbor", "elfForest", "capital", "abyss"]);   // game.js goToDungeon: 2번 동료가 따라가는 던전
 const BOSS_OF = { normal: "guardian", abyss: "demon", mine: "general_gramos", harbor: "general_barkan", elfForest: "general_lilith", capital: "general_belzeron" };
 
 function allocateSkills(env, p, points, passivesMode) {
@@ -123,7 +122,7 @@ function buildKit(env, spec) {
   // 동료 (연습 던전 성 밖에서는 혼자, 일반+ 에서는 2명, 심연에서는 3명 — 단 2번 동료는 normal/abyss 에서만 공격한다, 아래 참고)
   const mine = CLASS_TO_COMPANION[spec.cls];
   const pool = (spec.companions || COMPANION_PREF).filter(k => k !== mine);
-  const want = zone === "outside" ? 0 : zone === "abyss" ? 3 : PARTY2_ZONES.has(zone) ? 2 : 1;
+  const want = Balance.partySlots(zone);
   const aff = affinityAt(env, L, spec.affinity ?? "auto");
   const cg = spec.companionGear || "weapon";
   ["party", "party2", "party3"].slice(0, want).forEach((slot, i) => {
@@ -142,7 +141,7 @@ function buildKit(env, spec) {
 
 // ══ 전투 엔진 ═══════════════════════════════════════════════════════════════
 function makeGame(env, p, zone) {
-  const g = { player: p, currentMonster: null, dungeonType: zone, _battleLocked: false, _battleTurnCount: 0, battleScene: null,
+  const g = { player: p, slots: env.Balance.partySlots(zone), currentMonster: null, dungeonType: zone, _battleLocked: false, _battleTurnCount: 0, battleScene: null,
     currentScene: "battle", regionManager: null, log() {}, _won: false, isGameOver() { return p.hp <= 0 || this._won; } };
   return g;
 }
@@ -154,9 +153,9 @@ function act(bm, g, stats) {
   const hasJob = p.activeSkills[JOB_SKILL[p.type]];
   if (p.hp < maxHp * 0.35 && p.cooldowns.heal <= 0) { stats.heals++; return bm.heal(g); }
   if (p.ultimateGauge >= 100) { stats.ults++; return bm.heroUltimate(g); }
-  if (ready("party", "partyUltimate", "partyHp")) { stats.partyUlts++; return bm.partyUltimate(g); }
-  if (ready("party2", "party2Ultimate", "party2Hp") && g.dungeonType !== "outside") { stats.partyUlts++; return bm.party2Ultimate(g); }
-  if (ready("party3", "party3Ultimate", "party3Hp") && g.dungeonType === "abyss") { stats.partyUlts++; return bm.party3Ultimate(g); }
+  if (ready("party", "partyUltimate", "partyHp") && g.slots >= 1) { stats.partyUlts++; return bm.partyUltimate(g); }
+  if (ready("party2", "party2Ultimate", "party2Hp") && g.slots >= 2) { stats.partyUlts++; return bm.party2Ultimate(g); }
+  if (ready("party3", "party3Ultimate", "party3Hp") && g.slots >= 3) { stats.partyUlts++; return bm.party3Ultimate(g); }
   if (hasJob && p.cooldowns.jobSkill <= 0) { stats.jobs++; return bm.jobSkill(g); }
   return bm.attack(g);
 }

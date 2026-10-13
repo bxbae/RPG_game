@@ -117,3 +117,22 @@ test("동료 균형: 어느 동료를 데려가도 전투 부담이 비슷하게
   const v = Object.values(r);
   assert.ok(Math.max(...v) - Math.min(...v) <= 20, JSON.stringify(r));
 });
+
+test("동료 슬롯: 던전 종류별로 함께 싸우는 동료 수가 일관된다", () => {
+  const env = S.create(6), B = env.Balance;
+  assert.deepEqual(["outside", "normal", "mine", "harbor", "elfForest", "capital", "abyss"].map(z => B.partySlots(z)), [0, 2, 2, 2, 2, 2, 3]);
+  // 같은 몬스터를 상대로 동료 수가 많을수록 처치가 빠르거나 같다(광산에서도 2번 동료가 공격에 가세한다)
+  const turns = zone => {
+    const p = env.buildKit({ cls: "knight", gear: "auto", level: 25, zone, affinity: 0 });
+    const g = S.makeGame(env, p, zone), st = { heals: 0, ults: 0, partyUlts: 0, jobs: 0, turns: 0 };
+    p.cooldowns.heal = 99; p.skills.criticalBoost = 0;
+    const m = env.createMonster("orc", 1); m.hp = m.maxHp = 400; m.attack = 0;
+    return S.fight(env, g, m, st) && st.turns;
+  };
+  assert.ok(turns("mine") <= turns("outside"));
+  // 성 밖에서는 동료가 피해를 받지 않는다
+  const p = env.buildKit({ cls: "knight", gear: "auto", level: 25, zone: "normal" }), g = S.makeGame(env, p, "outside");
+  const hp = [p.partyHp, p.party2Hp]; g.currentMonster = env.createMonster("orc", 3);
+  new env.BattleManager()._counter(g);
+  assert.deepEqual([p.partyHp, p.party2Hp], hp);
+});

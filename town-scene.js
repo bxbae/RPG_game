@@ -1482,8 +1482,8 @@ class TownScene {
     };
 
     const SLOTS = [
-      { num:1, key:p.party,  title:"1번째 동료",  sub:"일반 던전 동행" },
-      { num:2, key:p.party2, title:"2번째 동료",  sub:"일반·심연 던전 동행" },
+      { num:1, key:p.party,  title:"1번째 동료",  sub:"성 밖 제외 모든 던전 동행" },
+      { num:2, key:p.party2, title:"2번째 동료",  sub:"일반·지역·심연 던전 동행" },
       { num:3, key:p.party3, title:"3번째 동료",  sub:"심연 던전 전용" },
     ];
 

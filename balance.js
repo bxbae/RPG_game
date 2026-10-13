@@ -81,6 +81,15 @@
     BLESSING: [0, 0.1, 0.2, 0.3],      // 힐러 패시브 '축복': 회복 스킬 증가율(레벨 1~3)
     JOB_SKILL: { tankerMult: 1.6, tankerGuard: 1, healerMult: 1.3, healerHealPct: 0.04, healerUltHealPct: 0.25 },
 
+    // ── 동료 슬롯 ───────────────────────────────────
+    // 던전 종류별로 함께 싸우는 동료 수: 성 밖 0명(혼자), 일반·지역 던전(광산·항구·엘프숲·수도 등) 2명, 심연 3명.
+    // 전투 계산(공격 가세·반격 피해·궁극기)과 전투 화면이 모두 이 값을 따른다.
+    partySlots(dungeonType) {
+      if (dungeonType === "outside") return 0;
+      if (dungeonType === "abyss") return 3;
+      return 2;
+    },
+
     // ── 동료 궁극기 ─────────────────────────────────
     // 예전에는 마법사 동료(엘린)의 궁극기가 주인공 공격력의 5~13배라 한 방에 끝났고 궁수 동료는 전혀 못 따라갔다(tools/fullkit-sim.js).
     PARTY_ULT: {
