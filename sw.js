@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v56";
-const STATIC_CACHE  = "rpg-static-v56";
-const DYNAMIC_CACHE = "rpg-dynamic-v56";
+const CACHE_NAME    = "rpg-v57";
+const STATIC_CACHE  = "rpg-static-v57";
+const DYNAMIC_CACHE = "rpg-dynamic-v57";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -17,6 +17,7 @@ const CORE_FILES = [
   "./managers.js",
   "./achievement-system.js",
   "./battle-manager.js",
+  "./dungeon-visuals.js",
   "./dungeon-scene.js",
   "./trap-room.js",
   "./battle-scene.js",
@@ -37,9 +38,6 @@ const IMAGE_FILES = [
   "./images/Dungeon_BOSS_ROOM.png",
   "./images/Abyss_Dungeon.png",
   "./images/BANK.png",
-  "./images/victory_with_colleagues.png",
-  "./images/inability_to_fight.png",
-  "./images/pub_night.png",
   "./images/town_bustling.png",
   "./images/Grim_mining_village_beneath_rocky_cliffs.png",
   "./images/Gold_discovery_festival_in_the_mountains.png",
@@ -51,8 +49,6 @@ const IMAGE_FILES = [
   "./images/Heroes_face_looming_dark_god_in_cathedral2.png",
   "./images/Chained_in_darkness_under_a_tyrants_gaze.png",
   "./images/town_prosperity.png",
-  "./images/festival_1.png",
-  "./images/forest_exploration_day.png",
   // 플레이어 SD
   "./images/sd_knight.png",
   "./images/sd_knight_attack_1.png",
@@ -72,17 +68,14 @@ const IMAGE_FILES = [
   "./images/sd_archer_attack_2.png",
   "./images/sd_archer_walk_1.png",
   "./images/sd_archer_walk_2.png",
-  "./images/SD_Archer_shot.png",
   // 동료 SD
   "./images/sd_healer.png",
   "./images/sd_healer_walk_1.png",
   "./images/sd_healer_walk_2.png",
   "./images/SD_healer_attack_1.png",
-  "./images/SD_healer_attack_2.png",
   "./images/sd_merchant.png",
   // 스킬컷
   "./images/Night_skill_cut.png",
-  "./images/wizard_skill_cut.png",
   "./images/tanker_skill_cut.png",
   "./images/Elf_Archer_skill_cut.png",
   "./images/healer_skill_cut.png",
@@ -93,10 +86,8 @@ const IMAGE_FILES = [
   "./images/sd_orc.png",
   "./images/sd_orc2.png",
   "./images/sd_guardian.png",
-  "./images/sd_abyss_mage.png",
   "./images/sd_Dungeon_Guardian.png",
   "./images/sd_Demon.png",
-  "./images/sd_Adversary.png",
   // 포트레이트
   "./images/portrait_Knight.png",
   "./images/portrait_magician.png",
@@ -118,12 +109,6 @@ const IMAGE_FILES = [
   "./images/items/potion_hp_normal.png",
   "./images/items/potion_hp_rare.png",
   "./images/items/potion_hp_legend.png",
-  "./images/items/potion_mp_normal.png",
-  "./images/items/potion_mp_rare.png",
-  "./images/items/potion_mp_legend.png",
-  "./images/items/potion_spd_normal.png",
-  "./images/items/potion_spd_rare.png",
-  "./images/items/potion_spd_legend.png",
   "./images/items/helmet_normal.png",
   "./images/items/helmet_rare.png",
   "./images/items/helmet_legend.png",

@@ -29,7 +29,8 @@ rpg-game/
 ├── managers.js             ← SaveManager / ItemManager / QuestManager
 ├── achievement-system.js   ← 업적 27개 정의 & 토스트 팝업
 ├── battle-manager.js       ← 턴제 전투 로직 (상태이상/스킬/궁극기)
-├── dungeon-scene.js        ← 탑다운 맵 (캔버스 렌더, FOG, 이동)
+├── dungeon-scene.js        ← 탑다운 맵 (이동, FOG, 이벤트)
+├── dungeon-visuals.js      ← 던전 화면 렌더러 (배경 아트, 질감, 조명, 몬스터/상자 연출)
 ├── trap-room.js            ← 던전 "함정의 방" 기믹 (지뢰찾기 퍼즐)
 ├── battle-scene.js         ← 전투 UI (SD 이미지, HUD, 컷신)
 ├── town-scene.js           ← 마을 UI (은행/투자/스킬/대장간/저장)
@@ -38,7 +39,7 @@ rpg-game/
 ├── game.js                 ← 메인 컨트롤러 (씬 전환, 던전 층수)
 ├── images/                 ← SD 캐릭터 이미지, 배경, 포트레이트
 ├── sounds/                 ← BGM / SFX
-└── video/                  ← 궁극기 컷신 영상
+└── videos/                 ← 궁극기 컷신 영상 (MP4)
 ```
 
 ---
