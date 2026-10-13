@@ -69,6 +69,7 @@ class BattleManager {
         case "dot":           scene.showDot?.(e.amount, e.target, e.status); break;
         case "stunSkip":      scene.showStunSkip?.(e.target); break;
         case "guardHit":      scene.showGuardHit?.(); break;
+        case "monsterDefeated": scene.showMonsterDefeat?.(); break;
       }
     }
   }
@@ -678,6 +679,7 @@ class BattleManager {
     const p = game.player;
     const m = game.currentMonster;
     if (!m) return;
+    this._emit("monsterDefeated");     // 화면: 쓰러지는 연출 (보상 팝업은 그 뒤에)
 
     p.killCount++;
     // [BUG FIX 03] models.js의 goldRate·expRate 우선 사용
@@ -896,7 +898,7 @@ class BattleManager {
     if (hadQuest && !qResult.cleared) {
       game.log(`📜 계속 진행! (${p.questProgress}/${questGoal})`);
     }
-    setTimeout(() => game.onBattleVictory(), 1800);
+    setTimeout(() => game.onBattleVictory(), game.battleScene ? 2500 : 1800);   // 쓰러지는 연출과 보상 팝업을 볼 시간
   }
 }
 

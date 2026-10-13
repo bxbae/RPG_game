@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v64";
-const STATIC_CACHE  = "rpg-static-v64";
-const DYNAMIC_CACHE = "rpg-dynamic-v64";
+const CACHE_NAME    = "rpg-v65";
+const STATIC_CACHE  = "rpg-static-v65";
+const DYNAMIC_CACHE = "rpg-dynamic-v65";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -41,6 +41,12 @@ const IMAGE_FILES = [
   "./images/Dungeon_BOSS_ROOM.png",
   "./images/Abyss_Dungeon.png",
   "./images/BANK.png",
+  "./images/monsters/goblin_hit.png",
+  "./images/monsters/goblin_dead.png",
+  "./images/monsters/skeleton_attack.png",
+  "./images/monsters/skeleton_dead.png",
+  "./images/monsters/slime_hit.png",
+  "./images/monsters/slime_dead.png",
   "./images/town_bustling.png",
   "./images/Grim_mining_village_beneath_rocky_cliffs.png",
   "./images/Gold_discovery_festival_in_the_mountains.png",

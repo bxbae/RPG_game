@@ -157,3 +157,18 @@ test("전투 연출 이벤트: 회복·상태이상·기절·방어·스킬 모�
   // 회복 이벤트의 양은 실제로 회복된 만큼이다(가득 차 있으면 이벤트 없음)
   assert.equal(types((bm, g, p) => { p.hp = p.maxHp + p.bonusHp; bm.heal(g); }).includes("heal"), false);
 });
+
+test("몬스터 포즈 그림: battle-fx.js 가 참조하는 파일이 모두 있고 기본 그림과 같은 크기다", () => {
+  const fs = require("node:fs"), path = require("node:path");
+  const root = path.join(__dirname, "..");
+  const src = fs.readFileSync(path.join(root, "battle-fx.js"), "utf8");
+  const files = [...src.matchAll(/D \+ "([a-z_]+\.png)"/g)].map(m => m[1]);
+  assert.ok(files.length >= 6);
+  const size = f => { const b = fs.readFileSync(f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };   // PNG 헤더의 가로·세로
+  for (const f of files) {
+    const p = path.join(root, "images", "monsters", f);
+    assert.ok(fs.existsSync(p), f);
+    const base = path.join(root, "images", "sd_" + f.split("_")[0] + ".png");
+    assert.deepEqual(size(p), size(base), f);
+  }
+});

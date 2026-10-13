@@ -1805,7 +1805,7 @@ class Game {
         this._gameOverTimer = setTimeout(() => {
           this._gameOverTimer = null;
           this.onPlayerDefeated();
-        }, 800);
+        }, 1200);   // 쓰러지는 연출(.defeat)을 볼 시간
       }
       return true;
     }

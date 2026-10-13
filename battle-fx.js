@@ -373,3 +373,117 @@
     });
   };
 })();
+
+// ══ 몬스터 포즈(피격·공격·쓰러짐)와 처치 연출 ═══════════════════════════════
+//  몬스터별 포즈 그림이 있으면 그 그림으로 바꾸고, 없으면 기본 그림에 효과만 준다.
+//  그림은 tools/prep-poses.py 로 기본 그림과 같은 캔버스에 맞춰져 있어서 바꿔도 크기·위치가 튀지 않는다.
+//  포즈를 추가하려면 images/monsters/ 에 넣고 아래 표에 한 줄 적으면 된다.
+(function () {
+  const P = BattleScene.prototype;
+  const D = "images/monsters/";
+  const MONSTER_POSES = {
+    goblin:   { hit: D + "goblin_hit.png",      dead: D + "goblin_dead.png" },
+    skeleton: { attack: D + "skeleton_attack.png", dead: D + "skeleton_dead.png" },   // 해골 기사: 피격 그림은 아직 없어 기본 번쩍임을 쓴다
+    slime:    { hit: D + "slime_hit.png",       dead: D + "slime_dead.png" },
+  };
+  window.MONSTER_POSES = MONSTER_POSES;
+
+  P._pose = function (kind) { return MONSTER_POSES[this.game?.currentMonster?.id]?.[kind] || null; };
+
+  // 잠깐 포즈 그림으로 바꿨다가 원래 그림으로 되돌린다
+  P._showPose = function (kind, ms) {
+    const img = this.el?.monsterImg, src = this._pose(kind);
+    if (!img || !src || this._monsterDown) return false;
+    if (this._baseSrc == null) this._baseSrc = img.getAttribute("src");
+    clearTimeout(this._poseTimer);
+    img.setAttribute("src", src);
+    this._poseTimer = setTimeout(() => { if (!this._monsterDown && this._baseSrc) img.setAttribute("src", this._baseSrc); }, this._t(ms));
+    return true;
+  };
+
+  // 전투 시작: 상태 초기화 + 이 몬스터의 포즈 그림을 미리 불러온다
+  const _start = P.startBattle;
+  P.startBattle = function (monster) {
+    clearTimeout(this._poseTimer); clearTimeout(this._defeatTimer);
+    this._defeatAnim?.cancel?.(); this._defeatAnim = null;
+    this._monsterDown = false; this._baseSrc = null;
+    const mw = this.el?.monsterWrap; if (mw) { mw.style.opacity = ""; mw.style.transform = ""; mw.style.filter = ""; }
+    this.el?.playerWrap?.classList.remove("defeat");
+    const r = _start.apply(this, arguments);
+    this._baseSrc = this.el?.monsterImg?.getAttribute("src") ?? null;
+    for (const src of Object.values(MONSTER_POSES[monster?.id] || {})) { const i = new Image(); i.src = src; }
+    return r;
+  };
+
+  const _hit = P._triggerMonsterHit;
+  P._triggerMonsterHit = function () { this._showPose("hit", 430); return _hit.apply(this, arguments); };
+  const _strike = P._enemyStrike;
+  P._enemyStrike = function () { this._showPose("attack", 520); return _strike.apply(this, arguments); };
+
+  // ── 처치 연출 ────────────────────────────────────
+  P.showMonsterDefeat = function () {
+    if (this._monsterDown) return;
+    if (this._ultActive) { this._defeatAfterUlt = true; return; }          // 궁극기 연출이 끝난 뒤에 쓰러진다
+    const wait = Math.max(0, (this._impactAt || 0) - performance.now()) + this._t(160);
+    this._popupNotBefore = performance.now() + wait + this._t(900);
+    this._defeatTimer = setTimeout(() => this._playDefeat(), wait);
+  };
+
+  P._playDefeat = function () {
+    const mw = this.el?.monsterWrap, img = this.el?.monsterImg;
+    if (!mw?.isConnected || this._monsterDown) return;
+    this._monsterDown = true;
+    clearTimeout(this._poseTimer);
+    const dead = this._pose("dead");
+    const R = this._reduced(), t = (ms) => this._t(ms);
+    const field = this.el.field, fr = field.getBoundingClientRect(), r = mw.getBoundingClientRect();
+    const cx = r.left - fr.left + r.width * .5, by = r.top - fr.top + r.height * .9;
+    this._sfx("hurt");
+    if (dead && img) img.setAttribute("src", dead);
+    if (dead) {
+      // 번쩍 → 털썩 쓰러져 잠시 머문 뒤 서서히 사라진다
+      this._defeatAnim = mw.animate([
+        { transform: "translate(0,0) rotate(0)", filter: "brightness(2.4)", opacity: 1 },
+        { transform: "translate(14px,10px) rotate(2deg)", filter: "brightness(1.2)", opacity: 1, offset: .14 },
+        { transform: "translate(0,0) rotate(0)", filter: "brightness(1)", opacity: 1, offset: .3 },
+        { transform: "translate(0,0)", filter: "brightness(1)", opacity: 1, offset: .75 },
+        { transform: "translate(0,-14px)", filter: "brightness(1)", opacity: 0 },
+      ], { duration: t(1500), easing: "ease-out", fill: "forwards" });
+      if (!R) this._ring(cx, by, "#d8d2c0", r.width * .9, t(520), { borderWidth: "2px" });       // 먼지
+    } else {
+      // 그림이 없는 몬스터: 하얗게 번쩍이며 움츠러들고 사라진다
+      this._defeatAnim = mw.animate([
+        { transform: "scale(1)", filter: "brightness(3) saturate(0)", opacity: 1 },
+        { transform: "scale(1.04)", filter: "brightness(2) saturate(.3)", opacity: 1, offset: .18 },
+        { transform: "scale(.82) translateY(14px)", filter: "brightness(1.2)", opacity: .55, offset: .6 },
+        { transform: "scale(.6) translateY(30px)", filter: "brightness(1)", opacity: 0 },
+      ], { duration: t(1100), easing: "ease-in", fill: "forwards" });
+      if (!R) this._impactBurst(cx, r.top - fr.top + r.height * .5, true);
+    }
+  };
+
+  // 보상 팝업은 쓰러지는 연출이 어느 정도 보인 뒤에
+  const _popup = P.showRewardPopup;
+  P.showRewardPopup = function () {
+    const args = arguments, wait = Math.max(0, (this._popupNotBefore || 0) - performance.now());
+    if (!wait) return _popup.apply(this, args);
+    this._later(wait, () => _popup.apply(this, args));
+  };
+
+  // 궁극기로 처치했다면 숫자가 터진 뒤에 쓰러뜨린다
+  const _done = P._ultimateDone;
+  P._ultimateDone = function () {
+    const pending = this._defeatAfterUlt; this._defeatAfterUlt = false;
+    const r = _done.apply(this, arguments);
+    if (pending) { this._impactAt = performance.now() + this._t(600); this.showMonsterDefeat(); }
+    return r;
+  };
+
+  // 플레이어가 쓰러지면 .defeat (CSS 에 이미 있던 쓰러짐 모션)
+  const _look = P._syncLooks;
+  P._syncLooks = function () {
+    _look.apply(this, arguments);
+    const p = this.game?.player, pw = this.el?.playerWrap;
+    if (pw && p) pw.classList.toggle("defeat", p.hp <= 0);
+  };
+})();
