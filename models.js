@@ -98,7 +98,9 @@ function createItemId() {
 
 function normalizeItem(item) {
   if (!item) return item;
-  return { ...item, itemId: item.itemId || createItemId(), enhance: item.enhance || 0 };
+  // 저장 데이터에서 온 이름/설명은 HTML 로 그려질 수 있으므로 태그 문자를 제거한다(불러오기 경계의 방어)
+  const strip = s => typeof s === "string" ? s.replace(/[<>]/g, "") : s;
+  return { ...item, name: strip(item.name), desc: strip(item.desc), itemId: item.itemId || createItemId(), enhance: item.enhance || 0 };
 }
 
 function sameItem(a, b) {
@@ -126,7 +128,7 @@ class Player {
     // 레벨
     this.level     = 1;
     this.exp       = 0;
-    this.nextExp   = 100;
+    this.nextExp   = Balance.expToNext(1);
     this.skillPoints = 0;
 
     // 장비
@@ -318,11 +320,11 @@ class Player {
     while (this.exp >= this.nextExp && this.level < MAX_LEVEL) {
       this.exp        -= this.nextExp;
       this.level      += 1;
-      this.skillPoints += 1;
-      this.maxHp      += 20;
+      this.skillPoints += Balance.LEVELUP.skillPoints;
+      this.maxHp      += Balance.LEVELUP.hp;
       this.hp          = this.maxHp + this.bonusHp;
-      this.baseAttack  += 5;
-      this.nextExp     = Math.floor(this.nextExp * 1.3);
+      this.baseAttack  += Balance.LEVELUP.atk;
+      this.nextExp     = Balance.expToNext(this.level);
       leveledUp        = true;
     }
 
@@ -341,11 +343,12 @@ function createMonsterInstance(id, difficultyMult = 1) {
   const def = MONSTERS.find(m => m.id === id)
            || MONSTERS.find(m => m.id === "slime")
            || MONSTERS[0];
-  const hp  = Math.floor(def.baseHp * difficultyMult);
+  const stats = Balance.monsterStats(def, difficultyMult);
+  const hp  = stats.hp;
   return {
     ...def,
     hp, maxHp: hp,
-    attack: Math.floor(def.baseAtk * difficultyMult),
+    attack: stats.attack,
     status: { poison:0, stun:0, burn:0 },
     phase: 1,
   };

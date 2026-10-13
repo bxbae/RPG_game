@@ -227,7 +227,7 @@ class BattleManager {
 
     const p = game.player;
     if (p.cooldowns.heal > 0) { game.log(`💊 회복 대기 (${p.cooldowns.heal}턴)`); return; }
-    p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + 25);
+    p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + Balance.healSkillAmount(p.maxHp + p.bonusHp));
     p.cooldowns.heal = 3;
     game.log("💚 회복! +25 HP");
     if (window.audioMgr) audioMgr.playSfx("heal");
@@ -554,7 +554,7 @@ class BattleManager {
     const warCryLv = p.passiveSkills?.war_cry || 0;
     if (warCryLv > 0) monsterAtk = Math.floor(monsterAtk * (1 - [0,0.1,0.18,0.28][warCryLv]));
 
-    let dmg = Math.max(0, monsterAtk - p.defense);
+    let dmg = Balance.damageAfterDefense(monsterAtk, p.defense);
     const arcaneWardLv = p.passiveSkills?.arcane_ward || 0;
     if (arcaneWardLv > 0) dmg = Math.floor(dmg * (1 - [0,0.08,0.15,0.22][arcaneWardLv]));
 
@@ -587,7 +587,7 @@ class BattleManager {
 
     // 파티원 반격 피해 — outside 던전(혼자)은 제외
     if (p.party && p.partyHp > 0 && game.dungeonType !== "outside") {
-      const cd = darkasProtects ? 0 : Math.max(0, Math.floor(m.attack * 0.6) - p.partyDefense);
+      const cd = darkasProtects ? 0 : Balance.partyCounterDamage(m.attack, 0, p.partyDefense);
       p.partyHp = Math.max(0, p.partyHp - cd);
       if (cd > 0) game.log(`👥 동료 ${cd} 피해`);
       if (p.partyHp <= 0) {
@@ -599,7 +599,7 @@ class BattleManager {
 
     // 2번째 동료 반격 피해 (일반+)
     if (p.party2 && p.party2Hp > 0) {
-      const cd2 = darkasProtects ? 0 : Math.max(0, Math.floor(m.attack * 0.4) - p.party2Defense);
+      const cd2 = darkasProtects ? 0 : Balance.partyCounterDamage(m.attack, 1, p.party2Defense);
       p.party2Hp = Math.max(0, p.party2Hp - cd2);
       if (cd2 > 0) game.log(`👤 보조 동료 ${cd2} 피해`);
       if (p.party2Hp <= 0) { p.party2Hp = 0; p._party2KnockedOut = true; game.log("💔 보조 동료 전투 불능!"); }
@@ -607,7 +607,7 @@ class BattleManager {
 
     // 3번째 동료 반격 피해 (심연 전용)
     if (p.party3 && p.party3Hp > 0) {
-      const cd3 = darkasProtects ? 0 : Math.max(0, Math.floor(m.attack * 0.35) - p.party3Defense);
+      const cd3 = darkasProtects ? 0 : Balance.partyCounterDamage(m.attack, 2, p.party3Defense);
       p.party3Hp = Math.max(0, p.party3Hp - cd3);
       if (cd3 > 0) game.log(`👥 3번째 동료 ${cd3} 피해`);
       if (p.party3Hp <= 0) { p.party3Hp = 0; p._party3KnockedOut = true; game.log("💔 3번째 동료 전투 불능!"); }
@@ -635,16 +635,12 @@ class BattleManager {
 
     p.killCount++;
     // [BUG FIX 03] models.js의 goldRate·expRate 우선 사용
-    let goldReward = m.goldRate ?? (m.isFinal ? 500 : m.isBoss ? 180 : 50);
-    const expReward = m.expRate  ?? (m.isFinal ? 300 : m.isBoss ? 120 : 40);
 
     // 왕국 번영도 보너스 (8단계) — 지역을 재건할수록 경제가 살아나 전투 보상이 늘어남
     // 0~100% 번영도를 0~20% 골드 보너스로 환산 (완전히 재건된 왕국 = 최대 +20%)
     const kingdomProsp = game.regionManager?.kingdomProsperity(p) ?? 0;
     const kingdomBonusPct = Math.floor(kingdomProsp * 0.2); // 0~20
-    if (kingdomBonusPct > 0) {
-      goldReward = Math.floor(goldReward * (1 + kingdomBonusPct / 100));
-    }
+    const { gold: goldReward, exp: expReward } = Balance.battleRewards(m, kingdomBonusPct);
 
     p.money += goldReward; // setter가 MAX_GOLD 자동 클램프
     const lvUp = p.gainExp(expReward);

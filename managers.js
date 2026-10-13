@@ -59,23 +59,39 @@ class SaveManager {
     try {
       if (!game.player) return false;
       const data = {
-        version: 3, savedAt: Date.now(),
+        version: SaveSchema.SAVE_VERSION, curve: Balance.CURVE_ID, savedAt: Date.now(),
         player: this._serializePlayer(game.player),
       };
-      localStorage.setItem(this._slotKey(slotIndex), JSON.stringify(data));
+      const key = this._slotKey(slotIndex);
+      const prev = localStorage.getItem(key);
+      if (prev) { try { localStorage.setItem(key + "_bak", prev); } catch (e) {} }   // 직전 저장을 하나 남겨 둔다
+      localStorage.setItem(key, JSON.stringify(data));
       return true;
     } catch(e) { console.error("Save failed:", e); return false; }
   }
 
   // 슬롯 불러오기 (slotIndex 없으면 slot_0 → 구 rpgSaveV3 순서로 시도)
+  // 저장 문자열 → 현재 버전으로 마이그레이션된 데이터. 읽을 수 없거나 더 새로운 버전이면 null.
+  // 마이그레이션이 일어났다면, 원본을 한 번만 별도 키(…_v{버전}c{곡선})에 백업해 둔다.
+  _parse(raw, key) {
+    const data = SaveSchema.migrateSave(JSON.parse(raw));
+    if (data?.migratedFrom && key) {
+      const bak = `${key}_v${data.migratedFrom.version}c${data.migratedFrom.curve}`;
+      try { if (!localStorage.getItem(bak)) localStorage.setItem(bak, raw); } catch (e) {}
+      console.info("[RPG] 세이브 마이그레이션:", data.migratedFrom, "→ v" + data.version, data.fixes);
+    }
+    return data;
+  }
+
   load(slotIndex = 0) {
     try {
-      const r = localStorage.getItem(this._slotKey(slotIndex));
-      if (r) return JSON.parse(r);
+      const key = this._slotKey(slotIndex);
+      const r = localStorage.getItem(key);
+      if (r) return this._parse(r, key);
       // 구버전 단일 저장 키 호환 (슬롯 0에서만 시도)
       if (slotIndex === 0) {
         const legacy = localStorage.getItem(this.key);
-        if (legacy) return JSON.parse(legacy);
+        if (legacy) return this._parse(legacy, this.key);
       }
       return null;
     } catch(e) { console.error("Load failed:", e); return null; }
@@ -87,14 +103,18 @@ class SaveManager {
     for (let i = 0; i < 3; i++) {
       try {
         const raw = localStorage.getItem(this._slotKey(i));
-        if (raw) {
-          slots.push({ index: i, empty: false, data: JSON.parse(raw) });
+        const parsed = raw ? SaveSchema.migrateSave(JSON.parse(raw)) : null;   // 표시용(백업은 load 때)
+        if (parsed) {
+          slots.push({ index: i, empty: false, data: parsed });
+        } else if (raw) {
+          slots.push({ index: i, empty: true, data: null });                     // 손상/신버전 저장은 빈 슬롯처럼 보이게
         } else {
           // 슬롯 0에 한해 구버전 키도 확인
           if (i === 0) {
             const legacy = localStorage.getItem(this.key);
-            if (legacy) {
-              slots.push({ index: 0, empty: false, data: JSON.parse(legacy) });
+            const lp = legacy ? SaveSchema.migrateSave(JSON.parse(legacy)) : null;
+            if (lp) {
+              slots.push({ index: 0, empty: false, data: lp });
               continue;
             }
           }
@@ -119,7 +139,7 @@ class SaveManager {
   autoSave(game) {
     try {
       if (!game.player) return false;
-      const data = { version: 3, savedAt: Date.now(), isAutoSave: true, player: this._serializePlayer(game.player) };
+      const data = { version: SaveSchema.SAVE_VERSION, curve: Balance.CURVE_ID, savedAt: Date.now(), isAutoSave: true, player: this._serializePlayer(game.player) };
       localStorage.setItem("rpg_autosave", JSON.stringify(data));
       console.info("[RPG] 자동저장 완료 (rpg_autosave)");
       return true;
@@ -127,28 +147,19 @@ class SaveManager {
   }
 
   hydrate(raw) {
-    if (!raw) return null;
-    const rawType = raw.type || "knight";
-    // 구버전 세이브 자동 변환: warrior·night → knight
-    const type = (rawType === "warrior" || rawType === "night") ? "knight" : rawType;
+    if (!raw || typeof raw !== "object") return null;
+    // 옛 직업 id·카르나 이관·레벨/경험치 보정은 save-schema.js. load() 를 거치지 않은 데이터가
+    // 들어와도 안전하도록 여기서도 한 번 더 적용한다(여러 번 해도 결과가 같다).
+    raw = SaveSchema.migratePlayer(raw).player;
+    const type = CLASSES[raw.type] ? raw.type : "knight";
     const p = new Player(type);
 
-    // 1) 저장값을 통째로 복사 — 단순 필드(플래그·숫자·문자열)는 이 한 줄로 끝.
-    //    생성자가 이미 기본값을 세팅해뒀으므로, 저장에 없는 신규 필드는
-    //    자동으로 기본값이 유지된다 (Object.assign 은 raw 에 있는 키만 덮어씀).
-    Object.assign(p, raw);
-
-    // 2) 직업 마이그레이션 시 Object.assign 이 옛 type 으로 덮어쓰므로 재설정
-    if (rawType !== type) {
-      const base = CLASSES[type] || CLASSES.knight;
-      p.type      = type;
-      p.name      = base.name;
-      p.icon      = base.icon;
-      p.portrait  = base.portrait || "";
-    }
+    // 1) 저장값 복사 — 프로토타입 오염용 키와 타입이 맞지 않는 값은 걸러내고,
+    //    생성자가 세팅해 둔 기본값은 저장에 없는 신규 필드에 그대로 남는다.
+    SaveSchema.safeAssign(p, raw);
 
     // 3) 아이템은 단순 복사가 아니라 normalizeItem 으로 변환 필요(itemId/enhance 보정)
-    p.inventory      = (raw.inventory || []).map(normalizeItem).filter(Boolean);
+    p.inventory      = (Array.isArray(raw.inventory) ? raw.inventory : []).map(normalizeItem).filter(Boolean);
     p.equipment      = {
       weapon:  raw.equipment?.weapon  ? normalizeItem(raw.equipment.weapon)  : null,
       helmet:  raw.equipment?.helmet  ? normalizeItem(raw.equipment.helmet)  : null,
@@ -175,28 +186,6 @@ class SaveManager {
     p.status    = { poison:0, stun:0, burn:0,          ...(raw.status    || {}) };
     p.affinity  = { archer:0, healer:0, tanker:0, mage_party:0, ...(raw.affinity || {}) };
     p.bank      = { deposit:0, interest:0, totalInvested:0, milestones:[], ...(raw.bank || {}) };
-
-    // 4-1) 카르나(dealer)는 카인(tanker)에 병합됨 — 구 세이브의 카르나 데이터를 카인으로 이관
-    const PARTY_SLOTS = ["party", "party2", "party3"];
-    if (PARTY_SLOTS.some(s => p[s] === "dealer")) {
-      const tankerAlready = PARTY_SLOTS.some(s => p[s] === "tanker");
-      for (const s of PARTY_SLOTS) {
-        if (p[s] !== "dealer") continue;
-        const mem = tankerAlready ? null : PARTY_MEMBERS.tanker;
-        p[s]               = mem ? "tanker" : null;
-        p[`${s}Hp`]        = mem ? mem.hp : 0;
-        p[`${s}MaxHp`]     = mem ? mem.hp : 0;
-        p[`_${s}KnockedOut`] = false;
-      }
-    }
-    p.affinity.tanker = Math.max(p.affinity.tanker || 0, p.affinity.dealer || 0);
-    delete p.affinity.dealer;
-    if (p.partyCutinLevel) {
-      p.partyCutinLevel.tanker = Math.max(p.partyCutinLevel.tanker || 0, p.partyCutinLevel.dealer || 0);
-      delete p.partyCutinLevel.dealer;
-    }
-    if (p.companionStory)   delete p.companionStory.dealer;
-    if (p.companionPassives) delete p.companionPassives.dealer;
 
     // 5) storyPhase 는 항상 마을에서 다시 시작 (저장값 무시)
     p.storyPhase = "town";
@@ -329,7 +318,7 @@ class ItemManager {
     if (!item || item.type !== "potion") return false;
 
     const before = p.hp;
-    p.hp = Math.min(p.maxHp + (p.bonusHp||0), p.hp + (item.heal || 50));
+    p.hp = Math.min(p.maxHp + (p.bonusHp||0), p.hp + Balance.potionAmount(item, p.maxHp + (p.bonusHp||0)));
     const healed = p.hp - before;
     p.inventory.splice(index, 1);
     game.log(`💊 ${item.name} 사용! HP +${healed}`);

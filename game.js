@@ -1138,7 +1138,7 @@ class Game {
     const diffTbl   = (window.FLOOR_DIFFICULTY ?? {})[this.dungeonType ?? "normal"]
                    ?? (window.FLOOR_DIFFICULTY?.normal ?? [1.0, 1.35, 1.7]);
     const floorMult = diffTbl[Math.min(floor - 1, diffTbl.length - 1)] ?? 1.0;
-    const diffMult  = (1 + (this.player.level - 1) * 0.15) * floorMult;
+    const diffMult  = Balance.monsterScale(this.player.level, floorMult);
     this.currentMonster = createMonsterInstance(monsterId, diffMult);
     this._battleTurnCount = 0; // "수호의 맥동"(카인 사연 보상) 등 전투 초반 N턴 효과에 사용
     if (isBoss) {

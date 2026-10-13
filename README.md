@@ -25,7 +25,9 @@
 rpg-game/
 ├── index.html              ← 진입점 (스크립트 로딩 순서 관리)
 ├── rpg-main.css            ← 통합 스타일
+├── balance.js              ← 밸런스 수식 한 곳에 (경험치 곡선·몬스터 스케일·보상·피해·회복)
 ├── models.js               ← 데이터 모델 & 상수 (직업/몬스터/아이템/던전)
+├── save-schema.js          ← 세이브 버전·마이그레이션·입력 검증
 ├── managers.js             ← SaveManager / ItemManager / QuestManager
 ├── achievement-system.js   ← 업적 27개 정의 & 토스트 팝업
 ├── battle-manager.js       ← 턴제 전투 로직 (상태이상/스킬/궁극기)
@@ -158,7 +160,32 @@ A(14) > K(13) > Q(12) > J(11) > 10 > 9 > ... > 2
 
 ---
 
+## 🧪 개발 · 테스트
+
+빌드 과정은 없습니다. `package.json`은 테스트/시뮬레이션 스크립트용입니다 (Node 20 이상).
+
+```bash
+npm test                 # 단위 테스트 (밸런스 수식 동등성, 세이브 마이그레이션·보안, 시뮬레이터)
+npm run balance          # 밸런스 시뮬레이터 표 (기본: 기사 / 상점 최고 장비 / 일반 던전 2층)
+node tools/balance-sim.js --zone abyss:3 --class tanker --gear starter --max 40
+npm run balance:check    # 목표 곡선(tools/balance-sim.js 의 TARGETS)과 비교, 어긋나면 종료 코드 1
+```
+
+- **밸런스 수치는 `balance.js`에서만 고칩니다.** 경험치 곡선을 바꾸면 `Balance.CURVE_ID`를 1 올리세요.
+  기존 세이브의 레벨 내 진행도는 불러올 때 새 곡선에 비율로 옮겨집니다.
+- **세이브 구조를 바꾸면 `save-schema.js`의 `SAVE_VERSION`을 올리고 마이그레이션을 추가**하세요.
+  저장 데이터는 신뢰할 수 없는 입력으로 취급합니다(프로토타입 오염·타입 혼동·HTML 주입 방어).
+  옛 세이브를 처음 열 때 원본이 `rpgSave_slot_N_v{버전}c{곡선}` 키에 한 번 백업되고,
+  저장할 때마다 직전 저장이 `rpgSave_slot_N_bak`에 남습니다.
+- `tests/sim.test.js`의 "목표 곡선" 테스트는 밸런스 개편 전까지 `todo`입니다.
+
+---
+
 ## 🛠 개발 이력
+
+### v2.2 — 기반 정비
+- 밸런스 수식을 `balance.js`로 모음(동작 보존), 세이브 버전/마이그레이션/검증(`save-schema.js`), 단위 테스트와 밸런스 시뮬레이터 추가
+- 저장소 정리: 미사용 에셋·레거시 스크립트·macOS 메타데이터·무관한 바이너리 제거
 
 ### v2.1 — 동료 정리
 - 카르나(dealer)를 카인(tanker)에 병합 (기사단 서사 · 바르칸 격파 대사 · 엔딩 후일담 통합, 구 세이브 자동 이관)

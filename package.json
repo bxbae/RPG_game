@@ -1,0 +1,11 @@
+{
+  "name": "demon-king-rpg",
+  "private": true,
+  "description": "마왕 토벌 — 브라우저 턴제 RPG (빌드 과정 없음. package.json 은 테스트/시뮬레이션 스크립트용)",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "balance": "node tools/balance-sim.js",
+    "balance:check": "node tools/balance-sim.js --check"
+  },
+  "engines": { "node": ">=20" }
+}
