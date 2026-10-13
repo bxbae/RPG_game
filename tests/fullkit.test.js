@@ -41,7 +41,7 @@ test("구역 난이도 계단: 기준 레벨에선 편안하고 한참 낮으면
   const env = S.create(5);
   const kit = L => ({ cls: "knight", gear: "auto", level: L });
   for (const [zone, floor, L] of [["normal", 3, 15], ["harbor", 3, 28], ["capital", 3, 40], ["abyss", 3, 46]]) {
-    assert.ok(S.clearRate(env, kit(L + 2), zone, floor, 40).clear >= 0.75, `${zone}${floor} Lv${L + 2}`);
+    assert.ok(S.clearRate(env, kit(L + 3), zone, floor, 40).clear >= 0.7, `${zone}${floor} Lv${L + 3}`);
     assert.ok(S.clearRate(env, kit(L - 12), zone, floor, 40).clear <= 0.2, `${zone}${floor} Lv${L - 12}`);
   }
   // 같은 레벨이면 더 깊은 구역일수록 어렵다

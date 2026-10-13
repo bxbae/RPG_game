@@ -78,8 +78,8 @@
 
     // ── 직업 스킬 ───────────────────────────────────
     JOB_SKILL_KEY: { knight:"whirlwind", night:"whirlwind", warrior:"whirlwind", mage:"magicBall", archer:"rapidShot", tanker:"shieldBash", healer:"holyLight" },
-    BLESSING: [0, 0.1, 0.2, 0.3],      // 힐러 패시브 '축복': 회복 스킬 증가율(레벨 1~3)
-    JOB_SKILL: { tankerMult: 1.6, tankerGuard: 1, healerMult: 1.3, healerHealPct: 0.04, healerUltHealPct: 0.25 },
+    BLESSING: [0, 0.08, 0.16, 0.24],      // 힐러 패시브 '축복': 회복 스킬 증가율(레벨 1~3)
+    JOB_SKILL: { tankerMult: 1.6, tankerGuard: 1, healerMult: 1.3, healerHealPct: 0.04, healerUltHealPct: 0.2 },
 
     // ── 동료 슬롯 ───────────────────────────────────
     // 던전 종류별로 함께 싸우는 동료 수: 성 밖 0명(혼자), 일반·지역 던전(광산·항구·엘프숲·수도 등) 2명, 심연 3명.
@@ -96,9 +96,17 @@
       mage:   { mult: 3.5, exMult: 5.5, storyMult: 6, storyExMult: 8 },   // 주인공 공격력 배수
       archer: { hits: 6, exHits: 10, atkShare: 0.25 },                    // 타수, 타당 피해 = 동료 공격력 + 주인공 공격력 × atkShare
     },
-    partyMageMult(story, ex) { const u = Balance.PARTY_ULT.mage; return story ? (ex ? u.storyExMult : u.storyMult) : (ex ? u.exMult : u.mult); },
+    // 피해를 주는 동료 궁극기는 레벨에 따라 위력이 커진다. 몬스터 HP 에 대한 비율이 초반(Lv15 약 100%)엔 한 방에 끝나고
+    // 후반(Lv47 약 40%)엔 보조에 그쳤기 때문이다 — 이 계수로 어느 구간에서나 몬스터 HP 의 절반 안팎이 되게 맞춘다.
+    partyUltLevelFactor(level) { return Math.min(1.3, Math.max(0.3, 0.2 + 0.0205 * (level || 1))); },
+    partyMageMult(story, ex, level) {
+      const u = Balance.PARTY_ULT.mage;
+      return (story ? (ex ? u.storyExMult : u.storyMult) : (ex ? u.exMult : u.mult)) * Balance.partyUltLevelFactor(level);
+    },
     partyArcherHits(ex) { const u = Balance.PARTY_ULT.archer; return ex ? u.exHits : u.hits; },
-    partyArcherHit(partyAttack, heroAttack) { return Math.floor(partyAttack + heroAttack * Balance.PARTY_ULT.archer.atkShare); },
+    partyArcherHit(partyAttack, heroAttack, level) {
+      return Math.floor((partyAttack + heroAttack * Balance.PARTY_ULT.archer.atkShare) * Balance.partyUltLevelFactor(level));
+    },
 
     // ── 피해 / 회복 ─────────────────────────────────
     // 방어는 "비율 감쇠": 피해 = 공격 × K/(K+방어).  방어 K 면 피해가 절반.

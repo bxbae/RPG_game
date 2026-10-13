@@ -57,7 +57,7 @@ PASSIVES.healer = [{ id: "blessing", cost: [2, 3, 4] }, { id: "arcane_ward", cos
 const PLAN_ORDER = {
   knight: ["iron_body", "war_cry", "berserker"], tanker: ["iron_body", "war_cry", "berserker"],
   mage: ["arcane_ward", "mana_surge", "spell_echo"], archer: ["swift_feet", "eagle_eye", "poison_tip"],
-  healer: ["blessing", "arcane_ward", "war_cry"],
+  healer: ["arcane_ward", "blessing", "war_cry"],
 };
 const JOB_SKILL = { knight: "whirlwind", mage: "magicBall", archer: "rapidShot", tanker: "shieldBash", healer: "holyLight" };
 
@@ -229,7 +229,7 @@ function create(seed = 1) {
   return env;
 }
 
-module.exports = { create, buildKit, runFloor, clearRate, ladder, fight, makeGame, act, gearTierFor, GEAR_TIER, PASSIVES, LADDER, BOSS_OF };
+module.exports = { PLAN_ORDER, create, buildKit, runFloor, clearRate, ladder, fight, makeGame, act, gearTierFor, GEAR_TIER, PASSIVES, LADDER, BOSS_OF };
 
 // ── CLI ─────────────────────────────────────────────
 function main() {
