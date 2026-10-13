@@ -4,7 +4,7 @@
 "use strict";
 
 // ── 전역 게임 상수 ─────────────────────────────────
-const MAX_LEVEL = 99;         // 최고 레벨 상한
+const MAX_LEVEL = Balance.MAX_LEVEL;   // 최고 레벨 상한 (balance.js)
 const MAX_GOLD  = 9_999_999;  // 골드 상한 (9,999,999G)
 
 // ── 직업 정의 ──────────────────────────────────────
@@ -122,6 +122,7 @@ class Player {
     this.hp        = base.hp;
     this.maxHp     = base.hp;
     this.baseAttack= base.attack;
+    this.baseDefense = base.defense || 0;
     this.bonusAttack= 0;
     this.money     = 300;
 
@@ -246,7 +247,8 @@ class Player {
 
   get defense() {
     const ironLv = (this.passiveSkills || {}).iron_body || 0;
-    return (this.equipment.helmet?.defense || 0)
+    return (this.baseDefense || 0)                    // 직업 기본 방어 (기사 8 / 탱커 15 …)
+         + (this.equipment.helmet?.defense || 0)
          + (this.equipment.armor?.defense  || 0)
          + [0, 5, 12, 22][ironLv]
          + this.setBonus.defense;
@@ -260,7 +262,9 @@ class Player {
   }
 
   get partyDefense() {
-    return (this.partyEquipment.helmet?.defense || 0)
+    if (!this.party) return 0;
+    return (PARTY_MEMBERS[this.party]?.defense || 0)   // 2·3번 동료와 같이 동료 기본 방어도 반영
+         + (this.partyEquipment.helmet?.defense || 0)
          + (this.partyEquipment.armor?.defense  || 0);
   }
 
@@ -347,6 +351,7 @@ function createMonsterInstance(id, difficultyMult = 1) {
   const hp  = stats.hp;
   return {
     ...def,
+    scale: difficultyMult,           // 보상도 이 배수만큼 늘어난다 (Balance.battleRewards)
     hp, maxHp: hp,
     attack: stats.attack,
     status: { poison:0, stun:0, burn:0 },

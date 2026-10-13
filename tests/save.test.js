@@ -95,20 +95,43 @@ test("경험치/레벨 보정: 잘못된 nextExp·초과 레벨·음수 경험�
 test("경험치 곡선이 바뀌면 진행도(레벨 내 비율)를 새 곡선으로 옮긴다", () => {
   const g = fresh(), S = g.get("SaveSchema"), B = g.get("Balance");
   const env = makeEnvelope(g, p => { p.level = 10; p.nextExp = B.expToNext(10); p.exp = Math.floor(p.nextExp / 2); });
-  env.curve = 1;
+  env.curve = B.CURVE_ID;                                // 지금 곡선으로 저장된 세이브
   const oldNext = B.expToNext(10);
-  B.EXP_GROWTH = 1.15; B.CURVE_ID = 2;                 // 3번 작업에서 하게 될 변경을 흉내
+  B.EXP_COEF = 45; B.CURVE_ID += 1;                      // 이후 또 한 번 곡선을 바꾸는 상황을 흉내
   const newNext = B.expToNext(10);
   assert.notEqual(newNext, oldNext);
   const m = S.migrateSave(env);
   assert.equal(m.player.nextExp, newNext);
   assert.equal(m.player.exp, Math.floor(Math.floor(oldNext / 2) * (newNext / oldNext)));
-  assert.equal(m.curve, 2);
-  assert.deepEqual(JSON.parse(JSON.stringify(m.migratedFrom)), { version: 4, curve: 1 });
+  assert.equal(m.curve, B.CURVE_ID);
+  assert.deepEqual(JSON.parse(JSON.stringify(m.migratedFrom)), { version: 4, curve: B.CURVE_ID - 1 });
   // 같은 곡선으로 한 번 더 저장/불러오면 더는 옮기지 않는다(멱등)
-  const again = S.migrateSave({ ...m, version: m.version, curve: m.curve });
+  const again = S.migrateSave({ ...m });
   assert.equal(again.player.exp, m.player.exp);
   assert.equal(again.migratedFrom, undefined);
+});
+
+test("실제 옛 곡선(곡선 1: ×1.3 지수 성장)의 세이브가 새 곡선(2)으로 진행도 비율을 지켜 옮겨진다", () => {
+  const g = fresh(), S = g.get("SaveSchema"), B = g.get("Balance");
+  // 곡선 1 로 만들어진 레벨 20 세이브 — 필요 경험치 14,566(= 100 에서 floor(×1.3)을 19번 누적), 현재 7,283(정확히 50%)
+  let oldNext = 100; for (let i = 1; i < 20; i++) oldNext = Math.floor(oldNext * 1.3);
+  const env = makeEnvelope(g, p => { p.level = 20; p.nextExp = oldNext; p.exp = Math.floor(oldNext / 2); }, 4);
+  env.curve = 1;
+  const m = S.migrateSave(env);
+  assert.equal(m.player.level, 20);
+  assert.equal(m.player.nextExp, B.expToNext(20));
+  assert.equal(m.player.exp, Math.floor(Math.floor(oldNext / 2) * (B.expToNext(20) / oldNext)));
+  assert.ok(Math.abs(m.player.exp / m.player.nextExp - 0.5) < 0.01, "레벨 안에서의 진행 비율(50%)이 유지된다");
+});
+
+test("옛 곡선에서 최고 레벨(50)을 넘긴 세이브는 50으로 맞추고 경험치 바를 가득 채운다", () => {
+  const g = fresh(), S = g.get("SaveSchema"), B = g.get("Balance");
+  const env = makeEnvelope(g, p => { p.level = 73; p.exp = 123; p.nextExp = 999999; }, 4);
+  env.curve = 1;
+  const p = S.migrateSave(env).player;
+  assert.equal(p.level, 50);
+  assert.equal(p.nextExp, B.expToNext(50));
+  assert.equal(p.exp, p.nextExp - 1);
 });
 
 test("보안: __proto__ / constructor 키로 프로토타입을 오염시킬 수 없다", () => {

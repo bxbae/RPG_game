@@ -10,7 +10,7 @@ test("시뮬레이터: 한 지점을 손으로 계산한 값과 일치한다", (
   // 기사 Lv10, 상점 최고 장비, 일반 던전 1층(난이도 1.0), 적 풀 = 슬라임/아이스 슬라임/해골 기사
   const B = env.Balance;
   const [r] = simulate({ cls: "knight", gear: "best", zone: "normal", floor: 1, minLevel: 10, maxLevel: 10 }, env);
-  const atk = 32 + 5 * 9 + 35, def = 28, maxHp = 160 + 20 * 9, scale = B.monsterScale(10, 1.0);
+  const atk = 32 + 5 * 9 + 35, def = 28 + env.CLASSES.knight.defense, maxHp = 160 + 20 * 9, scale = B.monsterScale(10, 1.0);   // 장비 방어 28 + 기사 기본 방어
   let loss = 0;
   for (const id of ["slime", "ice_slime", "skeleton"]) {
     const m = B.monsterStats(env.MONSTERS.find(x => x.id === id), scale);
@@ -35,8 +35,14 @@ test("목표 곡선 점검은 항목별로 PASS/FAIL 과 근거를 돌려준다"
   for (const r of res) { assert.equal(typeof r.pass, "boolean"); assert.ok(r.detail.length > 0); }
 });
 
-// 3번 작업(밸런스 개편)이 끝나면 todo 를 지우고 필수 테스트로 바꾼다.
-test("현재 밸런스가 목표 곡선을 모두 만족한다", { todo: "3번 작업(보상·성장, 방어·회복 수식)에서 해결" }, () => {
-  const failed = evaluate(Object.assign({}, env, { MAX_LEVEL: 99 })).filter(r => !r.pass);
-  assert.deepEqual(failed.map(r => r.id), []);
+test("현재 밸런스가 목표 곡선을 모두 만족한다", () => {
+  const failed = evaluate(env).filter(r => !r.pass);
+  assert.deepEqual(failed.map(r => `${r.id}: ${r.detail}`), []);
+});
+
+test("모든 직업이 상점 최고 장비로 기준 지역(일반 2층)에서 전투당 HP 손실 10~40% 안에 든다", () => {
+  for (const cls of ["knight", "tanker", "mage", "archer", "healer"]) {
+    for (const r of simulate({ cls, gear: "best", zone: "normal", floor: 2, minLevel: 5, maxLevel: 50 }, env))
+      assert.ok(r.hpLossPct >= 10 && r.hpLossPct <= 40, `${cls} Lv${r.level} ${r.hpLossPct}%`);
+  }
 });

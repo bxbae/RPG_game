@@ -20,6 +20,7 @@ const TARGETS = {
   maxLevel: 50,
   hpLossPct: [15, 35],          // 일반 몬스터 한 마리 처치당 평균 HP 손실(%) — 레벨 5~maxLevel 구간
   killsPerLevel: [[25, 30], [50, 80]],   // [레벨 상한, 다음 레벨까지 필요한 처치 수 상한]
+  killsPerLevelMin: [8, 4],     // [이 레벨부터, 레벨당 최소 처치 수] — 레벨업이 너무 빨라 성장이 무의미해지지 않게
   minHitAtStart: 1,             // 1레벨·시작 장비로도 1층 몬스터가 0 피해를 주면 안 된다(긴장감)
   healSkillMinPct: 10,          // 회복 스킬이 레벨 20 최대 HP 의 몇 % 이상이어야 하는가
 };
@@ -52,7 +53,7 @@ function simulate({ cls = "knight", gear = "best", zone = "normal", floor = 2, m
   for (let L = minLevel; L <= maxLevel; L++) {
     const maxHp = base.hp + B.LEVELUP.hp * (L - 1);
     const atk = base.attack + B.LEVELUP.atk * (L - 1) + gearSet.weapon;
-    const def = gearSet.defense;
+    const def = gearSet.defense + (base.defense || 0);        // 직업 기본 방어 + 장비
     const scale = B.monsterScale(L, floorMult);
     let loss = 0, hit = 0, turns = 0, exp = 0, gold = 0;
     for (const id of pool) {
@@ -62,7 +63,7 @@ function simulate({ cls = "knight", gear = "best", zone = "normal", floor = 2, m
       const perHit = B.damageAfterDefense(m.attack, def);
       loss += perHit * (t - 1);           // 처치한 턴에는 반격이 없다
       hit += perHit; turns += t;
-      const r = B.battleRewards(def0);
+      const r = B.battleRewards({ ...def0, scale });
       exp += r.exp; gold += r.gold;
     }
     const n = pool.length;
@@ -100,6 +101,11 @@ function evaluate(env = load(), targets = TARGETS) {
         over.length ? `Lv${over[0].level}에서 ${over[0].killsToNext}마리 필요` : "모두 범위 안");
   }
 
+  const [fromLv, minKills] = targets.killsPerLevelMin;
+  const fast = rows.filter(r => r.level >= fromLv && r.level < targets.maxLevel && r.killsToNext < minKills);
+  add("kills-min", `레벨 ${fromLv} 이상에서 레벨당 처치 수 ≥ ${minKills}`, fast.length === 0,
+      fast.length ? `Lv${fast[0].level}에서 ${fast[0].killsToNext}마리면 충분` : "모두 범위 안");
+
   const start = simulate({ cls: "knight", gear: "starter", zone: "normal", floor: 1, minLevel: 1, maxLevel: 1 }, env)[0];
   add("start-tension", "1레벨 시작 장비로도 1층 몬스터가 피해를 준다", start.hitPerTurn >= targets.minHitAtStart,
       `1층 몬스터 평균 피해 ${start.hitPerTurn}/턴`);
@@ -109,8 +115,8 @@ function evaluate(env = load(), targets = TARGETS) {
       l20 ? `${l20.healSkillPct}% (물약 ${l20.potionPct}%)` : "레벨 20 없음");
 
   const B = env.Balance;
-  add("level-cap", `최고 레벨이 ${targets.maxLevel} 이하`, (env.MAX_LEVEL ?? 99) <= targets.maxLevel,
-      `현재 MAX_LEVEL ${env.MAX_LEVEL ?? "?"}`);
+  add("level-cap", `최고 레벨이 ${targets.maxLevel} 이하`, (env.MAX_LEVEL ?? env.Balance.MAX_LEVEL) <= targets.maxLevel,
+      `현재 MAX_LEVEL ${env.MAX_LEVEL ?? env.Balance.MAX_LEVEL}`);
   return out;
 }
 
@@ -119,7 +125,7 @@ function main() {
   const args = process.argv.slice(2);
   const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
   const env = load();
-  env.MAX_LEVEL = loadGame(["models.js", "balance.js"]).get("MAX_LEVEL");
+  env.MAX_LEVEL = env.Balance.MAX_LEVEL;
   const [zone, floor] = (opt("--zone") || "normal:2").split(":");
   const rows = simulate({ cls: opt("--class") || "knight", gear: opt("--gear") || "best", zone, floor: +floor || 1, maxLevel: +(opt("--max") || 50) }, env);
 

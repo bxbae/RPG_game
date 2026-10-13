@@ -227,9 +227,10 @@ class BattleManager {
 
     const p = game.player;
     if (p.cooldowns.heal > 0) { game.log(`💊 회복 대기 (${p.cooldowns.heal}턴)`); return; }
-    p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + Balance.healSkillAmount(p.maxHp + p.bonusHp));
+    const healed = Balance.healSkillAmount(p.maxHp + p.bonusHp);
+    p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + healed);
     p.cooldowns.heal = 3;
-    game.log("💚 회복! +25 HP");
+    game.log(`💚 회복! +${healed} HP`);
     if (window.audioMgr) audioMgr.playSfx("heal");
 
     // [BUG FIX 02] 회복도 행동 소모 — 몬스터 반격 + 상태이상 틱

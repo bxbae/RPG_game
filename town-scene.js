@@ -1193,7 +1193,7 @@ class TownScene {
 
       // 스탯 미리보기
       const statStr = item.type === "weapon" ? `ATK+${item.attack}`
-                    : item.type === "potion"  ? `HP+${item.heal}`
+                    : item.type === "potion"  ? `HP+${Math.max(item.heal || 0, Math.floor((this.game.player.maxHp + (this.game.player.bonusHp || 0)) * Balance.POTION_PCT))}`
                     :                           `DEF+${item.defense}`;
       // 직업 배지 (전용 무기만 표시)
       const classBadge = item.weaponClass
