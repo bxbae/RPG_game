@@ -344,7 +344,10 @@ class BattleScene {
       this._playHealFx();
       g.battleManager.heal(g);
     });
-    this.el.btnJobSkill?.addEventListener("click", () => g.battleManager.jobSkill(g));
+    this.el.btnJobSkill?.addEventListener("click", () => {
+      if (performance.now() < (this._busyUntil || 0)) return;        // 모션 중에는 연타 무시 (모션이 실제로 시작될 때 잠금)
+      g.battleManager.jobSkill(g);
+    });
     this.el.btnHeroUlt ?.addEventListener("click", () => g.battleManager.heroUltimate(g));
     this.el.btnPartyUlt?.addEventListener("click", () => {
       const p = g.player;
@@ -400,7 +403,7 @@ class BattleScene {
   // ⚔ 싸운다 — 공격 액션 연출을 먼저 시작하고, 같은 프레임에 전투 로직을 실행한다
   _doAttack() {
     const g = this.game;
-    if (this._busy(1150)) return;
+    if (this._busy(this._t ? this._t(1150) : 1150)) return;
     const type = g.player?.type;
     this.showAttackFlash(type);
     this._playAttackAction(type);
@@ -819,6 +822,7 @@ class BattleScene {
     const y = r.top  - fr.top  + r.height * .28;
     const n = this._fx(`damage ${target === "monster" ? "monster-dmg" : "player-dmg"}${crit ? " crit" : ""}`, x, y, {}, 1100);
     n.innerText = `${crit ? "💥" : ""}${amount}`;
+    window.audioMgr?.playSfx(target === "monster" ? (crit ? "crit" : "hit") : "hurt");
     if (target === "monster") {
       this._triggerMonsterHit();
       this._impactBurst(x, r.top - fr.top + r.height * .5, crit);
@@ -883,8 +887,8 @@ class BattleScene {
 
     let impactMs;
     if (kind === "slash") {
-      lunge(pw, .72, 560);
-      impactMs = 280;
+      lunge(pw, .72, this._t ? this._t(560) : 560);
+      impactMs = this._t ? this._t(280) : 280;
       setTimeout(() => this._slashFx(to), impactMs - 20);
     } else {
       recoil(pw, 380);
@@ -899,7 +903,7 @@ class BattleScene {
     });
 
     this._impactAt  = now + impactMs;
-    this._counterAt = this._impactAt + 520;       // 몬스터 반격은 내 공격이 끝난 뒤
+    this._counterAt = this._impactAt + (this._t ? this._t(520) : 520);       // 몬스터 반격은 내 공격이 끝난 뒤
     this.pulseButton(this.el.btnAttack);
   }
 
@@ -1059,6 +1063,7 @@ class BattleScene {
     const cutImg = CUTIN_PARTY_FULLSCREEN[party] || "";
     const vidSrc = ULTIMATE_PARTY_VIDEOS[party]  || "";
     const title  = CUTIN_PARTY_TITLE[party]      || "✨ 궁극기";
+    this._pendingPartyFx = party;        // 컷인이 끝나면 동료별 효과(유성·화살비·방어막·치유)를 재생한다 (battle-fx.js)
     this._playUltimateCutThenVideo(cutImg, vidSrc, title, party);
   }
 
@@ -1245,8 +1250,13 @@ class BattleScene {
     this._ultActive = false;
     const list = this._ultPending || [];
     this._ultPending = [];
-    list.forEach((d, i) => setTimeout(() => this._spawnDamage(d.amount, d.target, d.target === "monster"), i * 170));
-    if (list.some(d => d.target === "monster")) this._shakeField();
+    const fxKey = this._pendingPartyFx; this._pendingPartyFx = null;
+    const lead = fxKey && this._playPartyUltFx ? this._playPartyUltFx(fxKey) : 0;   // 효과가 맞는 순간에 숫자가 터지게 기다린다
+    list.forEach((d, i) => setTimeout(() => {
+      if (d.target === "heal") this._spawnHeal?.(d.amount);
+      else this._spawnDamage(d.amount, d.target, d.target === "monster");
+    }, lead + i * 170));
+    if (list.some(d => d.target === "monster")) setTimeout(() => this._shakeField(), lead);
   }
 
   // 하위호환

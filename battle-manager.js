@@ -35,6 +35,15 @@ class BattleManager {
     if (this._events) this._events.push({ type, ...data });
   }
 
+  // 플레이어 회복 — 실제로 회복된 양만 이벤트로 내보낸다(화면에 +숫자와 회복 연출을 띄우기 위해)
+  _healPlayer(game, amount) {
+    const p = game.player, max = p.maxHp + p.bonusHp, before = p.hp;
+    p.hp = Math.min(max, p.hp + Math.max(0, Math.floor(amount)));
+    const got = p.hp - before;
+    if (got > 0) this._emit("heal", { amount: got });
+    return got;
+  }
+
   _flushUI(game) {
     const scene  = game.battleScene;
     const events = this._events;
@@ -54,6 +63,12 @@ class BattleManager {
           if (game.currentScene === "battle") scene.showEXCutin(e.partyKey);
           break;
         case "rewardPopup":   scene.showRewardPopup(e); break;
+        case "skillAction":   scene.playSkillAction?.(e.ptype); break;
+        case "heal":          scene.showHeal?.(e.amount); break;
+        case "status":        scene.showStatusApplied?.(e.target, e.status); break;
+        case "dot":           scene.showDot?.(e.amount, e.target, e.status); break;
+        case "stunSkip":      scene.showStunSkip?.(e.target); break;
+        case "guardHit":      scene.showGuardHit?.(); break;
       }
     }
   }
@@ -76,6 +91,7 @@ class BattleManager {
     target.status[type] = existing ? Math.max(target.status[type], turns) : turns;
     game.log(`${BattleManager.STATUS_ICON[type]} ${targetName}에게 [${BattleManager.STATUS_NAME[type]}] ${existing?"갱신":"부여"}! (${turns}턴)`);
     this._emit("statusUpdate");
+    this._emit("status", { target: target === game.player ? "player" : "monster", status: type });
   }
 
   processPlayerStatus(game) {
@@ -85,12 +101,14 @@ class BattleManager {
       const dmg = Math.max(5, Math.floor((p.maxHp + p.bonusHp) * 0.06));
       p.hp = Math.max(1, p.hp - dmg);
       p.status.poison--;
+      this._emit("dot", { amount: dmg, target: "player", status: "poison" });
       game.log(`🟢 중독 피해 ${dmg} (남은 ${p.status.poison}턴)`);
     }
     if (p.status.burn > 0) {
       const dmg = Math.max(3, Math.floor((p.maxHp + p.bonusHp) * 0.04));
       p.hp = Math.max(1, p.hp - dmg);
       p.status.burn--;
+      this._emit("dot", { amount: dmg, target: "player", status: "burn" });
       game.log(`🔥 화상 피해 ${dmg} (남은 ${p.status.burn}턴)`);
     }
     if (p.status.stun > 0) {
@@ -110,14 +128,14 @@ class BattleManager {
       m.hp = Math.max(0, m.hp - dmg);
       m.status.poison--;
       game.log(`🟢 ${m.name} 중독 피해 ${dmg}`);
-      this._emit("hitFlash");
+      this._emit("dot", { amount: dmg, target: "monster", status: "poison" });
     }
     if (m.status.burn > 0) {
       const dmg = Math.max(5, Math.floor(m.maxHp * 0.05));
       m.hp = Math.max(0, m.hp - dmg);
       m.status.burn--;
       game.log(`🔥 ${m.name} 화상 피해 ${dmg}`);
-      this._emit("hitFlash");
+      this._emit("dot", { amount: dmg, target: "monster", status: "burn" });
     }
     return m.hp <= 0;
   }
@@ -134,6 +152,7 @@ class BattleManager {
     if (p.status?.stun > 0) {
       p.status.stun--;
       game.log(`💫 기절! 행동 불가 (남은 ${p.status.stun}턴)`);
+      this._emit("stunSkip", { target: "player" });
       this._emit("statusUpdate");
       this._counter(game);
       this._tickCooldowns(game); // 기절 중에도 궁극기 등 쿨다운은 정상적으로 흘러야 함
@@ -149,7 +168,7 @@ class BattleManager {
     }
 
     if (window.audioMgr) {
-      const sfxMap = { knight:"sword", night:"sword", mage:"magic", archer:"arrow" };
+      const sfxMap = { knight:"sword", night:"sword", mage:"magic", archer:"arrow", tanker:"sword", healer:"holy" };
       audioMgr.playSfx(sfxMap[p.type] || "sword");
     }
 
@@ -164,7 +183,7 @@ class BattleManager {
 
     if (partyActive) dmg += p.partyAttack;
     if (partyActive && p.party === "healer") {
-      p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + 15);
+      this._healPlayer(game, 15);
       game.log("✨ 힐러 회복 +15");
     }
     // 2번째 동료 (일반 던전+)
@@ -183,7 +202,7 @@ class BattleManager {
     }
 
     if (partyActive && p.party === "healer" && Math.random() < 0.15) {
-      p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + 80);
+      this._healPlayer(game, 80);
       game.log("✨ 대치유!");
     }
     if (partyActive && p.party === "archer"     && Math.random() < 0.15) { m.hp -= dmg; game.log("🏹 관통사격!"); }
@@ -230,7 +249,7 @@ class BattleManager {
     if (p.cooldowns.heal > 0) { game.log(`💊 회복 대기 (${p.cooldowns.heal}턴)`); return; }
     const blessLv = p.passiveSkills?.blessing || 0;
     const healed = Math.floor(Balance.healSkillAmount(p.maxHp + p.bonusHp) * (1 + (Balance.BLESSING[blessLv] || 0)));
-    p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + healed);
+    this._healPlayer(game, healed);
     p.cooldowns.heal = 3;
     game.log(`💚 회복! +${healed} HP`);
     if (window.audioMgr) audioMgr.playSfx("heal");
@@ -290,7 +309,7 @@ class BattleManager {
         // 신성 폭발 — 적에게 피해 + 자신 HP 완전 회복
         dmg = Math.floor(p.totalAttack * 2.5); m.hp -= dmg;
         { const mx = p.maxHp + (p.bonusHp || 0), pct = Balance.JOB_SKILL.healerUltHealPct;
-          p.hp = Math.min(mx, p.hp + Math.floor(mx * pct));
+          this._healPlayer(game, Math.floor(mx * pct));
           game.log(`✝ 신성 폭발! ${dmg} — ${pct >= 1 ? "HP 완전 회복!" : `HP ${Math.round(pct * 100)}% 회복`}`); }
         break;
     }
@@ -323,7 +342,7 @@ class BattleManager {
     switch (party) {
       case "healer": {
         const hasStoryReward = !!p.companionPassives?.healer; // "완전한 자비" — 사연 해결 시 파티 전체 완전 회복+상태이상 해제로 강화
-        p.hp = p.maxHp + p.bonusHp;
+        this._healPlayer(game, p.maxHp + p.bonusHp);
         if (p.partyHp) p.partyHp = p.partyMaxHp;
         if (p.party2Hp) p.party2Hp = p.party2MaxHp;
         if (p.party3Hp) p.party3Hp = p.party3MaxHp;
@@ -384,7 +403,7 @@ class BattleManager {
     switch (party) {
       case "healer": {
         const hasStoryReward = !!p.companionPassives?.healer;
-        p.hp = p.maxHp + p.bonusHp;
+        this._healPlayer(game, p.maxHp + p.bonusHp);
         if (p.party2Hp) p.party2Hp = p.party2MaxHp;
         if (p.partyHp) p.partyHp = p.partyMaxHp;
         if (p.party3Hp) p.party3Hp = p.party3MaxHp;
@@ -445,7 +464,7 @@ class BattleManager {
     switch (party) {
       case "healer": {
         const hasStoryReward = !!p.companionPassives?.healer;
-        p.hp = p.maxHp + p.bonusHp;
+        this._healPlayer(game, p.maxHp + p.bonusHp);
         if (p.partyHp) p.partyHp = p.partyMaxHp;
         if (p.party2Hp) p.party2Hp = p.party2MaxHp;
         if (p.party3Hp) p.party3Hp = p.party3MaxHp;
@@ -497,6 +516,7 @@ class BattleManager {
     const hasSkill = p.activeSkills[Balance.JOB_SKILL_KEY[p.type]];
     if (!hasSkill) { game.log("❌ 스킬을 배우지 않았습니다"); return; }
 
+    this._emit("skillAction", { ptype: p.type });   // 화면: 직업별 스킬 모션
     let dmg = 0;
     switch (p.type) {
       case "knight":  // 현재 기본 직업 명칭
@@ -510,7 +530,7 @@ class BattleManager {
       case "healer": { // 성스러운 빛 — 일격 + 최대 HP 일부 회복
         dmg = Math.floor(p.totalAttack * Balance.JOB_SKILL.healerMult); m.hp -= dmg;
         const heal = Math.floor((p.maxHp + p.bonusHp) * Balance.JOB_SKILL.healerHealPct);
-        p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + heal);
+        this._healPlayer(game, heal);
         game.log(`✨ 성스러운 빛! ${dmg} — HP +${heal}`); break;
       }
     }
@@ -571,6 +591,7 @@ class BattleManager {
     if (m.status?.stun > 0) {
       m.status.stun = m.isBoss ? 0 : m.status.stun - 1;
       game.log(`💫 ${m.name} 기절! 행동하지 못했다`);
+      this._emit("stunSkip", { target: "monster" });
       return;
     }
 
@@ -594,7 +615,7 @@ class BattleManager {
       dmg = Math.floor(dmg * (1 - [0,0.1,0.15,0.2][swiftLv]));
       game.log("💨 회피!");
     }
-    if (p.guardBuff > 0) { dmg = Math.floor(dmg * 0.5); p.guardBuff--; }
+    if (p.guardBuff > 0) { dmg = Math.floor(dmg * 0.5); p.guardBuff--; this._emit("guardHit"); }
 
     // 다르카스의 마지막 힘 — 네메시스 전투 중 단 1회, 이번 공격을 파티 전체 대신 받아낸다.
     const darkasProtects = !!p._darkasProtectionCharge && dmg > 0;
@@ -642,7 +663,7 @@ class BattleManager {
       .filter(n => n?.startsWith("심연의")).length;
     if (abyssCount >= 3) {
       const heal = Math.floor(dmg * 0.3);
-      p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + heal);
+      this._healPlayer(game, heal);
       game.log(`🌑 심연 흡혈 +${heal}`);
     }
   }
@@ -679,7 +700,7 @@ class BattleManager {
       );
     }
     if (p.money >= MAX_GOLD) game.log("💰 골드 상한 달성! (9,999,999G ✦MAX)");
-    if (window.audioMgr) audioMgr.playSfx("levelup");
+    if (window.audioMgr) audioMgr.playSfx(lvUp ? "levelup" : "victory");   // 레벨업이 아닌 처치에 레벨업 소리가 나던 문제
 
     // 호감도
     if (p.party) {

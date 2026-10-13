@@ -169,6 +169,7 @@
 <script src="dungeon-scene.js"></script>
 <script src="trap-room.js"></script>
 <script src="battle-scene.js"></script>
+<script src="battle-fx.js"></script>
 <script src="town-scene.js"></script>
 <script src="world-map-scene.js"></script>
 <script src="region-hub-scene.js"></script>
@@ -252,8 +253,61 @@ class AudioManager {
     if(prev){ let pv=prev.volume; const fo=setInterval(()=>{ pv=Math.max(pv-.04,0); prev.volume=pv; if(pv<=0){prev.pause();clearInterval(fo);} },60); }
   }
   stopBgm(){ if(this._bgm){this._bgm.pause();this._bgm=null;this._bgmKey=null;} }
+  // ── 합성 효과음 (파일 없이 WebAudio 로 만든다: 타격·치명타·스킬·상태이상 등) ──
+  //  레이어: {t:'tone', w:파형, f:시작Hz, f2:끝Hz, d:길이(초), v:음량, at:지연(초)} / {t:'noise', d, v, hp:하이패스Hz, lp:로우패스Hz, at}
+  static SYNTH = {
+    hit:    [{t:'noise',d:.09,v:.5,lp:2600},{t:'tone',w:'square',f:190,f2:60,d:.12,v:.35}],
+    crit:   [{t:'noise',d:.16,v:.6,lp:5000},{t:'tone',w:'sawtooth',f:320,f2:70,d:.2,v:.4},{t:'tone',w:'triangle',f:900,f2:1500,d:.12,v:.2,at:.04}],
+    hurt:   [{t:'tone',w:'sawtooth',f:150,f2:55,d:.2,v:.4},{t:'noise',d:.12,v:.35,lp:1400}],
+    whoosh: [{t:'noise',d:.22,v:.3,hp:600,lp:3800,sweep:[500,3200]}],
+    bash:   [{t:'tone',w:'square',f:120,f2:40,d:.3,v:.6},{t:'noise',d:.2,v:.55,lp:900},{t:'tone',w:'triangle',f:480,f2:200,d:.12,v:.25,at:.02}],
+    cast:   [{t:'tone',w:'sine',f:300,f2:1100,d:.35,v:.3},{t:'tone',w:'triangle',f:600,f2:1700,d:.35,v:.15}],
+    boom:   [{t:'noise',d:.45,v:.6,lp:1800},{t:'tone',w:'sine',f:110,f2:35,d:.5,v:.6}],
+    volley: [{t:'noise',d:.06,v:.3,hp:2500},{t:'noise',d:.06,v:.3,hp:2500,at:.09},{t:'noise',d:.06,v:.3,hp:2500,at:.18}],
+    holy:   [{t:'tone',w:'sine',f:880,d:.5,v:.25},{t:'tone',w:'sine',f:1320,d:.5,v:.18,at:.05},{t:'tone',w:'sine',f:1760,d:.45,v:.12,at:.1}],
+    chime:  [{t:'tone',w:'sine',f:523,d:.18,v:.22},{t:'tone',w:'sine',f:659,d:.18,v:.22,at:.1},{t:'tone',w:'sine',f:784,d:.3,v:.22,at:.2}],
+    shield: [{t:'tone',w:'triangle',f:240,f2:520,d:.25,v:.35},{t:'noise',d:.15,v:.2,hp:1800,at:.03}],
+    block:  [{t:'tone',w:'square',f:700,f2:420,d:.1,v:.3},{t:'noise',d:.08,v:.3,hp:2000}],
+    burn:   [{t:'noise',d:.35,v:.35,hp:800,lp:3000,sweep:[2500,700]}],
+    poison: [{t:'tone',w:'sine',f:260,f2:140,d:.3,v:.3},{t:'tone',w:'sine',f:200,f2:110,d:.3,v:.25,at:.12}],
+    stun:   [{t:'tone',w:'triangle',f:1200,f2:600,d:.12,v:.25},{t:'tone',w:'triangle',f:900,f2:450,d:.12,v:.25,at:.12},{t:'tone',w:'triangle',f:1200,f2:600,d:.12,v:.25,at:.24}],
+  };
+  _synth(key){
+    const layers = AudioManager.SYNTH[key]; if(!layers) return;
+    try {
+      const ctx = this._ctx || (this._ctx = new (window.AudioContext||window.webkitAudioContext)());
+      if(ctx.state === 'suspended') ctx.resume();
+      const t0 = ctx.currentTime, master = this._sfxVol;
+      for(const L of layers){
+        const at = t0 + (L.at||0), end = at + L.d, g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(Math.max(.0002, L.v*master), at+Math.min(.012, L.d/3));
+        g.gain.exponentialRampToValueAtTime(.0001, end);
+        let node;
+        if(L.t === 'tone'){
+          node = ctx.createOscillator(); node.type = L.w||'sine';
+          node.frequency.setValueAtTime(L.f, at);
+          if(L.f2) node.frequency.exponentialRampToValueAtTime(L.f2, end);
+        } else {
+          const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate*L.d), ctx.sampleRate), d = buf.getChannelData(0);
+          for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+          node = ctx.createBufferSource(); node.buffer = buf;
+        }
+        let out = node;
+        if(L.t === 'noise' && (L.hp || L.lp)){
+          if(L.hp){ const f = ctx.createBiquadFilter(); f.type='highpass'; f.frequency.value=L.hp; out.connect(f); out=f; }
+          if(L.lp){ const f = ctx.createBiquadFilter(); f.type='lowpass';  f.frequency.value=L.lp;
+                    if(L.sweep){ f.frequency.setValueAtTime(L.sweep[0], at); f.frequency.exponentialRampToValueAtTime(L.sweep[1], end); }
+                    out.connect(f); out=f; }
+        }
+        out.connect(g); g.connect(ctx.destination);
+        node.start(at); node.stop(end+.02);
+      }
+    } catch(e) {}
+  }
   playSfx(key){
     if(this._muted) return;
+    if(AudioManager.SYNTH[key]) return this._synth(key);
     const src = this._sfxMap[key];
     if(!src) return;
     try {

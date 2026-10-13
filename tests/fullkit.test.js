@@ -136,3 +136,24 @@ test("동료 슬롯: 던전 종류별로 함께 싸우는 동료 수가 일관�
   new env.BattleManager()._counter(g);
   assert.deepEqual([p.partyHp, p.party2Hp], hp);
 });
+
+test("전투 연출 이벤트: 회복·상태이상·기절·방어·스킬 모션이 이벤트로 나간다", () => {
+  const env = S.create(8);
+  // _flushUI 가 이벤트를 비우므로, 비우기 직전에 기록한다
+  const types = fn => {
+    const seen = [];
+    oneTurn(env, "knight", (bm, g, p, m) => {
+      p.hp = 50; m.attack = 60; bm._events = [];
+      bm._flushUI = function () { seen.push(...this._events.map(e => e.type)); this._events = []; };
+      fn(bm, g, p, m); bm._flushUI();
+    });
+    return seen;
+  };
+  assert.ok(types((bm, g) => { bm.heal(g); }).includes("heal"));
+  assert.ok(types((bm, g, p, m) => { bm.applyStatus(m, "burn", 3, g, "m"); }).includes("status"));
+  assert.ok(types((bm, g, p, m) => { m.status = { poison: 0, stun: 1, burn: 0 }; bm._counter(g); }).includes("stunSkip"));
+  assert.ok(types((bm, g, p) => { p.guardBuff = 2; bm._counter(g); }).includes("guardHit"));
+  assert.ok(types((bm, g, p) => { p.activeSkills.whirlwind = true; bm.jobSkill(g); }).includes("skillAction"));
+  // 회복 이벤트의 양은 실제로 회복된 만큼이다(가득 차 있으면 이벤트 없음)
+  assert.equal(types((bm, g, p) => { p.hp = p.maxHp + p.bonusHp; bm.heal(g); }).includes("heal"), false);
+});
