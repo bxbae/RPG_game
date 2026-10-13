@@ -28,3 +28,64 @@ test("레벨이 오를수록 클리어율이 떨어지지 않는다(일반 3층)
 test("1레벨 기사는 일반 던전 1층을 편안히 깬다", () => {
   assert.ok(S.clearRate(S.create(1), { cls: "knight", level: 5, gear: "iron" }, "normal", 1, 40).clear >= 0.9);
 });
+
+test("기준 레벨: 몬스터는 레벨을 일부만 따라간다", () => {
+  const { Balance: B } = S.create(1);
+  assert.equal(B.monsterScale(10, 1), B.monsterScale(10, 1, undefined));          // zoneLevel 생략 = 예전 방식
+  assert.equal(B.effectiveLevel(20, 20), 20);
+  assert.ok(B.monsterScale(40, 1, 20) < B.monsterScale(40, 1));                   // 기준보다 강한 용사에겐 쉬워진다
+  assert.ok(B.monsterScale(1, 1, 20) > B.monsterScale(1, 1));                     // 약하게 들어가면 더 강하다
+});
+
+test("구역 난이도 계단: 기준 레벨에선 편안하고 한참 낮으면 깰 수 없다", () => {
+  const env = S.create(5);
+  const kit = L => ({ cls: "knight", gear: "auto", level: L });
+  for (const [zone, floor, L] of [["normal", 3, 15], ["harbor", 3, 28], ["capital", 3, 40], ["abyss", 3, 46]]) {
+    assert.ok(S.clearRate(env, kit(L + 2), zone, floor, 40).clear >= 0.75, `${zone}${floor} Lv${L + 2}`);
+    assert.ok(S.clearRate(env, kit(L - 12), zone, floor, 40).clear <= 0.2, `${zone}${floor} Lv${L - 12}`);
+  }
+  // 같은 레벨이면 더 깊은 구역일수록 어렵다
+  const r = ["normal", "harbor", "abyss"].map(z => S.clearRate(env, kit(30), z, 3, 40).clear);
+  assert.ok(r[0] >= r[1] && r[1] >= r[2], JSON.stringify(r));
+});
+
+function oneTurn(env, cls, fn) {
+  const p = env.buildKit({ cls, level: 20, zone: "normal", gear: "auto" });
+  const g = S.makeGame(env, p, "normal");
+  const m = env.createMonster("orc", 3); g.currentMonster = m;
+  const bm = new env.BattleManager(); bm._onMonsterDefeated = gg => { gg._won = true; gg._battleLocked = true; };
+  fn(bm, g, p, m); return { bm, g, p, m };
+}
+
+test("기절한 적은 반격하지 못하고 보스는 1턴만 멈춘다", () => {
+  const env = S.create(2);
+  oneTurn(env, "knight", (bm, g, p, m) => {
+    m.status = { poison: 0, stun: 2, burn: 0 }; const hp = p.hp;
+    bm._counter(g); assert.equal(p.hp, hp); assert.equal(m.status.stun, 1);
+    bm._counter(g); assert.equal(p.hp, hp); assert.equal(m.status.stun, 0);
+    bm._counter(g); assert.ok(p.hp < hp);
+  });
+  oneTurn(env, "knight", (bm, g, p, m) => {
+    m.isBoss = true; m.status = { poison: 0, stun: 2, burn: 0 }; const hp = p.hp;
+    bm._counter(g); assert.equal(p.hp, hp); assert.equal(m.status.stun, 0);
+  });
+});
+
+test("탱커·힐러도 직업 스킬을 쓴다", () => {
+  const env = S.create(2);
+  oneTurn(env, "tanker", (bm, g, p, m) => {
+    p.activeSkills.shieldBash = true; const hp0 = m.hp; bm.jobSkill(g);
+    assert.ok(m.hp < hp0); assert.ok(p.cooldowns.jobSkill > 0); assert.ok(p.guardBuff >= 1);
+  });
+  oneTurn(env, "healer", (bm, g, p, m) => {
+    p.activeSkills.holyLight = true; p.hp = 50; bm.jobSkill(g);
+    assert.ok(p.hp > 50); assert.ok(p.cooldowns.jobSkill > 0);
+  });
+  oneTurn(env, "tanker", (bm, g, p, m) => { p.activeSkills.shieldBash = false; const hp0 = m.hp; bm.jobSkill(g); assert.equal(m.hp, hp0); });   // 배우지 않았으면 안 나간다
+});
+
+test("축복 패시브는 회복 스킬을 키운다", () => {
+  const env = S.create(2);
+  const heal = lv => { let out; oneTurn(env, "healer", (bm, g, p) => { p.passiveSkills = { blessing: lv }; p.hp = 1; bm.heal(g); out = p.hp - 1; }); return out; };
+  assert.ok(heal(3) > heal(0));
+});

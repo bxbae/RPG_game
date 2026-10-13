@@ -126,12 +126,30 @@ const FLOOR_ENEMY_POOLS = {
 // 층별 난이도 배수
 const FLOOR_DIFFICULTY = {
   outside: [0.5,  0.5,  0.5 ],   // 매우 쉬움 (튜토리얼)
-  normal:  [1.0,  1.35, 1.7 ],   // 일반
-  mine:    [1.05, 1.4,  1.8 ],   // 광산도시 — 일반보다 살짝 단단함(골렘류 방어)
-  harbor:  [1.15, 1.55, 2.0 ],   // 항구도시 — 광산도시보다 한 단계 더 어려움 (와이번 등)
-  elfForest: [1.25, 1.7,  2.2 ], // 깊은 숲 — 항구도시보다 한 단계 더 어려움
-  capital: [1.4,  1.9,  2.5 ],   // 수도 — 지역 던전 중 가장 어려움 (심연 바로 아래)
-  abyss:   [2.0,  2.6,  3.2 ],   // 심연
+  normal:  [2.8,  1.7,  2.0 ],   // 일반
+  mine:    [2.65, 2.3,  2.9 ],   // 광산도시 — 일반보다 살짝 단단함(골렘류 방어)
+  harbor:  [2.95, 2.25, 2.2 ],   // 항구도시 — 와이번 등
+  elfForest: [3.9, 3.8, 4.0 ],   // 깊은 숲 — 적 풀(늑대·고블린·오크)의 기본 능력치가 낮아 배수가 크다
+  capital: [3.0,  2.5,  2.55],   // 수도 — 지역 던전 중 가장 어려움 (심연 바로 아래)
+  abyss:   [2.9,  2.65, 2.35],   // 심연
+};
+// 배수는 "기준 레벨(FLOOR_LEVEL)의 기사가 상자 장비로 약 85% 클리어"하도록 tools/fullkit-sim.js 로 맞춘 값이다.
+// 적 풀의 기본 능력치가 층마다 달라서 숫자 자체는 들쭉날쭉하다 — 층 순서는 배수가 아니라 기준 레벨이 정한다.
+
+// 보스는 그 층 배수에 이 값을 한 번 더 곱한다. 보스의 기본 능력치(HP 400~800)가 일반 몬스터의 2~5배라서
+// 같은 배수를 쓰면 마지막 층이 벽이 된다 — 구역별 보스 기본 능력치 차이를 이 값이 보정한다(tools/fullkit-sim.js 로 맞춤).
+const BOSS_DIFFICULTY = { outside: 1, normal: 0.8, mine: 0.6, harbor: 0.85, elfForest: 0.45, capital: 0.6, abyss: 0.7 };
+
+// 층별 기준 레벨 — 이 레벨의 용사가 편안하게(클리어율 약 80%) 돌 수 있는 층. 몬스터 강도의 기준이 된다(balance.js effectiveLevel).
+// 값은 tools/fullkit-sim.js(기사·상자 장비 가정)로 맞춘 것이다.
+const FLOOR_LEVEL = {
+  outside: [1,  1,  1 ],
+  normal:  [1,  5,  15],
+  mine:    [8,  14, 22],
+  harbor:  [14, 20, 28],
+  elfForest: [20, 26, 34],
+  capital: [26, 32, 40],
+  abyss:   [32, 38, 46],
 };
 
 // 던전 타입별 표시명
@@ -915,5 +933,7 @@ window.DungeonScene       = DungeonScene;
 window.generateDungeonMap = generateDungeonMap;
 window.TILE               = TILE;
 window.FLOOR_DIFFICULTY   = FLOOR_DIFFICULTY;
+window.FLOOR_LEVEL        = FLOOR_LEVEL;
+window.BOSS_DIFFICULTY    = BOSS_DIFFICULTY;
 window.FLOOR_ENEMY_POOLS  = FLOOR_ENEMY_POOLS;
 window.DUNGEON_LABELS     = DUNGEON_LABELS;

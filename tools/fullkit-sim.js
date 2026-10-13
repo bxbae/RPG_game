@@ -39,22 +39,21 @@ function load(seed = 1) {
     g, rng, reseed: s => { rng.f = mulberry32(s); },
     Balance: g.get("Balance"), Player: g.get("Player"), BattleManager: g.get("BattleManager"),
     CLASSES: g.get("CLASSES"), PARTY_MEMBERS: g.get("PARTY_MEMBERS"), MONSTERS: g.get("MONSTERS"),
-    POOLS: g.get("FLOOR_ENEMY_POOLS"), DIFF: g.get("FLOOR_DIFFICULTY"), createMonster: g.get("createMonsterInstance"),
+    POOLS: g.get("FLOOR_ENEMY_POOLS"), DIFF: g.get("FLOOR_DIFFICULTY"), ZLV: g.get("FLOOR_LEVEL"), BOSSD: g.get("BOSS_DIFFICULTY"), createMonster: g.get("createMonsterInstance"),
   };
 }
 
 // ══ KIT (플레이어가 레벨에 맞춰 갖췄다고 가정하는 것) ═════════════════════════════
 // 스킬 포인트: 레벨당 1점. 직업 스킬(3점) → 직업 패시브(레벨 순서대로) → 남는 점은 공격/체력/치명타 강화에 번갈아.
-// 패시브 정의는 town-scene.js 의 _renderPassiveSkills 와 같다(spCost). ※ 실제 게임은 allPassives[p.type] 로 찾는데
-// 기사의 type 은 "knight" 이고 키는 "warrior" 라서 기사/탱커/힐러에게는 패시브 목록이 비어 있다(버그).
-//   passives: "actual"   = 게임에서 실제로 배울 수 있는 것(마법사·궁수만)
-//             "intended" = 코드가 의도한 것(기사에 warrior 패시브 적용)
+// 패시브 정의는 town-scene.js 의 _renderPassiveSkills 와 같다(spCost). passives: "actual"(기본) | "none"
 const PASSIVES = {
   knight: [{ id: "iron_body", cost: [2, 3, 4] }, { id: "war_cry", cost: [2, 3, 4] }, { id: "berserker", cost: [3, 4, 5] }],
   mage:   [{ id: "mana_surge", cost: [2, 3, 4] }, { id: "spell_echo", cost: [2, 3, 4] }, { id: "arcane_ward", cost: [2, 3, 4] }],
   archer: [{ id: "eagle_eye", cost: [2, 3, 4] }, { id: "swift_feet", cost: [2, 3, 4] }, { id: "poison_tip", cost: [2, 3, 4] }],
 };
-const JOB_SKILL = { knight: "whirlwind", mage: "magicBall", archer: "rapidShot" };   // tanker / healer 는 정의 자체가 없다(버그)
+PASSIVES.tanker = PASSIVES.knight;
+PASSIVES.healer = [{ id: "blessing", cost: [2, 3, 4] }, { id: "arcane_ward", cost: [2, 3, 4] }, { id: "war_cry", cost: [2, 3, 4] }];
+const JOB_SKILL = { knight: "whirlwind", mage: "magicBall", archer: "rapidShot", tanker: "shieldBash", healer: "holyLight" };
 
 // 장비 단계(무기 공격력 / 갑옷 방어 / 투구 방어). 출처: models.js SHOP_ITEMS, createRandomItem(12/6 + [0,5,12,25,40])
 //   iron  = 시작 골드로 살 수 있는 철장비,   rare = 상점 최고(강철검·사슬 갑옷·강철 투구),
@@ -83,7 +82,7 @@ function allocateSkills(env, p, points, passivesMode) {
   const spend = c => { if (left.n >= c) { left.n -= c; return true; } return false; };
   const job = JOB_SKILL[p.type];
   if (job && spend(3)) p.activeSkills[job] = true;
-  const plan = passivesMode === "intended" ? PASSIVES[p.type] : (p.type === "mage" || p.type === "archer" ? PASSIVES[p.type] : []);
+  const plan = passivesMode === "none" ? [] : PASSIVES[p.type];
   p.passiveSkills = {};
   for (const sk of plan || []) for (let lv = 0; lv < sk.cost.length; lv++) { if (!spend(sk.cost[lv])) break; p.passiveSkills[sk.id] = lv + 1; }
   const order = ["attackBoost", "hpBoost", "criticalBoost"];
@@ -145,7 +144,7 @@ function makeGame(env, p, zone) {
 function act(bm, g, stats) {
   const p = g.player, maxHp = p.maxHp + p.bonusHp;
   const ready = (slot, cdKey, hpKey) => p[slot] && p[hpKey] > 0 && (p.affinity?.[p[slot]] || 0) >= 30 && (p.cooldowns[cdKey] || 0) <= 0;
-  const hasJob = { knight: p.activeSkills.whirlwind, mage: p.activeSkills.magicBall, archer: p.activeSkills.rapidShot }[p.type];
+  const hasJob = p.activeSkills[JOB_SKILL[p.type]];
   if (p.hp < maxHp * 0.35 && p.cooldowns.heal <= 0) { stats.heals++; return bm.heal(g); }
   if (p.ultimateGauge >= 100) { stats.ults++; return bm.heroUltimate(g); }
   if (ready("party", "partyUltimate", "partyHp")) { stats.partyUlts++; return bm.partyUltimate(g); }
@@ -172,17 +171,17 @@ function runFloor(env, kit, zone, floor, opts = {}) {
   const stats = { heals: 0, ults: 0, partyUlts: 0, jobs: 0, turns: 0, potions: 0 };
   const pools = POOLS[zone] || POOLS.normal, pool = pools[Math.min(floor, Object.keys(pools).length)];
   const fm = (DIFF[zone] || DIFF.normal)[Math.min(floor - 1, 2)];
-  const scale = Balance.monsterScale(p.level, fm);
+  const scale = Balance.monsterScale(p.level, fm, (env.ZLV[zone] || env.ZLV.normal)[Math.min(floor - 1, 2)]);
   const maxFloor = zone === "outside" ? 1 : 3;
   const enemies = zone === "outside" ? 4 : floor + 4;
   let potions = opts.potions ?? 3, killed = 0;
   const maxHp = () => p.maxHp + p.bonusHp;
   const queue = [];
   for (let i = 0; i < enemies; i++) queue.push({ id: pool[Math.floor(env.rng.f() * pool.length)], boss: false });
-  if (floor === maxFloor && zone !== "outside") queue.push({ id: BOSS_OF[zone] || "guardian", boss: true });
+  if (floor === maxFloor && zone !== "outside" && !opts.noBoss) queue.push({ id: BOSS_OF[zone] || "guardian", boss: true });
   for (const q of queue) {
     while (potions > 0 && p.hp < maxHp() * 0.4) { p.hp = Math.min(maxHp(), p.hp + Balance.potionAmount({ heal: 50 }, maxHp())); potions--; stats.potions++; }
-    const m = createMonster(q.id, scale);
+    const m = createMonster(q.id, q.boss ? scale * (env.BOSSD[zone] ?? 1) : scale);
     if (q.boss) { m.isBoss = true; if (q.id === "demon") m.isFinal = true; }
     const r = fight(env, g, m, stats);
     if (!r.win) return { clear: false, killed, boss: q.boss, stats, hpPct: 0 };
@@ -191,7 +190,7 @@ function runFloor(env, kit, zone, floor, opts = {}) {
   return { clear: true, killed, stats, hpPct: Math.max(0, p.hp) / maxHp() };
 }
 
-function clearRate(env, kit, zone, floor, runs, opts) {
+function clearRate(env, kit, zone, floor, runs, opts = {}) {
   let ok = 0, hp = 0, pot = 0, ult = 0, bossDeaths = 0;
   for (let i = 0; i < runs; i++) {
     const r = runFloor(env, kit, zone, floor, opts);

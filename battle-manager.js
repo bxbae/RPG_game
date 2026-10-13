@@ -227,7 +227,8 @@ class BattleManager {
 
     const p = game.player;
     if (p.cooldowns.heal > 0) { game.log(`💊 회복 대기 (${p.cooldowns.heal}턴)`); return; }
-    const healed = Balance.healSkillAmount(p.maxHp + p.bonusHp);
+    const blessLv = p.passiveSkills?.blessing || 0;
+    const healed = Math.floor(Balance.healSkillAmount(p.maxHp + p.bonusHp) * (1 + [0, 0.25, 0.5, 0.8][blessLv]));
     p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + healed);
     p.cooldowns.heal = 3;
     game.log(`💚 회복! +${healed} HP`);
@@ -487,7 +488,7 @@ class BattleManager {
     if (!p || !m) return;
     if (p.cooldowns.jobSkill > 0) { game.log(`⏳ 쿨타임 ${p.cooldowns.jobSkill}턴`); return; }
 
-    const hasSkill = { knight:p.activeSkills.whirlwind, night:p.activeSkills.whirlwind, mage:p.activeSkills.magicBall, archer:p.activeSkills.rapidShot }[p.type];
+    const hasSkill = p.activeSkills[Balance.JOB_SKILL_KEY[p.type]];
     if (!hasSkill) { game.log("❌ 스킬을 배우지 않았습니다"); return; }
 
     let dmg = 0;
@@ -497,6 +498,15 @@ class BattleManager {
       case "night":   dmg = Math.floor(p.totalAttack * 2);   m.hp -= dmg;   game.log(`⚔ 회전베기! ${dmg}`);  break;
       case "mage":    dmg = Math.floor(p.totalAttack * 2.2); m.hp -= dmg;   game.log(`🔮 매직볼! ${dmg}`);    break;
       case "archer":  dmg = Math.floor(p.totalAttack * 1.2); m.hp -= dmg*2; game.log(`🏹 속사! ${dmg}×2`);   break;
+      case "tanker":  // 방패 강타 — 일격 + 2턴간 받는 피해 50% 감소
+        dmg = Math.floor(p.totalAttack * Balance.JOB_SKILL.tankerMult); m.hp -= dmg; p.guardBuff = Math.max(p.guardBuff || 0, 2);
+        game.log(`🛡 방패 강타! ${dmg} — 2턴 방어 태세`); break;
+      case "healer": { // 성스러운 빛 — 일격 + 최대 HP 일부 회복
+        dmg = Math.floor(p.totalAttack * Balance.JOB_SKILL.healerMult); m.hp -= dmg;
+        const heal = Math.floor((p.maxHp + p.bonusHp) * Balance.JOB_SKILL.healerHealPct);
+        p.hp = Math.min(p.maxHp + p.bonusHp, p.hp + heal);
+        game.log(`✨ 성스러운 빛! ${dmg} — HP +${heal}`); break;
+      }
     }
     this._emit("damage", { amount: dmg, target: "monster" });
     p.cooldowns.jobSkill = 3;
@@ -550,6 +560,13 @@ class BattleManager {
     if (!m) return;
 
     game._battleTurnCount = (game._battleTurnCount || 0) + 1;
+
+    // 기절한 적은 이번 턴 행동하지 못한다(동료도 피해를 받지 않는다). 보스는 한 번에 1턴만 멈춘다.
+    if (m.status?.stun > 0) {
+      m.status.stun = m.isBoss ? 0 : m.status.stun - 1;
+      game.log(`💫 ${m.name} 기절! 행동하지 못했다`);
+      return;
+    }
 
     let monsterAtk = m.attack;
     const warCryLv = p.passiveSkills?.war_cry || 0;

@@ -37,8 +37,17 @@
     // ── 몬스터 ──────────────────────────────────────
     // 플레이어 레벨 + 던전 층 난이도로 몬스터 능력치 배수를 구한다.
     LEVEL_SCALE_PER_LEVEL: 0.085,
-    monsterScale(playerLevel, floorMult = 1) {
-      return (1 + (playerLevel - 1) * Balance.LEVEL_SCALE_PER_LEVEL) * floorMult;
+    // 구역·층에는 "기준 레벨"(zoneLevel)이 있다. 몬스터는 플레이어 레벨을 일부(ZONE_FOLLOW)만 따라간다:
+    //   기준 레벨보다 약하게 들어가면 몬스터가 상대적으로 더 강하고, 기준보다 강해지면 점점 쉬워진다.
+    //   (전부 따라가면 어느 구역이든 레벨과 무관하게 같은 난이도라 구역 순서가 의미 없어진다 — tools/fullkit-sim.js 로 확인)
+    //   zoneLevel 을 생략하면 예전처럼 플레이어 레벨을 그대로 따라간다.
+    ZONE_FOLLOW: 0.35,
+    effectiveLevel(playerLevel, zoneLevel) {
+      if (!zoneLevel) return playerLevel;
+      return Math.max(1, zoneLevel + (playerLevel - zoneLevel) * Balance.ZONE_FOLLOW);
+    },
+    monsterScale(playerLevel, floorMult = 1, zoneLevel) {
+      return (1 + (Balance.effectiveLevel(playerLevel, zoneLevel) - 1) * Balance.LEVEL_SCALE_PER_LEVEL) * floorMult;
     },
     monsterStats(def, scale = 1) {
       return { hp: Math.floor(def.baseHp * scale), attack: Math.floor(def.baseAtk * scale) };
@@ -57,6 +66,10 @@
       if (kingdomBonusPct > 0) gold = Math.floor(gold * (1 + kingdomBonusPct / 100));
       return { gold, exp };
     },
+
+    // ── 직업 스킬 ───────────────────────────────────
+    JOB_SKILL_KEY: { knight:"whirlwind", night:"whirlwind", warrior:"whirlwind", mage:"magicBall", archer:"rapidShot", tanker:"shieldBash", healer:"holyLight" },
+    JOB_SKILL: { tankerMult: 1.6, healerMult: 1.3, healerHealPct: 0.10 },
 
     // ── 피해 / 회복 ─────────────────────────────────
     // 방어는 "비율 감쇠": 피해 = 공격 × K/(K+방어).  방어 K 면 피해가 절반.

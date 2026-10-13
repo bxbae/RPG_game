@@ -1138,8 +1138,10 @@ class Game {
     const diffTbl   = (window.FLOOR_DIFFICULTY ?? {})[this.dungeonType ?? "normal"]
                    ?? (window.FLOOR_DIFFICULTY?.normal ?? [1.0, 1.35, 1.7]);
     const floorMult = diffTbl[Math.min(floor - 1, diffTbl.length - 1)] ?? 1.0;
-    const diffMult  = Balance.monsterScale(this.player.level, floorMult);
-    this.currentMonster = createMonsterInstance(monsterId, diffMult);
+    const lvTbl     = (window.FLOOR_LEVEL ?? {})[this.dungeonType ?? "normal"] ?? [];
+    const zoneLevel = lvTbl[Math.min(floor - 1, lvTbl.length - 1)];
+    const diffMult  = Balance.monsterScale(this.player.level, floorMult, zoneLevel);
+    this.currentMonster = createMonsterInstance(monsterId, isBoss ? diffMult * ((window.BOSS_DIFFICULTY ?? {})[this.dungeonType ?? "normal"] ?? 1) : diffMult);
     this._battleTurnCount = 0; // "수호의 맥동"(카인 사연 보상) 등 전투 초반 N턴 효과에 사용
     if (isBoss) {
       this.currentMonster.isBoss = true;
@@ -2004,12 +2006,11 @@ class Game {
     const p = this.player;
     if (!p) return;
     if (p.skillPoints < 3) { this.log("❌ SP 3 필요"); return; }
-    const has = p.activeSkills.whirlwind || p.activeSkills.magicBall || p.activeSkills.rapidShot;
-    if (has) { this.log("⚠ 이미 습득"); return; }
+    const key = Balance.JOB_SKILL_KEY[p.type];
+    if (!key) { this.log("❌ 이 직업의 직업 스킬이 없습니다"); return; }
+    if (p.activeSkills[key]) { this.log("⚠ 이미 습득"); return; }
     p.skillPoints -= 3;
-    if (p.type === "knight") p.activeSkills.whirlwind = true;
-    if (p.type === "mage")    p.activeSkills.magicBall  = true;
-    if (p.type === "archer")  p.activeSkills.rapidShot  = true;
+    p.activeSkills[key] = true;
     this.log("✨ 직업 스킬 습득!");
   }
 

@@ -164,7 +164,7 @@ class Player {
 
     // 스킬
     this.skills       = { attackBoost:0, hpBoost:0, criticalBoost:0 };
-    this.activeSkills = { whirlwind:false, magicBall:false, rapidShot:false };
+    this.activeSkills = { whirlwind:false, magicBall:false, rapidShot:false, shieldBash:false, holyLight:false };
     this.passiveSkills= {};
 
     // 전투

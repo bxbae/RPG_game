@@ -1286,7 +1286,7 @@ class TownScene {
     s("tnAtkLv",  p.skills.attackBoost);
     s("tnHpLv",   p.skills.hpBoost);
     s("tnCritLv", p.skills.criticalBoost);
-    s("tnJobSkillName", { warrior:"⚔ 회전베기", mage:"🔮 매직볼", archer:"🏹 속사" }[p.type]);
+    s("tnJobSkillName", { knight:"⚔ 회전베기", mage:"🔮 매직볼", archer:"🏹 속사", tanker:"🛡 방패 강타", healer:"✨ 성스러운 빛" }[p.type] || "직업 스킬");
 
     const modal = q("tnSkillModal");
     if (modal) modal.style.display = "flex";
@@ -1336,6 +1336,12 @@ class TownScene {
         { id:"poison_tip",  name:"☠ 독 화살촉",  desc:["독+1턴","독+2턴","독+3턴"],            spCost:[2,3,4] },
       ],
     };
+    allPassives.knight = allPassives.tanker = allPassives.warrior;
+    allPassives.healer = [
+      { id:"blessing",    name:"✨ 축복",        desc:["회복량+25%","회복량+50%","회복량+80%"], spCost:[2,3,4] },
+      allPassives.mage[2],
+      allPassives.warrior[1],
+    ];
     const jobSkills = allPassives[p.type] || [];
     el.innerHTML = "";
     jobSkills.forEach(skill => {

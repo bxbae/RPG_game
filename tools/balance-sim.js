@@ -32,29 +32,38 @@ const GEAR = {
   best:    { weapon: 35, defense: 28 },
 };
 
+// 기준 곡선: 몬스터가 플레이어 레벨을 그대로 따라가는 "같은 레벨 사냥" 모델(곡선 2 설계 당시의 층 배수).
+// 실제 게임의 구역·층 표(FLOOR_DIFFICULTY + FLOOR_LEVEL)는 --table 옵션으로 본다.
+const REF_DIFF = {
+  outside: [0.5, 0.5, 0.5], normal: [1.0, 1.35, 1.7], mine: [1.05, 1.4, 1.8], harbor: [1.15, 1.55, 2.0],
+  elfForest: [1.25, 1.7, 2.2], capital: [1.4, 1.9, 2.5], abyss: [2.0, 2.6, 3.2],
+};
+
 function load() {
   // dungeon-scene.js 는 적 풀(FLOOR_ENEMY_POOLS)과 층 난이도(FLOOR_DIFFICULTY)를 가진다.
   const g = loadGame(["balance.js", "models.js", "dungeon-scene.js"]);
   return {
     Balance: g.get("Balance"), CLASSES: g.get("CLASSES"), MONSTERS: g.get("MONSTERS"),
-    POOLS: g.get("FLOOR_ENEMY_POOLS"), DIFF: g.get("FLOOR_DIFFICULTY"),
+    POOLS: g.get("FLOOR_ENEMY_POOLS"), DIFF: g.get("FLOOR_DIFFICULTY"), ZLV: g.get("FLOOR_LEVEL"),
     createMonster: g.get("createMonsterInstance"),
   };
 }
 
 // 한 레벨·한 지역에 대한 결과
-function simulate({ cls = "knight", gear = "best", zone = "normal", floor = 2, minLevel = 1, maxLevel = 50 } = {}, env = load()) {
+function simulate({ cls = "knight", gear = "best", zone = "normal", floor = 2, minLevel = 1, maxLevel = 50, useTable = false } = {}, env = load()) {
   const { Balance: B, CLASSES, MONSTERS, POOLS, DIFF } = env;
   const base = CLASSES[cls] || CLASSES.knight;
   const gearSet = GEAR[gear] || GEAR.best;
   const pool = (POOLS[zone] || POOLS.normal)[Math.min(floor, Object.keys(POOLS[zone] || POOLS.normal).length)];
-  const floorMult = (DIFF[zone] || DIFF.normal)[Math.min(floor - 1, 2)];
+  const tbl = useTable ? DIFF : REF_DIFF;
+  const floorMult = (tbl[zone] || tbl.normal)[Math.min(floor - 1, 2)];
+  const zoneLevel = useTable ? (env.ZLV[zone] || env.ZLV.normal)[Math.min(floor - 1, 2)] : undefined;
   const rows = [];
   for (let L = minLevel; L <= maxLevel; L++) {
     const maxHp = base.hp + B.LEVELUP.hp * (L - 1);
     const atk = base.attack + B.LEVELUP.atk * (L - 1) + gearSet.weapon;
     const def = gearSet.defense + (base.defense || 0);        // 직업 기본 방어 + 장비
-    const scale = B.monsterScale(L, floorMult);
+    const scale = B.monsterScale(L, floorMult, zoneLevel);
     let loss = 0, hit = 0, turns = 0, exp = 0, gold = 0;
     for (const id of pool) {
       const def0 = MONSTERS.find(m => m.id === id);
@@ -127,7 +136,7 @@ function main() {
   const env = load();
   env.MAX_LEVEL = env.Balance.MAX_LEVEL;
   const [zone, floor] = (opt("--zone") || "normal:2").split(":");
-  const rows = simulate({ cls: opt("--class") || "knight", gear: opt("--gear") || "best", zone, floor: +floor || 1, maxLevel: +(opt("--max") || 50) }, env);
+  const rows = simulate({ cls: opt("--class") || "knight", gear: opt("--gear") || "best", zone, floor: +floor || 1, maxLevel: +(opt("--max") || 50), useTable: args.includes("--table") }, env);
 
   const show = args.includes("--check") ? [] : rows.filter(r => [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 40, 50, 60, 99].includes(r.level));
   if (show.length) {
