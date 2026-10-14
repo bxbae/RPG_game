@@ -23,6 +23,20 @@ JOBS = [
     ("fox_atk2", "13.webp", "sd_flame_fox.png", (270, 770, 525, 985)),    # 화염 회오리
     ("fox_atk3", "13.webp", "sd_flame_fox.png", (525, 770, 755, 985)),    # 신속 질주
     ("fox_atk4", "13.webp", "sd_flame_fox.png", (985, 770, 1245, 985)),   # 불꽃 폭발
+    # 악마 기사(19.webp) · 고대 드래곤(20·21.webp): 본체를 새 그림으로 교체(기존 그림의 캔버스에 맞춤)하고 포즈를 그 위에 맞춘다
+    ("../sd_demon_knight_v2", "19.webp", "sd_demon_knight.png", (5, 5, 560, 695)),
+    ("demonknight_atk1", "19.webp", "sd_demon_knight_v2.png", (545, 395, 850, 675)),     # 붉은 베기
+    ("demonknight_atk2", "19.webp", "sd_demon_knight_v2.png", (330, 715, 595, 990)),     # 돌진
+    ("demonknight_atk3", "19.webp", "sd_demon_knight_v2.png", (590, 715, 845, 990)),     # 소용돌이 베기
+    ("demonknight_atk4", "19.webp", "sd_demon_knight_v2.png", (10, 705, 335, 990)),      # 검 내밀기
+    ("demonknight_hit",  "19.webp", "sd_demon_knight_v2.png", (835, 410, 1040, 670)),    # 망토로 몸을 웅크림
+    ("../sd_dragon_v2", "20.webp", "sd_dragon.png", (10, 5, 535, 435)),
+    ("dragon_atk1", "20.webp", "sd_dragon_v2.png", (345, 460, 850, 735)),    # 불꽃 숨결
+    ("dragon_atk2", "20.webp", "sd_dragon_v2.png", (0, 755, 360, 1045)),     # 화염 회오리
+    ("dragon_atk3", "20.webp", "sd_dragon_v2.png", (375, 760, 705, 1045)),   # 도약
+    ("dragon_atk4", "20.webp", "sd_dragon_v2.png", (755, 465, 1250, 740)),   # 날개 펴고 내리꽂기
+    ("dragon_hit",  "21.webp", "sd_dragon_v2.png", (435, 555, 895, 885)),    # 고통스러운 포효
+    ("dragon_dead", "21.webp", "sd_dragon_v2.png", (10, 625, 450, 890)),     # 쓰러져 엎드림
     ("goblin_hit",    "3.png",  "sd_goblin.png",   None),
     ("goblin_dead",   "4.png",  "sd_goblin.png",   None),
     ("goblin_atk1",   "11.webp", "sd_goblin.png",  (30, 395, 350, 680)),     # 베기 + 궤적

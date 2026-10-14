@@ -60,8 +60,8 @@ const MONSTERS = [
   { id:"wyvern",      name:"와이번",       baseHp:260, baseAtk:25, img:"images/sd_wyvern.png",         expRate:165, goldRate:135 },
   { id:"chimera",     name:"키메라",       baseHp:295, baseAtk:27, img:"images/sd_chimera.png",             expRate:190, goldRate:158 },
   { id:"lich",        name:"미라",         baseHp:350, baseAtk:26, img:"images/sd_mummy.png",          expRate:225, goldRate:185 },
-  { id:"demon_knight",name:"악마 기사",    baseHp:325, baseAtk:29, img:"images/sd_demon_knight.png",   expRate:245, goldRate:205 },
-  { id:"dragon",      name:"고대 드래곤",  baseHp:500, baseAtk:28, img:"images/sd_dragon.png",         expRate:290, goldRate:350, isBoss:true },
+  { id:"demon_knight",name:"악마 기사",    baseHp:325, baseAtk:29, img:"images/sd_demon_knight_v2.png",   expRate:245, goldRate:205 },
+  { id:"dragon",      name:"고대 드래곤",  baseHp:500, baseAtk:28, img:"images/sd_dragon_v2.png",         expRate:290, goldRate:350, isBoss:true },
   // ── 보스 ─────────────────────────────────────────
   { id:"guardian",    name:"던전 수호자",  baseHp:400, baseAtk:22, img:"images/sd_Dungeon_Guardian.png",        expRate:200, goldRate:180, isBoss:true },
   // ── 마왕군 간부 (지역별 재난의 진짜 원인 — 각 동료의 사연과 직결) ──

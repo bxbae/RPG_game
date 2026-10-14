@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v69";
-const STATIC_CACHE  = "rpg-static-v69";
-const DYNAMIC_CACHE = "rpg-dynamic-v69";
+const CACHE_NAME    = "rpg-v70";
+const STATIC_CACHE  = "rpg-static-v70";
+const DYNAMIC_CACHE = "rpg-dynamic-v70";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -47,6 +47,17 @@ const IMAGE_FILES = [
   "./images/monsters/darkknight_atk1.png",
   "./images/monsters/darkknight_atk2.png",
   "./images/monsters/darkknight_atk3.png",
+  "./images/monsters/demonknight_atk1.png",
+  "./images/monsters/demonknight_atk2.png",
+  "./images/monsters/demonknight_atk3.png",
+  "./images/monsters/demonknight_atk4.png",
+  "./images/monsters/demonknight_hit.png",
+  "./images/monsters/dragon_atk1.png",
+  "./images/monsters/dragon_atk2.png",
+  "./images/monsters/dragon_atk3.png",
+  "./images/monsters/dragon_atk4.png",
+  "./images/monsters/dragon_dead.png",
+  "./images/monsters/dragon_hit.png",
   "./images/monsters/fox_atk1.png",
   "./images/monsters/fox_atk2.png",
   "./images/monsters/fox_atk3.png",
