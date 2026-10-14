@@ -392,6 +392,7 @@
     "sd_flame_fox.png": { attack: [D + "fox_atk1.png", D + "fox_atk2.png", D + "fox_atk3.png", D + "fox_atk4.png"] },
     "sd_demon_knight_v2.png": { hit: [D + "demonknight_hit.png"], attack: [D + "demonknight_atk1.png", D + "demonknight_atk2.png", D + "demonknight_atk3.png", D + "demonknight_atk4.png"] },
     "sd_dragon_v2.png": { hit: [D + "dragon_hit.png"], attack: [D + "dragon_atk1.png", D + "dragon_atk2.png", D + "dragon_atk3.png", D + "dragon_atk4.png"], dead: [D + "dragon_dead.png"] },
+    "Nemesis_Lord_of_the_Void.png": { hit: [D + "nemesis_hit.png"], attack: [D + "nemesis_atk1.png"] },
     "sd_bats.png":      { attack: [D + "bat_atk1.png", D + "bat_atk2.png", D + "bat_atk3.png"] },
     "sd_mummy.png":     { attack: [D + "mummy_atk1.png", D + "mummy_atk2.png", D + "mummy_atk3.png"] },
     "sd_vampire.png":   { attack: [D + "vampire_atk1.png", D + "vampire_atk2.png", D + "vampire_atk3.png"] },

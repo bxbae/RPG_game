@@ -163,7 +163,7 @@ test("몬스터 포즈 그림: battle-fx.js 가 참조하는 파일이 모두 �
   const root = path.join(__dirname, "..");
   const src = fs.readFileSync(path.join(root, "battle-fx.js"), "utf8");
   const size = f => { const b = fs.readFileSync(f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };   // PNG 헤더의 가로·세로
-  const entries = [...src.matchAll(/^\s*"(sd_[^"]+\.png)":\s*\{(.*)\},?\s*$/gm)];
+  const entries = [...src.matchAll(/^\s*"((?:sd_|Nemesis)[^"]+\.png)":\s*\{(.*)\},?\s*$/gm)];
   assert.ok(entries.length >= 6);
   let n = 0;
   for (const [, base, body] of entries) {

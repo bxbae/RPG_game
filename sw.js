@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v70";
-const STATIC_CACHE  = "rpg-static-v70";
-const DYNAMIC_CACHE = "rpg-dynamic-v70";
+const CACHE_NAME    = "rpg-v71";
+const STATIC_CACHE  = "rpg-static-v71";
+const DYNAMIC_CACHE = "rpg-dynamic-v71";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -76,6 +76,8 @@ const IMAGE_FILES = [
   "./images/monsters/mummy_atk1.png",
   "./images/monsters/mummy_atk2.png",
   "./images/monsters/mummy_atk3.png",
+  "./images/monsters/nemesis_atk1.png",
+  "./images/monsters/nemesis_hit.png",
   "./images/monsters/skeleton_attack.png",
   "./images/monsters/skeleton_dead.png",
   "./images/monsters/slime_atk1.png",

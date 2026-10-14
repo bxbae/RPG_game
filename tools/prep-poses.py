@@ -37,6 +37,10 @@ JOBS = [
     ("dragon_atk4", "20.webp", "sd_dragon_v2.png", (755, 465, 1250, 740)),   # 날개 펴고 내리꽂기
     ("dragon_hit",  "21.webp", "sd_dragon_v2.png", (435, 555, 895, 885)),    # 고통스러운 포효
     ("dragon_dead", "21.webp", "sd_dragon_v2.png", (10, 625, 450, 890)),     # 쓰러져 엎드림
+    # 네메시스(22.jpg): 중립 자세를 본체(images/Nemesis_Lord_of_the_Void.png, 기존 그림이 없어 새로 만든다)로, 피격·공격은 그 위에 맞춘다
+    ("../Nemesis_Lord_of_the_Void", "22.jpg", None, (655, 60, 1024, 480)),
+    ("nemesis_hit",  "22.jpg", "Nemesis_Lord_of_the_Void.png", (5, 60, 335, 480)),
+    ("nemesis_atk1", "22.jpg", "Nemesis_Lord_of_the_Void.png", (335, 60, 665, 480)),
     ("goblin_hit",    "3.png",  "sd_goblin.png",   None),
     ("goblin_dead",   "4.png",  "sd_goblin.png",   None),
     ("goblin_atk1",   "11.webp", "sd_goblin.png",  (30, 395, 350, 680)),     # 베기 + 궤적
@@ -150,7 +154,18 @@ def _finish(rgb, bg, keep_alpha=None):
     return out
 
 
+def trim_pad(pose, margin=0.04):
+    """기본 그림이 아직 없을 때: 불투명 영역만 잘라 여백을 붙여 그대로 기본 그림으로 쓴다."""
+    pb = pose.split()[3].point(lambda v: 255 if v > 24 else 0).getbbox()
+    pose = pose.crop(pb)
+    mx, my = round(pose.width * margin), round(pose.height * margin)
+    out = Image.new("RGBA", (pose.width + 2 * mx, pose.height + 2 * my), (0, 0, 0, 0))
+    out.paste(pose, (mx, my), pose)
+    return out
+
+
 def fit_on_base(pose, base_path):
+    if base_path is None: return trim_pad(pose)
     base = Image.open(base_path).convert("RGBA")
     bb = base.split()[3].getbbox() or (0, 0, base.width, base.height)
     pb = pose.split()[3].point(lambda v: 255 if v > 24 else 0).getbbox()
@@ -171,7 +186,7 @@ def main():
         opts = opt[0] if opt else {}
         im = Image.open(src / f).convert("RGBA")
         if rect: im = im.crop(rect)
-        res = fit_on_base(cut_background(im, **opts), ROOT / "images" / base)
+        res = fit_on_base(cut_background(im, **opts), (ROOT / "images" / base) if base else None)
         res.save(out_dir / f"{name}.png", optimize=True)
         print(name, res.size)
 
