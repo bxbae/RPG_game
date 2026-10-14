@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v66";
-const STATIC_CACHE  = "rpg-static-v66";
-const DYNAMIC_CACHE = "rpg-dynamic-v66";
+const CACHE_NAME    = "rpg-v67";
+const STATIC_CACHE  = "rpg-static-v67";
+const DYNAMIC_CACHE = "rpg-dynamic-v67";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -61,6 +61,12 @@ const IMAGE_FILES = [
   "./images/monsters/slime_atk2.png",
   "./images/monsters/slime_dead.png",
   "./images/monsters/slime_hit.png",
+  "./images/monsters/vampire_atk1.png",
+  "./images/monsters/vampire_atk2.png",
+  "./images/monsters/vampire_atk3.png",
+  "./images/monsters/wyvern_atk1.png",
+  "./images/monsters/wyvern_atk2.png",
+  "./images/monsters/wyvern_atk3.png",
   "./images/town_bustling.png",
   "./images/Grim_mining_village_beneath_rocky_cliffs.png",
   "./images/Gold_discovery_festival_in_the_mountains.png",

@@ -39,11 +39,18 @@ JOBS = [
     ("darkknight_atk1", "9.webp", "sd_guardian.png", (30, 380, 480, 670)),
     ("darkknight_atk2", "9.webp", "sd_guardian.png", (470, 380, 800, 670)),
     ("darkknight_atk3", "9.webp", "sd_guardian.png", (840, 380, 1175, 670)),
+    # 뱀파이어(14.webp: 셋째 줄 1·2·3번째 = 베기·도약·마법), 와이번(15.webp: 불꽃 숨결·도약·날아들기)
+    ("vampire_atk1", "14.webp", "sd_vampire.png", (10, 670, 285, 965)),
+    ("vampire_atk2", "14.webp", "sd_vampire.png", (265, 670, 505, 965)),
+    ("vampire_atk3", "14.webp", "sd_vampire.png", (500, 670, 745, 965)),
+    ("wyvern_atk1",  "15.webp", "sd_wyvern.png",  (585, 400, 950, 695)),
+    ("wyvern_atk2",  "15.webp", "sd_wyvern.png",  (345, 700, 665, 940)),
+    ("wyvern_atk3",  "15.webp", "sd_wyvern.png",  (575, 960, 895, 1215)),
 ]
 LIGHT = 236   # 이 값 이상이면 '흰 배경'으로 본다
 
 
-def cut_background(rgb):
+def cut_background(rgb, keep_inner_white=False):
     if rgb.mode == "RGBA" and rgb.split()[3].getextrema()[0] < 200:      # 이미 투명 배경인 시트: 알파를 그대로 쓴다
         return _clean_fragments(rgb)
     a = np.asarray(rgb.convert("RGB")).astype(np.int16)
@@ -64,7 +71,7 @@ def cut_background(rgb):
             if 0 <= ny < h and 0 <= nx < w and light[ny, nx] and not bg[ny, nx]:
                 bg[ny, nx] = True; q.append((ny, nx))
     # 몸 사이에 갇힌 '순백' 틈(팔과 무릎 사이 등)도 배경이다. 유령처럼 의도된 밝은 부분은 순백이 아니라서 남는다
-    pure = a.min(axis=2) >= 243
+    pure = a.min(axis=2) >= (999 if keep_inner_white else 243)
     seen = bg.copy()
     for y0 in range(h):
         for x0 in range(w):
@@ -132,10 +139,11 @@ def fit_on_base(pose, base_path):
 def main():
     src = Path(sys.argv[1])
     out_dir = ROOT / "images" / "monsters"; out_dir.mkdir(exist_ok=True)
-    for name, f, base, rect in JOBS:
+    for name, f, base, rect, *opt in JOBS:
+        opts = opt[0] if opt else {}
         im = Image.open(src / f).convert("RGBA")
         if rect: im = im.crop(rect)
-        res = fit_on_base(cut_background(im), ROOT / "images" / base)
+        res = fit_on_base(cut_background(im, **opts), ROOT / "images" / base)
         res.save(out_dir / f"{name}.png", optimize=True)
         print(name, res.size)
 
