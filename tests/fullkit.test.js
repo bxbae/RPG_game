@@ -15,7 +15,7 @@ test("키트: 레벨 능력치·동료 수가 지역 규칙을 따른다", () =>
   assert.equal(p.level, 20);
   assert.equal(p.maxHp, env.CLASSES.knight.hp + env.Balance.growth('knight').hp * 19);
   assert.ok(p.party && p.party2 && p.party3);
-  assert.equal(env.buildKit({ cls: "knight", level: 5, zone: "outside" }).party, null);
+  assert.ok(env.buildKit({ cls: "knight", level: 5, zone: "outside" }).party);   // 성 밖도 동료가 함께한다
 });
 
 test("레벨이 오를수록 클리어율이 떨어지지 않는다(일반 3층)", () => {
@@ -120,7 +120,7 @@ test("동료 균형: 어느 동료를 데려가도 전투 부담이 비슷하게
 
 test("동료 슬롯: 던전 종류별로 함께 싸우는 동료 수가 일관된다", () => {
   const env = S.create(6), B = env.Balance;
-  assert.deepEqual(["outside", "normal", "mine", "harbor", "elfForest", "capital", "abyss"].map(z => B.partySlots(z)), [0, 2, 2, 2, 2, 2, 3]);
+  assert.deepEqual(["outside", "normal", "mine", "harbor", "elfForest", "capital", "abyss"].map(z => B.partySlots(z)), [2, 2, 2, 2, 2, 2, 3]);
   // 같은 몬스터를 상대로 동료 수가 많을수록 처치가 빠르거나 같다(광산에서도 2번 동료가 공격에 가세한다)
   const turns = zone => {
     const p = env.buildKit({ cls: "knight", gear: "auto", level: 25, zone, affinity: 0 });
@@ -130,11 +130,6 @@ test("동료 슬롯: 던전 종류별로 함께 싸우는 동료 수가 일관�
     return S.fight(env, g, m, st) && st.turns;
   };
   assert.ok(turns("mine") <= turns("outside"));
-  // 성 밖에서는 동료가 피해를 받지 않는다
-  const p = env.buildKit({ cls: "knight", gear: "auto", level: 25, zone: "normal" }), g = S.makeGame(env, p, "outside");
-  const hp = [p.partyHp, p.party2Hp]; g.currentMonster = env.createMonster("orc", 3);
-  new env.BattleManager()._counter(g);
-  assert.deepEqual([p.partyHp, p.party2Hp], hp);
 });
 
 test("전투 연출 이벤트: 회복·상태이상·기절·방어·스킬 모션이 이벤트로 나간다", () => {

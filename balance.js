@@ -82,12 +82,11 @@
     JOB_SKILL: { tankerMult: 1.6, tankerGuard: 1, healerMult: 1.3, healerHealPct: 0.04, healerUltHealPct: 0.2 },
 
     // ── 동료 슬롯 ───────────────────────────────────
-    // 던전 종류별로 함께 싸우는 동료 수: 성 밖 0명(혼자), 일반·지역 던전(광산·항구·엘프숲·수도 등) 2명, 심연 3명.
+    // 던전 종류별로 함께 싸우는 동료 수: 심연 3명, 그 밖(성 밖 사냥터·일반·지역 던전)은 2명.
     // 전투 계산(공격 가세·반격 피해·궁극기)과 전투 화면이 모두 이 값을 따른다.
+    // (v2.7 에서 성 밖을 0명으로 했더니 처음 동료를 초대해도 전투 화면에 주인공만 보여서 2명으로 되돌렸다)
     partySlots(dungeonType) {
-      if (dungeonType === "outside") return 0;
-      if (dungeonType === "abyss") return 3;
-      return 2;
+      return dungeonType === "abyss" ? 3 : 2;
     },
 
     // ── 동료 궁극기 ─────────────────────────────────

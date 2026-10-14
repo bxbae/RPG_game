@@ -11,7 +11,7 @@ import sys
 from collections import deque
 from pathlib import Path
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 # (출력 이름, 원본 파일, 기본 그림, 잘라낼 영역(없으면 전체))
@@ -78,6 +78,13 @@ JOBS = [
     ("wyvern_atk2",  "15.webp", "sd_wyvern.png",  (345, 700, 665, 940)),
     ("wyvern_atk3",  "15.webp", "sd_wyvern.png",  (575, 960, 895, 1215)),
 ]
+# 몬스터는 화면 오른쪽에서 왼쪽(주인공 파티)을 바라본다. 원본 그림이 오른쪽을 향한 포즈는 좌우를 뒤집는다.
+FLIP = {
+    "slime_atk1", "slime_atk2", "golem_atk1", "guardian_atk2",
+    "demonknight_atk1", "demonknight_atk2", "demonknight_atk3",
+    "bat_atk1", "bat_atk2", "bat_atk3", "mummy_atk1", "mummy_atk2", "mummy_atk3",
+    "vampire_atk1", "vampire_atk2", "vampire_atk3", "wyvern_atk1", "wyvern_atk3", "dragon_atk4",
+}
 LIGHT = 236   # 이 값 이상이면 '흰 배경'으로 본다
 
 
@@ -186,7 +193,9 @@ def main():
         opts = opt[0] if opt else {}
         im = Image.open(src / f).convert("RGBA")
         if rect: im = im.crop(rect)
-        res = fit_on_base(cut_background(im, **opts), (ROOT / "images" / base) if base else None)
+        cut = cut_background(im, **opts)
+        if name in FLIP: cut = ImageOps.mirror(cut)
+        res = fit_on_base(cut, (ROOT / "images" / base) if base else None)
         res.save(out_dir / f"{name}.png", optimize=True)
         print(name, res.size)
 
