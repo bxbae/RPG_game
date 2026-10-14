@@ -389,6 +389,8 @@
     "sd_slime.png":     { hit: [D + "slime_hit.png"], attack: [D + "slime_atk1.png", D + "slime_atk2.png"], dead: [D + "slime_dead.png"] },
     "sd_magic_Golem.png": { attack: [D + "golem_atk1.png", D + "golem_atk2.png", D + "golem_atk3.png"] },
     "sd_Dungeon_Guardian.png": { attack: [D + "guardian_atk1.png", D + "guardian_atk2.png", D + "guardian_atk3.png"] },
+    "sd_bats.png":      { attack: [D + "bat_atk1.png", D + "bat_atk2.png", D + "bat_atk3.png"] },
+    "sd_mummy.png":     { attack: [D + "mummy_atk1.png", D + "mummy_atk2.png", D + "mummy_atk3.png"] },
     "sd_vampire.png":   { attack: [D + "vampire_atk1.png", D + "vampire_atk2.png", D + "vampire_atk3.png"] },
     "sd_wyvern.png":    { attack: [D + "wyvern_atk1.png", D + "wyvern_atk2.png", D + "wyvern_atk3.png"] },
     "sd_guardian.png":  { attack: [D + "darkknight_atk1.png", D + "darkknight_atk2.png", D + "darkknight_atk3.png"] },

@@ -43,6 +43,13 @@ JOBS = [
     ("vampire_atk1", "14.webp", "sd_vampire.png", (10, 670, 285, 965)),
     ("vampire_atk2", "14.webp", "sd_vampire.png", (265, 670, 505, 965)),
     ("vampire_atk3", "14.webp", "sd_vampire.png", (500, 670, 745, 965)),
+    # 동굴 박쥐(16.webp: 셋째 줄 1·2·3번째), 미라(17.webp: 둘째 줄 1번째 도약·셋째 줄 1·3번째)
+    ("bat_atk1",   "16.webp", "sd_bats.png",  (645, 712, 945, 1010)),
+    ("bat_atk2",   "16.webp", "sd_bats.png",  (0, 725, 335, 1010)),
+    ("bat_atk3",   "16.webp", "sd_bats.png",  (365, 705, 640, 1010)),
+    ("mummy_atk1", "17.webp", "sd_mummy.png", (565, 410, 845, 650)),
+    ("mummy_atk2", "17.webp", "sd_mummy.png", (25, 650, 315, 935)),
+    ("mummy_atk3", "17.webp", "sd_mummy.png", (645, 650, 935, 935)),
     ("wyvern_atk1",  "15.webp", "sd_wyvern.png",  (585, 400, 950, 695)),
     ("wyvern_atk2",  "15.webp", "sd_wyvern.png",  (345, 700, 665, 940)),
     ("wyvern_atk3",  "15.webp", "sd_wyvern.png",  (575, 960, 895, 1215)),

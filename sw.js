@@ -3,9 +3,9 @@
 //  전략: Cache First (게임 리소스) + Network First (외부)
 // ═══════════════════════════════════════════════════
 
-const CACHE_NAME    = "rpg-v67";
-const STATIC_CACHE  = "rpg-static-v67";
-const DYNAMIC_CACHE = "rpg-dynamic-v67";
+const CACHE_NAME    = "rpg-v68";
+const STATIC_CACHE  = "rpg-static-v68";
+const DYNAMIC_CACHE = "rpg-dynamic-v68";
 
 // ── 핵심 파일 (반드시 캐시) ──────────────────────────
 const CORE_FILES = [
@@ -41,6 +41,9 @@ const IMAGE_FILES = [
   "./images/Dungeon_BOSS_ROOM.png",
   "./images/Abyss_Dungeon.png",
   "./images/BANK.png",
+  "./images/monsters/bat_atk1.png",
+  "./images/monsters/bat_atk2.png",
+  "./images/monsters/bat_atk3.png",
   "./images/monsters/darkknight_atk1.png",
   "./images/monsters/darkknight_atk2.png",
   "./images/monsters/darkknight_atk3.png",
@@ -55,6 +58,9 @@ const IMAGE_FILES = [
   "./images/monsters/guardian_atk1.png",
   "./images/monsters/guardian_atk2.png",
   "./images/monsters/guardian_atk3.png",
+  "./images/monsters/mummy_atk1.png",
+  "./images/monsters/mummy_atk2.png",
+  "./images/monsters/mummy_atk3.png",
   "./images/monsters/skeleton_attack.png",
   "./images/monsters/skeleton_dead.png",
   "./images/monsters/slime_atk1.png",
