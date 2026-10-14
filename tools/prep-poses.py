@@ -16,18 +16,36 @@ from PIL import Image, ImageFilter
 ROOT = Path(__file__).resolve().parent.parent
 # (출력 이름, 원본 파일, 기본 그림, 잘라낼 영역(없으면 전체))
 JOBS = [
+    # (출력 이름, 원본 파일, 기본 그림, 잘라낼 영역(없으면 전체))
     ("goblin_hit",    "3.png",  "sd_goblin.png",   None),
     ("goblin_dead",   "4.png",  "sd_goblin.png",   None),
+    ("goblin_atk1",   "11.webp", "sd_goblin.png",  (30, 395, 350, 680)),     # 베기 + 궤적
+    ("goblin_atk2",   "11.webp", "sd_goblin.png",  (340, 415, 640, 680)),    # 돌진
+    ("goblin_atk3",   "11.webp", "sd_goblin.png",  (340, 70, 610, 370)),     # 칼 들고 포효
     ("skeleton_attack", "5.png", "sd_skeleton.png", None),
     ("skeleton_dead", "6.png",  "sd_skeleton.png", None),
-    # 슬라임 시트(7.webp): 맨 아래 줄 5번째(우는 얼굴) = 피격, 맨 위 줄 5번째(납작해진 모습) = 쓰러짐
-    ("slime_hit",     "7.webp", "sd_slime.png",    (975, 703, 1252, 975)),
-    ("slime_dead",    "7.webp", "sd_slime.png",    (1262, 118, 1520, 322)),
+    # 슬라임 시트(12.webp): 둘째 줄 3번째(칼에 찔림) = 피격, 셋째 줄 4번째(X 눈) = 쓰러짐, 둘째 줄 1·2번째 = 공격
+    ("slime_hit",     "12.webp", "sd_slime.png",   (870, 380, 1190, 690)),
+    ("slime_dead",    "12.webp", "sd_slime.png",   (1110, 740, 1536, 1000)),
+    ("slime_atk1",    "12.webp", "sd_slime.png",   (0, 370, 420, 700)),
+    ("slime_atk2",    "12.webp", "sd_slime.png",   (420, 390, 860, 690)),
+    # 마법 골렘(8.webp 둘째 줄), 던전 수호자(10.webp), 암흑 기사(9.webp)
+    ("golem_atk1",    "8.webp",  "sd_magic_Golem.png", (330, 460, 690, 735)),
+    ("golem_atk2",    "8.webp",  "sd_magic_Golem.png", (680, 460, 965, 735)),
+    ("golem_atk3",    "8.webp",  "sd_magic_Golem.png", (10, 460, 325, 735)),
+    ("guardian_atk1", "10.webp", "sd_Dungeon_Guardian.png", (395, 40, 775, 370)),
+    ("guardian_atk2", "10.webp", "sd_Dungeon_Guardian.png", (1120, 30, 1530, 370)),
+    ("guardian_atk3", "10.webp", "sd_Dungeon_Guardian.png", (40, 410, 420, 700)),
+    ("darkknight_atk1", "9.webp", "sd_guardian.png", (30, 380, 480, 670)),
+    ("darkknight_atk2", "9.webp", "sd_guardian.png", (470, 380, 800, 670)),
+    ("darkknight_atk3", "9.webp", "sd_guardian.png", (840, 380, 1175, 670)),
 ]
 LIGHT = 236   # 이 값 이상이면 '흰 배경'으로 본다
 
 
 def cut_background(rgb):
+    if rgb.mode == "RGBA" and rgb.split()[3].getextrema()[0] < 200:      # 이미 투명 배경인 시트: 알파를 그대로 쓴다
+        return _clean_fragments(rgb)
     a = np.asarray(rgb.convert("RGB")).astype(np.int16)
     h, w, _ = a.shape
     light = a.min(axis=2) >= LIGHT
@@ -60,6 +78,17 @@ def cut_background(rgb):
                             seen[ny, nx] = True; q2.append((ny, nx))
                 if len(comp) >= 60:
                     for y, x in comp: bg[y, x] = True
+    return _finish(rgb, bg)
+
+
+def _clean_fragments(rgba):
+    al = np.asarray(rgba.split()[3])
+    out = _finish(rgba.convert("RGB"), al < 16, keep_alpha=al)
+    return out
+
+
+def _finish(rgb, bg, keep_alpha=None):
+    h, w = bg.shape
     # 자른 가장자리에 걸린 이웃 그림의 조각을 지운다(가장 큰 덩어리는 유지)
     fg = ~bg
     lab = np.zeros((h, w), np.int32); comps = []
@@ -78,8 +107,11 @@ def cut_background(rgb):
     for i, pts in enumerate(comps):
         if i != biggest and any(y in (0, h - 1) or x in (0, w - 1) for y, x in pts):
             for y, x in pts: bg[y, x] = True
-    alpha = Image.fromarray(((~bg) * 255).astype(np.uint8))
-    alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))   # 흰 테두리 제거 + 부드럽게
+    if keep_alpha is not None:
+        alpha = Image.fromarray(np.where(bg, 0, keep_alpha).astype(np.uint8))              # 원래 알파 유지(가장자리 조각만 제거)
+    else:
+        alpha = Image.fromarray(((~bg) * 255).astype(np.uint8))
+        alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))   # 흰 테두리 제거 + 부드럽게
     out = rgb.convert("RGBA"); out.putalpha(alpha)
     return out
 
@@ -90,7 +122,7 @@ def fit_on_base(pose, base_path):
     pb = pose.split()[3].point(lambda v: 255 if v > 24 else 0).getbbox()
     pose = pose.crop(pb)
     bw, bh = bb[2] - bb[0], bb[3] - bb[1]
-    s = min(bw / pose.width, bh / pose.height)
+    s = min(bw * 1.1 / pose.width, bh * 1.1 / pose.height)   # 기본 그림 영역보다 10% 까지는 허용(검·궤적 때문에 몸이 작아지지 않게)
     pose = pose.resize((max(1, round(pose.width * s)), max(1, round(pose.height * s))), Image.LANCZOS)
     canvas = Image.new("RGBA", base.size, (0, 0, 0, 0))
     canvas.paste(pose, (bb[0] + (bw - pose.width) // 2, bb[3] - pose.height), pose)   # 발(아래) 기준 정렬
@@ -101,7 +133,7 @@ def main():
     src = Path(sys.argv[1])
     out_dir = ROOT / "images" / "monsters"; out_dir.mkdir(exist_ok=True)
     for name, f, base, rect in JOBS:
-        im = Image.open(src / f).convert("RGB")
+        im = Image.open(src / f).convert("RGBA")
         if rect: im = im.crop(rect)
         res = fit_on_base(cut_background(im), ROOT / "images" / base)
         res.save(out_dir / f"{name}.png", optimize=True)

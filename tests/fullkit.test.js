@@ -162,13 +162,21 @@ test("몬스터 포즈 그림: battle-fx.js 가 참조하는 파일이 모두 �
   const fs = require("node:fs"), path = require("node:path");
   const root = path.join(__dirname, "..");
   const src = fs.readFileSync(path.join(root, "battle-fx.js"), "utf8");
-  const files = [...src.matchAll(/D \+ "([a-z_]+\.png)"/g)].map(m => m[1]);
-  assert.ok(files.length >= 6);
   const size = f => { const b = fs.readFileSync(f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };   // PNG 헤더의 가로·세로
-  for (const f of files) {
-    const p = path.join(root, "images", "monsters", f);
-    assert.ok(fs.existsSync(p), f);
-    const base = path.join(root, "images", "sd_" + f.split("_")[0] + ".png");
-    assert.deepEqual(size(p), size(base), f);
+  const entries = [...src.matchAll(/^\s*"(sd_[^"]+\.png)":\s*\{(.*)\},?\s*$/gm)];
+  assert.ok(entries.length >= 6);
+  let n = 0;
+  for (const [, base, body] of entries) {
+    assert.ok(fs.existsSync(path.join(root, "images", base)), base);
+    for (const [, f] of body.matchAll(/D \+ "([a-z0-9_]+\.png)"/g)) {
+      const p = path.join(root, "images", "monsters", f);
+      assert.ok(fs.existsSync(p), f);
+      assert.deepEqual(size(p), size(path.join(root, "images", base)), f);
+      n++;
+    }
   }
+  assert.ok(n >= 20);
+  // 몬스터가 쓰는 그림 파일 이름이 실제 몬스터 정의와 맞는지(오타 방지)
+  const models = fs.readFileSync(path.join(root, "models.js"), "utf8");
+  for (const [, base] of entries) assert.ok(models.includes("images/" + base), base + " 를 쓰는 몬스터가 없다");
 });

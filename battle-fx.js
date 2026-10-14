@@ -381,14 +381,23 @@
 (function () {
   const P = BattleScene.prototype;
   const D = "images/monsters/";
+  // 키 = 몬스터 기본 그림 파일. 같은 그림을 쓰는 몬스터(던전 수호자·마왕군 간부 등)는 포즈를 함께 쓴다.
+  // 값이 배열이면 쓸 때마다 무작위로 고른다. 한 줄에 한 몬스터.
   const MONSTER_POSES = {
-    goblin:   { hit: D + "goblin_hit.png",      dead: D + "goblin_dead.png" },
-    skeleton: { attack: D + "skeleton_attack.png", dead: D + "skeleton_dead.png" },   // 해골 기사: 피격 그림은 아직 없어 기본 번쩍임을 쓴다
-    slime:    { hit: D + "slime_hit.png",       dead: D + "slime_dead.png" },
+    "sd_goblin.png":    { hit: [D + "goblin_hit.png"], attack: [D + "goblin_atk1.png", D + "goblin_atk2.png", D + "goblin_atk3.png"], dead: [D + "goblin_dead.png"] },
+    "sd_skeleton.png":  { attack: [D + "skeleton_attack.png"], dead: [D + "skeleton_dead.png"] },
+    "sd_slime.png":     { hit: [D + "slime_hit.png"], attack: [D + "slime_atk1.png", D + "slime_atk2.png"], dead: [D + "slime_dead.png"] },
+    "sd_magic_Golem.png": { attack: [D + "golem_atk1.png", D + "golem_atk2.png", D + "golem_atk3.png"] },
+    "sd_Dungeon_Guardian.png": { attack: [D + "guardian_atk1.png", D + "guardian_atk2.png", D + "guardian_atk3.png"] },
+    "sd_guardian.png":  { attack: [D + "darkknight_atk1.png", D + "darkknight_atk2.png", D + "darkknight_atk3.png"] },
   };
   window.MONSTER_POSES = MONSTER_POSES;
 
-  P._pose = function (kind) { return MONSTER_POSES[this.game?.currentMonster?.id]?.[kind] || null; };
+  const spriteOf = (m) => (m?.img || "").split("/").pop();
+  P._pose = function (kind) {
+    const list = MONSTER_POSES[spriteOf(this.game?.currentMonster)]?.[kind];
+    return list?.length ? list[Math.floor(Math.random() * list.length)] : null;
+  };
 
   // 잠깐 포즈 그림으로 바꿨다가 원래 그림으로 되돌린다
   P._showPose = function (kind, ms) {
@@ -411,7 +420,7 @@
     this.el?.playerWrap?.classList.remove("defeat");
     const r = _start.apply(this, arguments);
     this._baseSrc = this.el?.monsterImg?.getAttribute("src") ?? null;
-    for (const src of Object.values(MONSTER_POSES[monster?.id] || {})) { const i = new Image(); i.src = src; }
+    for (const list of Object.values(MONSTER_POSES[spriteOf(monster)] || {})) for (const src of list) { const i = new Image(); i.src = src; }
     return r;
   };
 
