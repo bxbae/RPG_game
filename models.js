@@ -47,7 +47,7 @@ const MONSTERS = [
   { id:"ice_slime",   name:"아이스 슬라임",baseHp:95,  baseAtk:10, img:"images/sd_ice_slime.png",      expRate:48,  goldRate:38  },
   { id:"goblin",      name:"고블린",       baseHp:110, baseAtk:12, img:"images/sd_goblin.png",      expRate:55,  goldRate:45  },
   // ── 일반 던전 2층 ──────────────────────────────────
-  { id:"wolf",        name:"암흑 늑대",    baseHp:125, baseAtk:13, img:"images/sd_dark_wolf.png",          expRate:62,  goldRate:50  },
+  { id:"wolf",        name:"화염 여우",    baseHp:125, baseAtk:13, img:"images/sd_flame_fox.png",          expRate:62,  goldRate:50  },
   { id:"skeleton",    name:"해골 기사",    baseHp:130, baseAtk:14, img:"images/sd_skeleton.png",      expRate:70,  goldRate:55  },
   { id:"lizardman",   name:"리자드맨",     baseHp:142, baseAtk:15, img:"images/sd_lizardfolk.png",           expRate:78,  goldRate:62  },
   { id:"orc",         name:"오크 전사",    baseHp:150, baseAtk:16, img:"images/sd_orc.png",    expRate:85,  goldRate:70  },

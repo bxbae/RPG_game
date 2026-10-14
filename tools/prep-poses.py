@@ -17,6 +17,12 @@ ROOT = Path(__file__).resolve().parent.parent
 # (출력 이름, 원본 파일, 기본 그림, 잘라낼 영역(없으면 전체))
 JOBS = [
     # (출력 이름, 원본 파일, 기본 그림, 잘라낼 영역(없으면 전체))
+    # 암흑 늑대 → 화염 여우(13.webp). 본체는 늑대와 같은 캔버스에 맞추고(images/sd_flame_fox.png), 포즈는 그 위에 맞춘다
+    ("../sd_flame_fox", "13.webp", "sd_dark_wolf.png", (315, 0, 720, 500)),
+    ("fox_atk1", "13.webp", "sd_flame_fox.png", (5, 770, 270, 985)),      # 불꽃 호를 그리며 달리기
+    ("fox_atk2", "13.webp", "sd_flame_fox.png", (270, 770, 525, 985)),    # 화염 회오리
+    ("fox_atk3", "13.webp", "sd_flame_fox.png", (525, 770, 755, 985)),    # 신속 질주
+    ("fox_atk4", "13.webp", "sd_flame_fox.png", (985, 770, 1245, 985)),   # 불꽃 폭발
     ("goblin_hit",    "3.png",  "sd_goblin.png",   None),
     ("goblin_dead",   "4.png",  "sd_goblin.png",   None),
     ("goblin_atk1",   "11.webp", "sd_goblin.png",  (30, 395, 350, 680)),     # 베기 + 궤적
@@ -136,10 +142,11 @@ def fit_on_base(pose, base_path):
     pb = pose.split()[3].point(lambda v: 255 if v > 24 else 0).getbbox()
     pose = pose.crop(pb)
     bw, bh = bb[2] - bb[0], bb[3] - bb[1]
-    s = min(bw * 1.1 / pose.width, bh * 1.1 / pose.height)   # 기본 그림 영역보다 10% 까지는 허용(검·궤적 때문에 몸이 작아지지 않게)
+    s = min(bw * 1.1 / pose.width, bh * 1.1 / pose.height, base.width / pose.width, base.height / pose.height)   # 캔버스 밖으로 나가지 않게   # 기본 그림 영역보다 10% 까지는 허용(검·궤적 때문에 몸이 작아지지 않게)
     pose = pose.resize((max(1, round(pose.width * s)), max(1, round(pose.height * s))), Image.LANCZOS)
     canvas = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    canvas.paste(pose, (bb[0] + (bw - pose.width) // 2, bb[3] - pose.height), pose)   # 발(아래) 기준 정렬
+    x = min(max(0, bb[0] + (bw - pose.width) // 2), base.width - pose.width)
+    canvas.paste(pose, (x, max(0, min(bb[3], base.height) - pose.height)), pose)   # 발(아래) 기준 정렬
     return canvas
 
 
